@@ -16,15 +16,14 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-
 # rest imports
-from rest_framework import viewsets
+from rest_framework import serializers
 
 # custom imports
 from backend.models import Status
-from backend.serializers import StatusSerializer
 
 
-class StatusViewSet(viewsets.ModelViewSet):
-    queryset = Status.objects.all()
-    serializer_class = StatusSerializer
+class StatusSerializer(serializers.HyperlinkedModelSerializer):
+    class Meta:
+        model = Status
+        fields = ('url', 'status', 'checksum')

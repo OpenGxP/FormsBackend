@@ -17,33 +17,71 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 
+# python imports
 import os
 
+# django imports
+from django.core.exceptions import ImproperlyConfigured
+
+
+# function for required settings from local files
+def _require_file(path, file_name):
+    """Raise an error if file for configuration not existing or empty. 
+
+        :param path: absolute path to file ending with /
+        :type path: str
+        :param file_name: file name
+        :type file_name: str
+        :return: returns string of file content
+        :rtype: str
+    """
+    if not isinstance(path, str) or not isinstance(file_name, str):
+        raise TypeError('Argument of type string expected.')
+    try:
+        with open(path + file_name) as local_file:
+            content = local_file.read().strip()
+            if content:
+                return content
+            else:
+                raise ImproperlyConfigured('File "{}" is empty.'.format(file_name))
+    except FileNotFoundError:
+        raise
+
+
+#########
+# PATHS #
+#########
+
+# base directory
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# security directory for storing secrets in permission controlled files
+SECURITY_DIR = os.path.join(BASE_DIR, 'security')
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/1.11/howto/deployment/checklist/
+###########
+# SECRETS #
+###########
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'wc^(o@lo54ic1b+9$ucb90diy%u57&w_6e=5o@vrc7yfj)43@2'
+# django secret key
+SECRET_KEY = _require_file(path=SECURITY_DIR + '/keys/', file_name='SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
-
 ALLOWED_HOSTS = []
 
 
 # Application definition
-
 INSTALLED_APPS = [
-    'django.contrib.admin',
+    # 'django.contrib.admin',
+    'backend.apps.BackendConfig',
     'django.contrib.auth',
     'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
+    # 'django.contrib.sessions',
+    # 'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework'
 ]
 
 MIDDLEWARE = [
@@ -54,6 +92,28 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+REST_FRAMEWORK = {
+    # Use Django's standard `django.contrib.auth` permissions,
+    # or allow read-only access for unauthenticated users.
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.DjangoModelPermissionsOrAnonReadOnly'
+    ]
+}
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend'
+]
+
+AUTH_USER_MODEL = 'backend.Users'
+
+PASSWORD_HASHERS = [
+    'django.contrib.auth.hashers.Argon2PasswordHasher',
+    'django.contrib.auth.hashers.PBKDF2PasswordHasher',
+    'django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher',
+    'django.contrib.auth.hashers.BCryptSHA256PasswordHasher',
+    'django.contrib.auth.hashers.BCryptPasswordHasher',
 ]
 
 ROOT_URLCONF = 'forms.urls'
@@ -92,18 +152,10 @@ DATABASES = {
 # https://docs.djangoproject.com/en/1.11/ref/settings/#auth-password-validators
 
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator', },
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator', },
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator', },
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator', },
 ]
 
 
@@ -111,13 +163,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # https://docs.djangoproject.com/en/1.11/topics/i18n/
 
 LANGUAGE_CODE = 'en-us'
-
 TIME_ZONE = 'UTC'
-
 USE_I18N = True
-
 USE_L10N = True
-
 USE_TZ = True
 
 

@@ -17,9 +17,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 
-from django.conf.urls import url
-from django.contrib import admin
+# django imports
+from django.conf.urls import url, include
 
 urlpatterns = [
-    url(r'^admin/', admin.site.urls),
+    url(r'^', include('backend.urls')),
+    url(r'^api-auth/', include('rest_framework.urls')),
 ]

@@ -55,6 +55,7 @@ coverage.xml
 *.log
 local_settings.py
 db.sqlite3
+*/migrations
 
 # Flask stuff:
 instance/
@@ -105,3 +106,7 @@ venv.bak/
 
 # pycharm
 .idea
+
+# custom
+private_test.py
+/security

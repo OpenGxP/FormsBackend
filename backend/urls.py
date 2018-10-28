@@ -18,13 +18,18 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
 # rest imports
-from rest_framework import viewsets
+from rest_framework import routers
 
-# custom imports
-from backend.models import Status
-from backend.serializers import StatusSerializer
+# django imports
+from django.conf.urls import url, include
+
+# app imports
+import backend.views as views
 
 
-class StatusViewSet(viewsets.ModelViewSet):
-    queryset = Status.objects.all()
-    serializer_class = StatusSerializer
+router = routers.DefaultRouter()
+router.register(r'status', views.StatusViewSet)
+
+urlpatterns = [
+    url(r'^', include(router.urls)),
+]
