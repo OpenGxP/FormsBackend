@@ -1,0 +1,6 @@
+[{"model": "UserRolesPermissions.roles",
+  "pk":1,
+  "fields": {
+    "permission": "read",
+    "checksum": "tbd"
+  }}]

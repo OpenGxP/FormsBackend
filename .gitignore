@@ -112,3 +112,4 @@ private_test.py
 /security
 # start.sh
 status.json
+permissions.json

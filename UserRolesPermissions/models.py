@@ -108,6 +108,7 @@ class GlobalManager(models.Manager):
             # generate hash and update field checksum
             record.checksum = generate_checksum(to_hash)
             record.save()
+            return record
         else:
             raise NameError('Record with id={} manipulated'.format(record.id))
 
@@ -165,7 +166,7 @@ class Permissions(models.Model):
 # manager
 class RolesManager(GlobalManager):
     # hashing
-    HASH_SEQUENCE = ['role', 'permissions', 'status', 'version']
+    HASH_SEQUENCE = ['role', 'status_id', 'version']
 
 
 # table

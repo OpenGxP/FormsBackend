@@ -24,15 +24,46 @@ from django.http import HttpResponse
 from rest_framework import viewsets
 
 # custom imports
-from .models import Status, Users
-from .serializers import StatusSerializer
+from .models import Status, Users, Roles, Permissions
+from .serializers import StatusSerializer, PermissionsSerializer, UsersSerializer, RolesSerializer
 
 
+# status
 class StatusViewSet(viewsets.ModelViewSet):
     queryset = Status.objects.all()
     serializer_class = StatusSerializer
 
 
+# permissions
+class PermissionsViewSet(viewsets.ModelViewSet):
+    queryset = Permissions.objects.all()
+    serializer_class = PermissionsSerializer
+
+
+# users
+class UsersViewSet(viewsets.ModelViewSet):
+    queryset = Users.objects.all()
+    serializer_class = UsersSerializer
+
+
+# roles
+class RolesViewSet(viewsets.ModelViewSet):
+    queryset = Roles.objects.all()
+    serializer_class = RolesSerializer
+
+
+# TESTS
 def index(request):
-    b = Users.objects.values()
-    return HttpResponse(b)
+    # b = Users.objects.filter(status_id=Status.objects.filter(status='Effective')[0].id).all()
+    b = Users.objects.get(pk=1)
+    b.status = Status.objects.get(status='Blocked')
+    b.save()
+    Users.objects.filter(pk=1).update(status=Status.objects.get(status='Blocked'))
+
+    c = Roles.objects.new(role='all15', status_id=3, version=1)
+    permissions = [1, 2, 3]
+    for perm in permissions:
+        p = Permissions.objects.get(pk=perm)
+        c.permissions.add(p)
+
+    return HttpResponse('{} {}'.format(c.role, c.status.status))

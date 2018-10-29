@@ -24,11 +24,14 @@ from rest_framework import routers
 from django.conf.urls import url, include
 
 # app imports
-from .views import StatusViewSet, index
+from .views import StatusViewSet, index, PermissionsViewSet, UsersViewSet, RolesViewSet
 
 
 router = routers.DefaultRouter()
 router.register(r'status', StatusViewSet)
+router.register(r'permissions', PermissionsViewSet)
+router.register(r'users', UsersViewSet)
+router.register(r'roles', RolesViewSet)
 
 urlpatterns = [
     url(r'^', include(router.urls)),

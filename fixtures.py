@@ -31,16 +31,21 @@ from UserRolesPermissions.custom import generate_checksum, generate_to_hash
 FIXTURES_DIR = os.path.join(BASE_DIR, 'UserRolesPermissions/fixtures/')
 
 
-# status
-status = json.loads(require_file(path=FIXTURES_DIR, file_name='status_template.json'))
-HASH_SEQUENCE = ['status']
-fields = dict()
-for record in status:
-    for field in record['fields']:
-        if field != 'checksum':
-            fields[field] = record['fields'][field]
-    to_hash = generate_to_hash(fields, hash_sequence=HASH_SEQUENCE, record_id=record['pk'])
-    record['fields']['checksum'] = generate_checksum(to_hash)
+def generate_fixture(fixture, hash_sequence):
+    status = json.loads(require_file(path=FIXTURES_DIR, file_name='{}_template.json'.format(fixture)))
+    fields = dict()
+    for record in status:
+        for field in record['fields']:
+            if field != 'checksum':
+                fields[field] = record['fields'][field]
+        to_hash = generate_to_hash(fields, hash_sequence=hash_sequence, record_id=record['pk'])
+        record['fields']['checksum'] = generate_checksum(to_hash)
 
-with open(FIXTURES_DIR + 'status.json', 'w') as outfile:
-    json.dump(status, outfile)
+    with open(FIXTURES_DIR + '{}.json'.format(fixture), 'w') as outfile:
+        json.dump(status, outfile)
+
+
+# status
+generate_fixture(fixture='status', hash_sequence=['status'])
+# permissions
+generate_fixture(fixture='permissions', hash_sequence=['permission'])

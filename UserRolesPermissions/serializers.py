@@ -20,10 +20,29 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from rest_framework import serializers
 
 # custom imports
-from .models import Status
+from .models import Status, Permissions, Users, Roles
 
 
 class StatusSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = Status
-        fields = ('url', 'status', 'checksum')
+        fields = ('url', 'id', 'status')
+
+
+class PermissionsSerializer(serializers.HyperlinkedModelSerializer):
+    class Meta:
+        model = Permissions
+        fields = ('url', 'id', 'permission')
+
+
+class UsersSerializer(serializers.HyperlinkedModelSerializer):
+    class Meta:
+        model = Users
+        fields = ('url', 'id', 'username', 'email', 'first_name', 'last_name', 'is_active',
+                  'initial_password', 'status', 'version')
+
+
+class RolesSerializer(serializers.HyperlinkedModelSerializer):
+    class Meta:
+        model = Roles
+        fields = ('url', 'id', 'role', 'permissions', 'status', 'version')
