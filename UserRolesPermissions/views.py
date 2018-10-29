@@ -17,14 +17,22 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 
+# django imports
+from django.http import HttpResponse
+
 # rest imports
 from rest_framework import viewsets
 
 # custom imports
-from backend.models import Status
-from backend.serializers import StatusSerializer
+from .models import Status, Users
+from .serializers import StatusSerializer
 
 
 class StatusViewSet(viewsets.ModelViewSet):
     queryset = Status.objects.all()
     serializer_class = StatusSerializer
+
+
+def index(request):
+    b = Users.objects.values()
+    return HttpResponse(b)

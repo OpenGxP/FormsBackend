@@ -17,8 +17,30 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 
-from django.apps import AppConfig
+# python imports
+from passlib.hash import sha512_crypt
 
 
-class BackendConfig(AppConfig):
-    name = 'backend'
+##########
+# GLOBAL #
+##########
+
+HASH_ALGORITHM = sha512_crypt
+
+
+###########
+# HASHING #
+###########
+
+def generate_checksum(to_hash):
+    """Generates a hash string.
+
+        :param to_hash: string to hash
+        :type to_hash: str
+
+        :returns: hash string
+        :rtype: str
+    """
+    if not isinstance(to_hash, str):
+        raise TypeError('Argument "to_hash" expects type str.')
+    return HASH_ALGORITHM.using().hash(to_hash)

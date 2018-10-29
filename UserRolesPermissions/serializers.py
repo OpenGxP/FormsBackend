@@ -16,11 +16,14 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+# rest imports
+from rest_framework import serializers
 
-# django imports
-from django.conf.urls import url, include
+# custom imports
+from .models import Status
 
-urlpatterns = [
-    url(r'^', include('UserRolesPermissions.urls')),
-    url(r'^api-auth/', include('rest_framework.urls')),
-]
+
+class StatusSerializer(serializers.HyperlinkedModelSerializer):
+    class Meta:
+        model = Status
+        fields = ('url', 'status', 'checksum')

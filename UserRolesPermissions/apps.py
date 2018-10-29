@@ -16,14 +16,9 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-# rest imports
-from rest_framework import serializers
 
-# custom imports
-from backend.models import Status
+from django.apps import AppConfig
 
 
-class StatusSerializer(serializers.HyperlinkedModelSerializer):
-    class Meta:
-        model = Status
-        fields = ('url', 'status', 'checksum')
+class UserRolesPermissionsConfig(AppConfig):
+    name = 'UserRolesPermissions'

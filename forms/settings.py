@@ -66,6 +66,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # django secret key
 SECRET_KEY = _require_file(path=SECURITY_DIR + '/keys/', file_name='SECRET_KEY')
+SECRET_HASH_KEY = _require_file(path=SECURITY_DIR + '/keys/', file_name='SECRET_HASH_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -75,7 +76,7 @@ ALLOWED_HOSTS = []
 # Application definition
 INSTALLED_APPS = [
     # 'django.contrib.admin',
-    'backend.apps.BackendConfig',
+    'UserRolesPermissions.apps.UserRolesPermissionsConfig',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     # 'django.contrib.sessions',
@@ -106,7 +107,7 @@ AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend'
 ]
 
-AUTH_USER_MODEL = 'backend.Users'
+AUTH_USER_MODEL = 'UserRolesPermissions.Users'
 
 PASSWORD_HASHERS = [
     'django.contrib.auth.hashers.Argon2PasswordHasher',

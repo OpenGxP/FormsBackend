@@ -24,12 +24,13 @@ from rest_framework import routers
 from django.conf.urls import url, include
 
 # app imports
-import backend.views as views
+from .views import StatusViewSet, index
 
 
 router = routers.DefaultRouter()
-router.register(r'status', views.StatusViewSet)
+router.register(r'status', StatusViewSet)
 
 urlpatterns = [
     url(r'^', include(router.urls)),
+    url(r'^index', index, name='index')
 ]
