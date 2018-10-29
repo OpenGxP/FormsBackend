@@ -110,4 +110,5 @@ venv.bak/
 # custom
 private_test.py
 /security
-start.sh
+# start.sh
+status.json

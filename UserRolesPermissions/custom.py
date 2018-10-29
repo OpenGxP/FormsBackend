@@ -20,6 +20,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # python imports
 from passlib.hash import sha512_crypt
 
+# django imports
+from django.conf import settings
+
 
 ##########
 # GLOBAL #
@@ -43,4 +46,29 @@ def generate_checksum(to_hash):
     """
     if not isinstance(to_hash, str):
         raise TypeError('Argument "to_hash" expects type str.')
-    return HASH_ALGORITHM.using().hash(to_hash)
+    return HASH_ALGORITHM.using(rounds=1000).hash(to_hash)
+
+
+def generate_to_hash(fields, hash_sequence, record_id=None):
+    """Generic function to build hash string for record fields.
+
+    :param fields: dictionary containing all mandatory fields and values
+    :type fields: dict
+
+    :param hash_sequence: list of fields in correct hash order
+    :type hash_sequence: list
+
+    :param record_id: id of the record to hash, default is no id
+    :type record_id: int / AutoField
+
+    :return: string to hash
+    :rtype: str
+    """
+    if record_id:
+        to_hash = 'id:{};'.format(record_id)
+    else:
+        to_hash = str()
+    for field in hash_sequence:
+        to_hash += '{}:{};'.format(field, fields[field])
+    to_hash += settings.SECRET_HASH_KEY
+    return to_hash

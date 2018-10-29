@@ -25,7 +25,7 @@ from django.core.exceptions import ImproperlyConfigured
 
 
 # function for required settings from local files
-def _require_file(path, file_name):
+def require_file(path, file_name):
     """Raise an error if file for configuration not existing or empty. 
 
         :param path: absolute path to file ending with /
@@ -56,8 +56,6 @@ def _require_file(path, file_name):
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # security directory for storing secrets in permission controlled files
 SECURITY_DIR = os.path.join(BASE_DIR, 'security')
-# Build paths inside the project like this: os.path.join(BASE_DIR, ...)
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 ###########
@@ -65,8 +63,8 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ###########
 
 # django secret key
-SECRET_KEY = _require_file(path=SECURITY_DIR + '/keys/', file_name='SECRET_KEY')
-SECRET_HASH_KEY = _require_file(path=SECURITY_DIR + '/keys/', file_name='SECRET_HASH_KEY')
+SECRET_KEY = require_file(path=SECURITY_DIR + '/keys/', file_name='SECRET_KEY')
+SECRET_HASH_KEY = require_file(path=SECURITY_DIR + '/keys/', file_name='SECRET_HASH_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True

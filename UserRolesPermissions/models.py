@@ -30,7 +30,7 @@ from django.utils.translation import gettext_lazy as _
 
 # app imports
 from .validators import validate_no_space, validate_no_specials, validate_no_specials_reduced, SPECIALS_REDUCED
-from .custom import generate_checksum, HASH_ALGORITHM
+from .custom import generate_checksum, HASH_ALGORITHM, generate_to_hash
 
 
 ##########
@@ -60,14 +60,7 @@ class GlobalManager(models.Manager):
         :return: string to hash
         :rtype: str
         """
-        if record_id:
-            to_hash = 'id:{};'.format(record_id)
-        else:
-            to_hash = str()
-        for field in self.HASH_SEQUENCE:
-            to_hash += '{}:{};'.format(field, fields[field])
-        to_hash += settings.SECRET_HASH_KEY
-        return to_hash
+        return generate_to_hash(fields=fields, hash_sequence=self.HASH_SEQUENCE, record_id=record_id)
 
     def verify_checksum(self, update, record_id=None):
         """Generic function to verify checksum without id.
