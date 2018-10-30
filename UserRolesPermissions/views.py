@@ -52,6 +52,7 @@ class RolesViewSet(viewsets.ModelViewSet):
     serializer_class = RolesSerializer
 
 
+"""
 # TESTS
 def index(request):
     # b = Users.objects.filter(status_id=Status.objects.filter(status='Effective')[0].id).all()
@@ -60,10 +61,16 @@ def index(request):
     b.save()
     Users.objects.filter(pk=1).update(status=Status.objects.get(status='Blocked'))
 
-    c = Roles.objects.new(role='all15', status_id=3, version=1)
+    # a = Status.objects.create(status='neu2', checksum='test')
+    # a.checksum = 'test2'
+    # a.save()
+
+    c = Roles.objects.new(role='all16', status_id=3, version=1)
     permissions = [1, 2, 3]
     for perm in permissions:
         p = Permissions.objects.get(pk=perm)
         c.permissions.add(p)
-
-    return HttpResponse('{} {}'.format(c.role, c.status.status))
+    c.save()
+    return HttpResponse('{} {} {}'.format(a.status, a.checksum, a.id))
+    # return HttpResponse(a.status)
+"""

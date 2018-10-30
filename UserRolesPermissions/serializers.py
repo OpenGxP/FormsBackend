@@ -24,25 +24,29 @@ from .models import Status, Permissions, Users, Roles
 
 
 class StatusSerializer(serializers.HyperlinkedModelSerializer):
+    valid = serializers.CharField(source='verify_checksum', read_only=True)
+
     class Meta:
         model = Status
-        fields = ('url', 'id', 'status')
+        fields = ('url', 'status', 'valid')
 
 
 class PermissionsSerializer(serializers.HyperlinkedModelSerializer):
+    valid = serializers.CharField(source='verify_checksum', read_only=True)
+
     class Meta:
         model = Permissions
-        fields = ('url', 'id', 'permission')
+        fields = ('url', 'permission', 'valid')
 
 
 class UsersSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = Users
-        fields = ('url', 'id', 'username', 'email', 'first_name', 'last_name', 'is_active',
+        fields = ('url', 'username', 'email', 'first_name', 'last_name', 'is_active',
                   'initial_password', 'status', 'version')
 
 
 class RolesSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = Roles
-        fields = ('url', 'id', 'role', 'permissions', 'status', 'version')
+        fields = ('url', 'role', 'permissions', 'status', 'version')

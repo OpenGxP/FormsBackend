@@ -30,7 +30,7 @@ from django.utils.translation import gettext_lazy as _
 
 # app imports
 from .validators import validate_no_space, validate_no_specials, validate_no_specials_reduced, SPECIALS_REDUCED
-from .custom import generate_checksum, HASH_ALGORITHM, generate_to_hash
+from .custom import generate_checksum, generate_to_hash, verify_checksum, HASH_ALGORITHM
 
 
 ##########
@@ -42,9 +42,7 @@ CHAR_DEFAULT = 100
 CHAR_MAX = 255
 
 # default fields
-FIELD_ID = models.AutoField(primary_key=True)
 FIELD_VERSION = models.PositiveIntegerField()
-FIELD_CHECKSUM = models.CharField(_('checksum'), max_length=CHAR_MAX)
 
 
 class GlobalManager(models.Manager):
@@ -62,26 +60,19 @@ class GlobalManager(models.Manager):
         """
         return generate_to_hash(fields=fields, hash_sequence=self.HASH_SEQUENCE, record_id=record_id)
 
-    def verify_checksum(self, update, record_id=None):
-        """Generic function to verify checksum without id.
+    def verify_checksum(self, queryset, record_id=None):
+        """Generic function to verify checksum .
 
-        :param update: django queryset
-        :type update: dict
+        :param queryset: django queryset
+        :type queryset: dict
 
         :param record_id: id of the record to verify, default is no id
-        :type record_id: int
+        :type record_id: int / AutoField
 
         :return: success flag
         :rtype: bool
         """
-        if record_id:
-            to_hash = 'id:{};'.format(record_id)
-        else:
-            to_hash = str()
-        for field in self.HASH_SEQUENCE:
-            to_hash += '{}:{};'.format(field, update[field])
-        to_hash += settings.SECRET_HASH_KEY
-        return HASH_ALGORITHM.verify(to_hash, update['checksum'])
+        return verify_checksum(queryset=queryset, hash_sequence=self.HASH_SEQUENCE, record_id=record_id)
 
     def new(self, **fields):
         """Generic function to create new records, including hashing. "id" is always fist, "checksum" always last.
@@ -98,19 +89,37 @@ class GlobalManager(models.Manager):
         record = self.create(**fields)
 
         # get values of new created record with id
-        update = self.filter(id=record.id).values()[0]
+        queryset = self.filter(id=record.id).values()[0]
 
         # build string with row id to generate hash
         to_hash = self.generate_to_hash(fields, record_id=record.id)
 
         # verify hash without id
-        if self.verify_checksum(update):
+        if self.verify_checksum(queryset):
             # generate hash and update field checksum
             record.checksum = generate_checksum(to_hash)
             record.save()
             return record
         else:
             raise NameError('Record with id={} manipulated'.format(record.id))
+
+
+class GlobalModel(models.Model):
+    # id
+    id = models.AutoField(primary_key=True)
+    checksum = models.CharField(_('checksum'), max_length=CHAR_MAX)
+
+    class Meta:
+        abstract = True
+
+    def _verify_checksum(self, to_hash_payload):
+        to_hash = 'id:{};'.format(self.id)
+        to_hash += to_hash_payload
+        to_hash += settings.SECRET_HASH_KEY
+        try:
+            return HASH_ALGORITHM.verify(to_hash, self.checksum)
+        except ValueError:
+            return False
 
 
 ##########
@@ -124,16 +133,16 @@ class StatusManager(GlobalManager):
 
 
 # table
-class Status(models.Model):
-    # id
-    id = FIELD_ID
+class Status(GlobalModel):
     # custom fields
     status = models.CharField(_('status'), max_length=CHAR_DEFAULT, unique=True)
-    # defaults
-    checksum = FIELD_CHECKSUM
 
     # manager
     objects = StatusManager()
+
+    def verify_checksum(self):
+        to_hash_payload = 'status:{};'.format(self.status)
+        return self._verify_checksum(to_hash_payload=to_hash_payload)
 
 
 ###############
@@ -147,16 +156,16 @@ class PermissionsManager(GlobalManager):
 
 
 # table
-class Permissions(models.Model):
-    # id
-    id = FIELD_ID
+class Permissions(GlobalModel):
     # custom fields
     permission = models.CharField(_('permission'), max_length=CHAR_DEFAULT, unique=True)
-    # defaults
-    checksum = FIELD_CHECKSUM
 
     # manager
     objects = PermissionsManager()
+
+    def verify_checksum(self):
+        to_hash_payload = 'permission:{};'.format(self.permission)
+        return self._verify_checksum(to_hash_payload=to_hash_payload)
 
 
 #########
@@ -170,9 +179,7 @@ class RolesManager(GlobalManager):
 
 
 # table
-class Roles(models.Model):
-    # id
-    id = FIELD_ID
+class Roles(GlobalModel):
     # custom fields
     role = models.CharField(
         _('role'),
@@ -187,7 +194,6 @@ class Roles(models.Model):
     # defaults
     status = models.ForeignKey(Status, on_delete=models.PROTECT)
     version = FIELD_VERSION
-    checksum = FIELD_CHECKSUM
 
     # manager
     objects = RolesManager()
@@ -221,13 +227,13 @@ class UsersManager(BaseUserManager, GlobalManager):
         user.save(using=self._db)
 
         # get values of new created record with id
-        update = self.filter(id=user.id).values()[0]
+        queryset = self.filter(id=user.id).values()[0]
 
         # build string with row id to generate hash
         to_hash = self.generate_to_hash(fields, record_id=user.id)
 
         # verify hash without id
-        if self.verify_checksum(update):
+        if self.verify_checksum(queryset):
             # generate hash and update field checksum
             user.checksum = generate_checksum(to_hash)
             user.save()
@@ -236,9 +242,7 @@ class UsersManager(BaseUserManager, GlobalManager):
 
 
 # table
-class Users(AbstractBaseUser):
-    # id
-    id = FIELD_ID
+class Users(AbstractBaseUser, GlobalModel):
     # custom fields
     username = models.CharField(_('username'), max_length=CHAR_DEFAULT, unique=True)
     email = models.EmailField(_('email'), max_length=CHAR_MAX)
@@ -263,7 +267,6 @@ class Users(AbstractBaseUser):
     # defaults
     status = models.ForeignKey(Status, on_delete=models.PROTECT)
     version = FIELD_VERSION
-    checksum = FIELD_CHECKSUM
 
     # manager
     objects = UsersManager()
