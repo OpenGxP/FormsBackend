@@ -52,9 +52,12 @@ class RolesViewSet(viewsets.ModelViewSet):
     serializer_class = RolesSerializer
 
 
-"""
 # TESTS
 def index(request):
+    return HttpResponse("Hello world")
+
+
+"""
     # b = Users.objects.filter(status_id=Status.objects.filter(status='Effective')[0].id).all()
     b = Users.objects.get(pk=1)
     b.status = Status.objects.get(status='Blocked')
