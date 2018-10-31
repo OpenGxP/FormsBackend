@@ -1,5 +1,5 @@
 Django===1.11
-psycopg2===2.7.5
+psycopg2-binary===2.7.5
 argon2-cffi===18.1.0
 cffi===1.11.5
 passlib===1.7.1

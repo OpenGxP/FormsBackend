@@ -40,10 +40,12 @@ class PermissionsSerializer(serializers.HyperlinkedModelSerializer):
 
 
 class UsersSerializer(serializers.HyperlinkedModelSerializer):
+    valid = serializers.CharField(source='verify_checksum', read_only=True)
+
     class Meta:
         model = Users
         fields = ('url', 'username', 'email', 'first_name', 'last_name', 'is_active',
-                  'initial_password', 'status', 'version')
+                  'initial_password', 'status', 'version', 'roles', 'valid')
 
 
 class RolesSerializer(serializers.HyperlinkedModelSerializer):

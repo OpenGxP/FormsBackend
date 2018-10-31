@@ -54,8 +54,10 @@ class RolesViewSet(viewsets.ModelViewSet):
 
 # TESTS
 def index(request):
-    # new_role = Roles.objects.new(role='all25_working2', permissions=[2, 3, 1])
-    # new_status = Status.objects.new(status='test23_working2')
+    """# new_role = Roles.objects.new(role='all25_working4', permissions=[2, 3, 1])
+    new_user = Users.objects.new(username='test1', email='123', first_name='peter', last_name='pan',
+                                 is_active=True, initial_password=True, password='passwd1234pad1d2', roles=[1])
+    # new_status = Status.objects.new(status='test23_working2')"""
     return HttpResponse("Hello world")
 
 

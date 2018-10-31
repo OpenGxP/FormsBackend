@@ -112,12 +112,9 @@ class GlobalManager(models.Manager):
             to_hash = self._generate_to_hash(fields, record_id=record.id)
         # if many to many table, add records
         if self.HASH_SEQUENCE_MTM:
-            for mtm_field in self.HASH_SEQUENCE_MTM:
-                for field in fields[mtm_field]:
-                    perm_obj = Permissions.objects.get(pk=field)
-                    record.permissions.add(perm_obj)
+            # TABLE INDIVIDUAL FUNCTION TO CALL, CUSTOMIZED PER TABLE
+            record = self._add_many_to_many(record=record, fields=fields)
         # save valid checksum to record, including id
-        print(to_hash)
         record.checksum = generate_checksum(to_hash)
         record.save()
         return record
@@ -207,6 +204,14 @@ class RolesManager(GlobalManager):
     HASH_SEQUENCE = ['role', 'status_id', 'version']
     HASH_SEQUENCE_MTM = ['permissions']
 
+    # many to many function
+    @staticmethod
+    def _add_many_to_many(record, fields):
+        for pk in fields['permissions']:
+            perm = Permissions.objects.get(pk=pk)
+            record.permissions.add(perm)
+        return record
+
 
 # table
 class Roles(GlobalModel):
@@ -249,7 +254,17 @@ class UsersManager(BaseUserManager, GlobalManager):
     # hashing
     HASH_SEQUENCE = ['username', 'email', 'first_name', 'last_name', 'is_active', 'initial_password', 'password',
                      'status_id', 'version']
+    HASH_SEQUENCE_MTM = ['roles']
 
+    # many to many function
+    @staticmethod
+    def _add_many_to_many(record, fields):
+        for pk in fields['roles']:
+            role = Roles.objects.get(pk=pk)
+            record.roles.add(role)
+        return record
+
+    # superuser function for createsuperuser
     def create_superuser(self, username, password):
         fields = {'username': username,
                   'first_name': '--',
@@ -259,27 +274,21 @@ class UsersManager(BaseUserManager, GlobalManager):
                   'initial_password': True,
                   'last_login': None,
                   'email': '--',
-                  'status_id': 3}
+                  'status_id': 3}  # initial status "Effective" to immediately user superuser
         user = self.model(**fields)
         user.set_password(password)
         fields['password'] = user.password
-        to_hash = self._generate_to_hash(fields)
-        user.checksum = generate_checksum(to_hash)
+        user.checksum = 'tbd'
         user.save(using=self._db)
 
-        # get values of new created record with id
-        queryset = self.filter(id=user.id).values()[0]
-
         # build string with row id to generate hash
-        to_hash = self._generate_to_hash(fields, record_id=user.id)
-
-        # verify hash without id
-        if self._verify_checksum(queryset):
-            # generate hash and update field checksum
-            user.checksum = generate_checksum(to_hash)
-            user.save()
-        else:
-            raise NameError('Record with id={} manipulated'.format(user.id))
+        fields['roles'] = [1]  # add initial "all" role
+        to_hash = self._generate_to_hash(fields, hash_sequence_mtm=self.HASH_SEQUENCE_MTM, record_id=user.id)
+        user = self._add_many_to_many(record=user, fields=fields)
+        print(to_hash)
+        user.checksum = generate_checksum(to_hash)
+        user.save()
+        return user
 
 
 # table
@@ -311,6 +320,19 @@ class Users(AbstractBaseUser, GlobalModel):
 
     # manager
     objects = UsersManager()
+
+    # integrity check
+    def verify_checksum(self):
+        # get permission objects ordered by id to guarantee correct hashing order
+        roles = self.roles.order_by('id').all()
+        roles_list = list()
+        for role in roles:
+            roles_list.append(role.id)
+        to_hash_payload = 'username:{};email:{};first_name:{};last_name:{};is_active:{};initial_password:{};' \
+                          'password:{};status_id:{};version:{};roles:{};'\
+            .format(self.username, self.email, self.first_name, self.last_name, self.is_active, self.initial_password,
+                    self.password, self.status_id, self.version, roles_list)
+        return self._verify_checksum(to_hash_payload=to_hash_payload)
 
     # references
     EMAIL_FIELD = 'email'
