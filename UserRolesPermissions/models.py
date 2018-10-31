@@ -30,7 +30,7 @@ from django.utils.translation import gettext_lazy as _
 
 # app imports
 from .validators import validate_no_space, validate_no_specials, validate_no_specials_reduced, SPECIALS_REDUCED
-from .custom import generate_checksum, generate_to_hash, verify_checksum, HASH_ALGORITHM
+from .custom import generate_checksum, generate_to_hash, HASH_ALGORITHM
 
 
 ##########
@@ -46,11 +46,21 @@ FIELD_VERSION = models.PositiveIntegerField()
 
 
 class GlobalManager(models.Manager):
-    def _generate_to_hash(self, fields, record_id=None):
+    # hashing
+    HASH_SEQUENCE_MTM = None
+
+    # flags
+    HAS_VERSION = True
+    HAS_STATUS = True
+
+    def _generate_to_hash(self, fields, hash_sequence_mtm=None, record_id=None):
         """Generic function to build hash string for record fields.
 
         :param fields: dictionary containing all mandatory fields and values
         :type fields: dict
+
+        :param hash_sequence_mtm: list of many to many fields in correct hash order, default is None
+        :type hash_sequence_mtm: list
 
         :param record_id: id of the record to hash, default is no id
         :type record_id: int / AutoField
@@ -58,38 +68,56 @@ class GlobalManager(models.Manager):
         :return: string to hash
         :rtype: str
         """
-        return generate_to_hash(fields=fields, hash_sequence=self.HASH_SEQUENCE, record_id=record_id)
-
-    def _verify_checksum(self, queryset, record_id=None):
-        """Generic function to verify checksum .
-
-        :param queryset: django queryset
-        :type queryset: dict
-
-        :param record_id: id of the record to verify, default is no id
-        :type record_id: int / AutoField
-
-        :return: success flag
-        :rtype: bool
-        """
-        return verify_checksum(queryset=queryset, hash_sequence=self.HASH_SEQUENCE, record_id=record_id)
+        return generate_to_hash(fields=fields, hash_sequence=self.HASH_SEQUENCE, hash_sequence_mtm=hash_sequence_mtm,
+                                record_id=record_id)
 
     def new(self, **fields):
         """Generic function to create new records, including hashing. "id" is always fist, "checksum" always last.
 
-            :param fields: dictionary containing all mandatory fields and values excluding "id" and "checksum"
+            :param fields: dictionary containing all mandatory fields and values excluding "id", "version", "status"
+            and "checksum", many to many fields must be passed via a list containing integers on the pk/id of the
+            related record
             :type fields: dict
 
             :return: success flag
             :rtype: bool
         """
+        # verify that many to many fields are
+        if self.HASH_SEQUENCE_MTM:
+            for mtm_field in self.HASH_SEQUENCE_MTM:
+                if not isinstance(fields[mtm_field], list):
+                    raise TypeError('Many to many fields expect lists with integers.')
+                for field in fields[mtm_field]:
+                    if not isinstance(field, int):
+                        raise TypeError('Many to many fields expect lists with integers.')
+        # new records that have versions always start with version = 1
+        if self.HAS_VERSION:
+            fields['version'] = 1
+        # new records that have status always start with status = 1 (Draft)
+        if self.HAS_STATUS:
+            fields['status_id'] = 1
         # save to db to get ID, checksum field is set to "tbd"
         # "tbd" is no valid hash string and therefore always return False on check
         fields['checksum'] = 'tbd'
-        record = self.create(**fields)
+        # reduce fields by many to many fields, they are added later
+        tmp_fields = dict(fields)
+        if self.HASH_SEQUENCE_MTM:
+            for field in self.HASH_SEQUENCE_MTM:
+                tmp_fields.pop(field)
+        record = self.create(**tmp_fields)
         # build string with row id to generate complete hash string
-        to_hash = self._generate_to_hash(fields, record_id=record.id)
+        if self.HASH_SEQUENCE_MTM:
+            to_hash = self._generate_to_hash(fields, hash_sequence_mtm=self.HASH_SEQUENCE_MTM, record_id=record.id)
+        else:
+            to_hash = self._generate_to_hash(fields, record_id=record.id)
+        # if many to many table, add records
+        if self.HASH_SEQUENCE_MTM:
+            for mtm_field in self.HASH_SEQUENCE_MTM:
+                for field in fields[mtm_field]:
+                    perm_obj = Permissions.objects.get(pk=field)
+                    record.permissions.add(perm_obj)
         # save valid checksum to record, including id
+        print(to_hash)
         record.checksum = generate_checksum(to_hash)
         record.save()
         return record
@@ -122,6 +150,10 @@ class StatusManager(GlobalManager):
     # hashing
     HASH_SEQUENCE = ['status']
 
+    # flags
+    HAS_VERSION = False
+    HAS_STATUS = False
+
 
 # table
 class Status(GlobalModel):
@@ -131,6 +163,7 @@ class Status(GlobalModel):
     # manager
     objects = StatusManager()
 
+    # integrity check
     def verify_checksum(self):
         to_hash_payload = 'status:{};'.format(self.status)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
@@ -145,6 +178,10 @@ class PermissionsManager(GlobalManager):
     # hashing
     HASH_SEQUENCE = ['permission']
 
+    # flags
+    HAS_VERSION = False
+    HAS_STATUS = False
+
 
 # table
 class Permissions(GlobalModel):
@@ -154,6 +191,7 @@ class Permissions(GlobalModel):
     # manager
     objects = PermissionsManager()
 
+    # integrity check
     def verify_checksum(self):
         to_hash_payload = 'permission:{};'.format(self.permission)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
@@ -167,6 +205,7 @@ class Permissions(GlobalModel):
 class RolesManager(GlobalManager):
     # hashing
     HASH_SEQUENCE = ['role', 'status_id', 'version']
+    HASH_SEQUENCE_MTM = ['permissions']
 
 
 # table
@@ -188,6 +227,17 @@ class Roles(GlobalModel):
 
     # manager
     objects = RolesManager()
+
+    # integrity check
+    def verify_checksum(self):
+        # get permission objects ordered by id to guarantee correct hashing order
+        permissions = self.permissions.order_by('id').all()
+        perm_list = list()
+        for perm in permissions:
+            perm_list.append(perm.id)
+        to_hash_payload = 'role:{};status_id:{};version:{};permissions:{};'.format(self.role, self.status_id,
+                                                                                   self.version, perm_list)
+        return self._verify_checksum(to_hash_payload=to_hash_payload)
 
 
 #########

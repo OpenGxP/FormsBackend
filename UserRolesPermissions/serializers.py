@@ -47,6 +47,8 @@ class UsersSerializer(serializers.HyperlinkedModelSerializer):
 
 
 class RolesSerializer(serializers.HyperlinkedModelSerializer):
+    valid = serializers.CharField(source='verify_checksum', read_only=True)
+
     class Meta:
         model = Roles
-        fields = ('url', 'role', 'permissions', 'status', 'version')
+        fields = ('url', 'role', 'permissions', 'status', 'version', 'valid')

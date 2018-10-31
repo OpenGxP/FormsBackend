@@ -49,7 +49,7 @@ def generate_checksum(to_hash):
     return HASH_ALGORITHM.using(rounds=1000).hash(to_hash)
 
 
-def generate_to_hash(fields, hash_sequence, record_id=None):
+def generate_to_hash(fields, hash_sequence, hash_sequence_mtm=None, record_id=None):
     """Generic function to build hash string for record fields.
 
     :param fields: dictionary containing all mandatory fields and values
@@ -57,6 +57,9 @@ def generate_to_hash(fields, hash_sequence, record_id=None):
 
     :param hash_sequence: list of fields in correct hash order
     :type hash_sequence: list
+
+    :param hash_sequence_mtm: list of many to many fields in correct hash order, default is None
+    :type hash_sequence_mtm: list
 
     :param record_id: id of the record to hash, default is no id
     :type record_id: int / AutoField
@@ -70,34 +73,11 @@ def generate_to_hash(fields, hash_sequence, record_id=None):
         to_hash = str()
     for field in hash_sequence:
         to_hash += '{}:{};'.format(field, fields[field])
+    if hash_sequence_mtm:
+        for mtm_field in hash_sequence_mtm:
+            # sort lists to guarantee same has results every time
+            fields[mtm_field].sort()
+            to_hash += '{}:{};'.format(mtm_field, fields[mtm_field])
+    # some pepper for the soup
     to_hash += settings.SECRET_HASH_KEY
     return to_hash
-
-
-def verify_checksum(queryset, hash_sequence, record_id=None):
-    """Generic function to verify checksum .
-
-    :param queryset: django queryset
-    :type queryset: dict
-
-    :param hash_sequence: list of fields in correct hash order
-    :type hash_sequence: list
-
-    :param record_id: id of the record to verify, default is no id
-    :type record_id: int / AutoField
-
-    :return: success flag
-    :rtype: bool
-    """
-    if record_id:
-        to_hash = 'id:{};'.format(record_id)
-    else:
-        to_hash = str()
-    for field in hash_sequence:
-        to_hash += '{}:{};'.format(field, queryset[field])
-    to_hash += settings.SECRET_HASH_KEY
-    try:
-        return HASH_ALGORITHM.verify(to_hash, queryset['checksum'])
-    # ValueError raises when "checksum" is no valid hash string (e.g. for temporary records using "tbd" as checksum)
-    except ValueError:
-        return False
