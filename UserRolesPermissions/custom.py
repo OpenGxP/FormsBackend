@@ -98,5 +98,6 @@ def verify_checksum(queryset, hash_sequence, record_id=None):
     to_hash += settings.SECRET_HASH_KEY
     try:
         return HASH_ALGORITHM.verify(to_hash, queryset['checksum'])
+    # ValueError raises when "checksum" is no valid hash string (e.g. for temporary records using "tbd" as checksum)
     except ValueError:
         return False

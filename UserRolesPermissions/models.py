@@ -46,7 +46,7 @@ FIELD_VERSION = models.PositiveIntegerField()
 
 
 class GlobalManager(models.Manager):
-    def generate_to_hash(self, fields, record_id=None):
+    def _generate_to_hash(self, fields, record_id=None):
         """Generic function to build hash string for record fields.
 
         :param fields: dictionary containing all mandatory fields and values
@@ -60,7 +60,7 @@ class GlobalManager(models.Manager):
         """
         return generate_to_hash(fields=fields, hash_sequence=self.HASH_SEQUENCE, record_id=record_id)
 
-    def verify_checksum(self, queryset, record_id=None):
+    def _verify_checksum(self, queryset, record_id=None):
         """Generic function to verify checksum .
 
         :param queryset: django queryset
@@ -77,31 +77,22 @@ class GlobalManager(models.Manager):
     def new(self, **fields):
         """Generic function to create new records, including hashing. "id" is always fist, "checksum" always last.
 
-            :param fields: dictionary containing all mandatory fields and values
+            :param fields: dictionary containing all mandatory fields and values excluding "id" and "checksum"
             :type fields: dict
 
             :return: success flag
             :rtype: bool
         """
-        # hash values without id
-        to_hash = self.generate_to_hash(fields)
-        fields['checksum'] = generate_checksum(to_hash)
+        # save to db to get ID, checksum field is set to "tbd"
+        # "tbd" is no valid hash string and therefore always return False on check
+        fields['checksum'] = 'tbd'
         record = self.create(**fields)
-
-        # get values of new created record with id
-        queryset = self.filter(id=record.id).values()[0]
-
-        # build string with row id to generate hash
-        to_hash = self.generate_to_hash(fields, record_id=record.id)
-
-        # verify hash without id
-        if self.verify_checksum(queryset):
-            # generate hash and update field checksum
-            record.checksum = generate_checksum(to_hash)
-            record.save()
-            return record
-        else:
-            raise NameError('Record with id={} manipulated'.format(record.id))
+        # build string with row id to generate complete hash string
+        to_hash = self._generate_to_hash(fields, record_id=record.id)
+        # save valid checksum to record, including id
+        record.checksum = generate_checksum(to_hash)
+        record.save()
+        return record
 
 
 class GlobalModel(models.Model):
@@ -222,7 +213,7 @@ class UsersManager(BaseUserManager, GlobalManager):
         user = self.model(**fields)
         user.set_password(password)
         fields['password'] = user.password
-        to_hash = self.generate_to_hash(fields)
+        to_hash = self._generate_to_hash(fields)
         user.checksum = generate_checksum(to_hash)
         user.save(using=self._db)
 
@@ -230,10 +221,10 @@ class UsersManager(BaseUserManager, GlobalManager):
         queryset = self.filter(id=user.id).values()[0]
 
         # build string with row id to generate hash
-        to_hash = self.generate_to_hash(fields, record_id=user.id)
+        to_hash = self._generate_to_hash(fields, record_id=user.id)
 
         # verify hash without id
-        if self.verify_checksum(queryset):
+        if self._verify_checksum(queryset):
             # generate hash and update field checksum
             user.checksum = generate_checksum(to_hash)
             user.save()
