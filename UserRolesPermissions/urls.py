@@ -18,22 +18,20 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
 # rest imports
-from rest_framework import routers
+from rest_framework.urlpatterns import format_suffix_patterns
 
 # django imports
-from django.conf.urls import url, include
+from django.conf.urls import url
 
 # app imports
-from .views import StatusViewSet, index, PermissionsViewSet, UsersViewSet, RolesViewSet
+from .views import StatusList, RolesList, PermissionsList, UsersList
 
-
-router = routers.DefaultRouter()
-router.register(r'status', StatusViewSet)
-router.register(r'permissions', PermissionsViewSet)
-router.register(r'users', UsersViewSet)
-router.register(r'roles', RolesViewSet)
 
 urlpatterns = [
-    url(r'^', include(router.urls)),
-    url(r'^index', index, name='index')
+    url('status/', StatusList.as_view()),
+    url('roles/', RolesList.as_view()),
+    url('permissions/', PermissionsList.as_view()),
+    url('users/', UsersList.as_view())
 ]
+
+urlpatterns = format_suffix_patterns(urlpatterns)

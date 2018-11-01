@@ -18,10 +18,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
 # django imports
-from django.http import HttpResponse
+# from django.http import HttpResponse, Http404
 
 # rest imports
-from rest_framework import viewsets
+from rest_framework.views import APIView
+from rest_framework.response import Response
+# from rest_framework import status
 
 # custom imports
 from .models import Status, Users, Roles, Permissions
@@ -29,55 +31,40 @@ from .serializers import StatusSerializer, PermissionsSerializer, UsersSerialize
 
 
 # status
-class StatusViewSet(viewsets.ModelViewSet):
-    queryset = Status.objects.all()
-    serializer_class = StatusSerializer
+class StatusList(APIView):
+    # list of all status or create new status
+    @staticmethod
+    def get(request):
+        queryset = Status.objects.all()
+        serializer = StatusSerializer(queryset, context={'request': request}, many=True)
+        return Response(serializer.data)
 
 
 # permissions
-class PermissionsViewSet(viewsets.ModelViewSet):
-    queryset = Permissions.objects.all()
-    serializer_class = PermissionsSerializer
-
-
-# users
-class UsersViewSet(viewsets.ModelViewSet):
-    queryset = Users.objects.all()
-    serializer_class = UsersSerializer
+class PermissionsList(APIView):
+    # list of all status or create new status
+    @staticmethod
+    def get(request):
+        queryset = Permissions.objects.all()
+        serializer = PermissionsSerializer(queryset, context={'request': request}, many=True)
+        return Response(serializer.data)
 
 
 # roles
-class RolesViewSet(viewsets.ModelViewSet):
-    queryset = Roles.objects.all()
-    serializer_class = RolesSerializer
+class RolesList(APIView):
+    # list of all status or create new status
+    @staticmethod
+    def get(request):
+        queryset = Roles.objects.all()
+        serializer = RolesSerializer(queryset, context={'request': request}, many=True)
+        return Response(serializer.data)
 
 
-# TESTS
-def index(request):
-    """# new_role = Roles.objects.new(role='all25_working4', permissions=[2, 3, 1])
-    new_user = Users.objects.new(username='test1', email='123', first_name='peter', last_name='pan',
-                                 is_active=True, initial_password=True, password='passwd1234pad1d2', roles=[1])
-    # new_status = Status.objects.new(status='test23_working2')"""
-    return HttpResponse("Hello world")
-
-
-"""
-    # b = Users.objects.filter(status_id=Status.objects.filter(status='Effective')[0].id).all()
-    b = Users.objects.get(pk=1)
-    b.status = Status.objects.get(status='Blocked')
-    b.save()
-    Users.objects.filter(pk=1).update(status=Status.objects.get(status='Blocked'))
-
-    # a = Status.objects.create(status='neu2', checksum='test')
-    # a.checksum = 'test2'
-    # a.save()
-
-    c = Roles.objects.new(role='all16', status_id=3, version=1)
-    permissions = [1, 2, 3]
-    for perm in permissions:
-        p = Permissions.objects.get(pk=perm)
-        c.permissions.add(p)
-    c.save()
-    return HttpResponse('{} {} {}'.format(a.status, a.checksum, a.id))
-    # return HttpResponse(a.status)
-"""
+# users
+class UsersList(APIView):
+    # list of all status or create new status
+    @staticmethod
+    def get(request):
+        queryset = Users.objects.all()
+        serializer = UsersSerializer(queryset, context={'request': request}, many=True)
+        return Response(serializer.data)

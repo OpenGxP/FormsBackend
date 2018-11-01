@@ -71,7 +71,7 @@ class GlobalManager(models.Manager):
         return generate_to_hash(fields=fields, hash_sequence=self.HASH_SEQUENCE, hash_sequence_mtm=hash_sequence_mtm,
                                 record_id=record_id)
 
-    def new(self, **fields):
+    def create(self, **fields):
         """Generic function to create new records, including hashing. "id" is always fist, "checksum" always last.
 
             :param fields: dictionary containing all mandatory fields and values excluding "id", "version", "status"
@@ -272,7 +272,6 @@ class UsersManager(BaseUserManager, GlobalManager):
                   'version': 1,
                   'is_active': True,
                   'initial_password': True,
-                  'last_login': None,
                   'email': '--',
                   'status_id': 3}  # initial status "Effective" to immediately user superuser
         user = self.model(**fields)
@@ -285,7 +284,6 @@ class UsersManager(BaseUserManager, GlobalManager):
         fields['roles'] = [1]  # add initial "all" role
         to_hash = self._generate_to_hash(fields, hash_sequence_mtm=self.HASH_SEQUENCE_MTM, record_id=user.id)
         user = self._add_many_to_many(record=user, fields=fields)
-        print(to_hash)
         user.checksum = generate_checksum(to_hash)
         user.save()
         return user
@@ -338,6 +336,7 @@ class Users(AbstractBaseUser, GlobalModel):
     EMAIL_FIELD = 'email'
     USERNAME_FIELD = 'username'
     REQUIRED_FIELDS = []
+    last_login = None
 
     def get_full_name(self):
         return _('{} - {} {}').format(self.username, self.first_name, self.last_name)

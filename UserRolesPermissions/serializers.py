@@ -23,34 +23,46 @@ from rest_framework import serializers
 from .models import Status, Permissions, Users, Roles
 
 
-class StatusSerializer(serializers.HyperlinkedModelSerializer):
+class StatusSerializer(serializers.ModelSerializer):
     valid = serializers.CharField(source='verify_checksum', read_only=True)
+
+    # def validate(self, data): --- function to access all data and validate between
+    # def validate_status(self, value): --- function to implicitly validate field "status"
 
     class Meta:
         model = Status
-        fields = ('url', 'status', 'valid')
+        exclude = ('checksum',)
+
+    # function for create (POST)
+    # def create(self, validated_data): --- overwrite always
+        # return Status.objects.create(status=validated_data['status')
 
 
-class PermissionsSerializer(serializers.HyperlinkedModelSerializer):
+class PermissionsSerializer(serializers.ModelSerializer):
     valid = serializers.CharField(source='verify_checksum', read_only=True)
 
     class Meta:
         model = Permissions
-        fields = ('url', 'permission', 'valid')
+        exclude = ('checksum',)
 
 
-class UsersSerializer(serializers.HyperlinkedModelSerializer):
+class RolesSerializer(serializers.ModelSerializer):
     valid = serializers.CharField(source='verify_checksum', read_only=True)
-
-    class Meta:
-        model = Users
-        fields = ('url', 'username', 'email', 'first_name', 'last_name', 'is_active',
-                  'initial_password', 'status', 'version', 'roles', 'valid')
-
-
-class RolesSerializer(serializers.HyperlinkedModelSerializer):
-    valid = serializers.CharField(source='verify_checksum', read_only=True)
+    status = StatusSerializer()
+    permissions = PermissionsSerializer(many=True)
 
     class Meta:
         model = Roles
-        fields = ('url', 'role', 'permissions', 'status', 'version', 'valid')
+        exclude = ('checksum', )
+        # fields = ('url', 'role', 'permissions', 'status', 'version', 'valid')
+
+
+class UsersSerializer(serializers.ModelSerializer):
+    valid = serializers.CharField(source='verify_checksum', read_only=True)
+    status = StatusSerializer()
+    roles = RolesSerializer(many=True)
+
+    class Meta:
+        model = Users
+        exclude = ('checksum',)
+        extra_kwargs = {'password': {'write_only': True}}
