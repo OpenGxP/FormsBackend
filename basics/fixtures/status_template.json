@@ -1,22 +1,22 @@
-[{"model": "UserRolesPermissions.status",
+[{"model": "basics.status",
   "pk":1,
   "fields": {
     "status": "Draft",
     "checksum": "tbd"
   }}, {
-  "model": "UserRolesPermissions.status",
+  "model": "basics.status",
   "pk":2,
   "fields": {
     "status": "In Circulation",
     "checksum": "tbd"
   }}, {
-  "model": "UserRolesPermissions.status",
+  "model": "basics.status",
   "pk":3,
   "fields": {
     "status": "Effective",
     "checksum": "tbd"
   }}, {
-  "model": "UserRolesPermissions.status",
+  "model": "basics.status",
   "pk":4,
   "fields": {
     "status": "Blocked",

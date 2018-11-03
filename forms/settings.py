@@ -68,13 +68,14 @@ SECRET_HASH_KEY = require_file(path=SECURITY_DIR + '/keys/', file_name='SECRET_H
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['192.168.0.52']
 
 
 # Application definition
 INSTALLED_APPS = [
     # 'django.contrib.admin',
     'UserRolesPermissions.apps.UserRolesPermissionsConfig',
+    'basics.apps.BasicsConfig',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     # 'django.contrib.sessions',

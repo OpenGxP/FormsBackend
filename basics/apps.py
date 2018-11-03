@@ -17,9 +17,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 
-# django imports
-from django.urls import path, include
+from django.apps import AppConfig
 
-urlpatterns = [
-    path(r'', include('UserRolesPermissions.urls')),
-]
+
+class BasicsConfig(AppConfig):
+    name = 'basics'

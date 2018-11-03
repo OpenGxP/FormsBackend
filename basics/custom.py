@@ -49,7 +49,7 @@ def generate_checksum(to_hash):
     return HASH_ALGORITHM.using(rounds=1000).hash(to_hash)
 
 
-def generate_to_hash(fields, hash_sequence, hash_sequence_mtm=None, record_id=None):
+def generate_to_hash(fields, hash_sequence, hash_sequence_mtm=list(), record_id=None, fixtures=False):
     """Generic function to build hash string for record fields.
 
     :param fields: dictionary containing all mandatory fields and values
@@ -64,6 +64,9 @@ def generate_to_hash(fields, hash_sequence, hash_sequence_mtm=None, record_id=No
     :param record_id: id of the record to hash, default is no id
     :type record_id: int / AutoField
 
+    :param fixtures: flag to determine internal call or for fixtures, default is False for internal
+    :type fixtures: bool
+
     :return: string to hash
     :rtype: str
     """
@@ -71,13 +74,31 @@ def generate_to_hash(fields, hash_sequence, hash_sequence_mtm=None, record_id=No
         to_hash = 'id:{};'.format(record_id)
     else:
         to_hash = str()
+    # add static fields
     for field in hash_sequence:
         to_hash += '{}:{};'.format(field, fields[field])
+    # add many to many fields
     if hash_sequence_mtm:
         for mtm_field in hash_sequence_mtm:
-            # sort lists to guarantee same has results every time
-            fields[mtm_field].sort()
-            to_hash += '{}:{};'.format(mtm_field, fields[mtm_field])
+            # check if mtm field is in the fields dict
+            if mtm_field in fields.keys():
+                # deal with plain list of integers from fixtures
+                if fixtures:
+                    fields[mtm_field].sort()
+                    to_hash += '{}:{};'.format(mtm_field, fields[mtm_field])
+                else:
+                    tmp_list = list()
+                    for item in fields[mtm_field]:
+                        tmp_list.append(item.id)
+                        # sort lists to guarantee same has results every time
+                    tmp_list.sort()
+                    to_hash += '{}:{};'.format(mtm_field, tmp_list)
+            else:
+                to_hash += '{}:[];'.format(mtm_field)
     # some pepper for the soup
     to_hash += settings.SECRET_HASH_KEY
     return to_hash
+
+
+def intersection_two(list_one, list_two):
+    return list(set(list_one) & set(list_two))

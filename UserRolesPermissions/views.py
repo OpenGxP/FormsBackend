@@ -17,54 +17,154 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 
-# django imports
-# from django.http import HttpResponse, Http404
-
 # rest imports
-from rest_framework.views import APIView
 from rest_framework.response import Response
-# from rest_framework import status
+from rest_framework import status
+from rest_framework.decorators import api_view
+from rest_framework.reverse import reverse
 
 # custom imports
-from .models import Status, Users, Roles, Permissions
-from .serializers import StatusSerializer, PermissionsSerializer, UsersSerializer, RolesSerializer
+from .models import Status, Roles, Permissions, Users
+from .serializers import StatusReadSerializer, PermissionsReadSerializer, RolesReadSerializer, \
+    SubRolesWriteSerializer, UsersReadSerializer
 
 
-# status
-class StatusList(APIView):
-    # list of all status or create new status
-    @staticmethod
-    def get(request):
-        queryset = Status.objects.all()
-        serializer = StatusSerializer(queryset, context={'request': request}, many=True)
+########
+# ROOT #
+########
+
+@api_view(['GET'])
+def api_root(request, format=None):
+    return Response({
+        'status': reverse('status-list', request=request, format=format),
+        'permissions': reverse('permissions-list', request=request, format=format),
+        'roles': reverse('roles-list', request=request, format=format),
+        'users': reverse('users-list', request=request, format=format)
+    })
+
+
+##########
+# STATUS #
+##########
+
+# GET list
+@api_view(['GET'])
+def status_list(request, format=None):
+    """
+    List all status.
+    """
+    stat = Status.objects.all()
+    serializer = StatusReadSerializer(stat, many=True)
+    return Response(serializer.data)
+
+
+# GET detail
+@api_view(['GET'])
+def status_detail(request, pk, format=None):
+    """
+    Retrieve status.
+    """
+    try:
+        stat = Status.objects.get(pk=pk)
+    except Status.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+
+    serializer = StatusReadSerializer(stat)
+    return Response(serializer.data)
+
+
+###############
+# PERMISSIONS #
+###############
+
+# GET list
+@api_view(['GET'])
+def permissions_list(request, format=None):
+    """
+    List all permissions.
+    """
+    perm = Permissions.objects.all()
+    serializer = PermissionsReadSerializer(perm, many=True)
+    return Response(serializer.data)
+
+
+# GET detail
+@api_view(['GET'])
+def permissions_detail(request, pk, format=None):
+    """
+    Retrieve permissions.
+    """
+    try:
+        perm = Permissions.objects.get(pk=pk)
+    except Status.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+
+    serializer = PermissionsReadSerializer(perm)
+    return Response(serializer.data)
+
+
+#########
+# ROLES #
+#########
+
+# GET list
+@api_view(['GET', 'POST'])
+def roles_list(request, format=None):
+    """
+    List all roles.
+    """
+    if request.method == 'GET':
+        roles = Roles.objects.all()
+        serializer = RolesReadSerializer(roles, many=True)
         return Response(serializer.data)
+    if request.method == 'POST':
+        serializer = SubRolesWriteSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-# permissions
-class PermissionsList(APIView):
-    # list of all status or create new status
-    @staticmethod
-    def get(request):
-        queryset = Permissions.objects.all()
-        serializer = PermissionsSerializer(queryset, context={'request': request}, many=True)
-        return Response(serializer.data)
+# GET detail
+@api_view(['GET'])
+def roles_detail(request, pk, format=None):
+    """
+    Retrieve roles.
+    """
+    try:
+        role = Roles.objects.get(pk=pk)
+    except Status.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+
+    serializer = RolesReadSerializer(role)
+    return Response(serializer.data)
 
 
-# roles
-class RolesList(APIView):
-    # list of all status or create new status
-    @staticmethod
-    def get(request):
-        queryset = Roles.objects.all()
-        serializer = RolesSerializer(queryset, context={'request': request}, many=True)
-        return Response(serializer.data)
+#########
+# USERS #
+#########
+
+# GET list
+@api_view(['GET'])
+def users_list(request, format=None):
+    """
+    List all users.
+    """
+    users = Users.objects.all()
+    serializer = UsersReadSerializer(users, many=True)
+    return Response(serializer.data)
 
 
-# users
-class UsersList(APIView):
-    # list of all status or create new status
-    @staticmethod
-    def get(request):
-        queryset = Users.objects.all()
-        serializer = UsersSerializer(queryset, context={'request': request}, many=True)
-        return Response(serializer.data)
+# GET detail
+@api_view(['GET'])
+def users_detail(request, pk, format=None):
+    """
+    Retrieve users.
+    """
+    try:
+        stat = Users.objects.get(pk=pk)
+    except Status.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+
+    serializer = UsersReadSerializer(stat)
+    return Response(serializer.data)

@@ -20,49 +20,92 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from rest_framework import serializers
 
 # custom imports
+import UserRolesPermissions.models as models
 from .models import Status, Permissions, Users, Roles
 
 
-class StatusSerializer(serializers.ModelSerializer):
-    valid = serializers.CharField(source='verify_checksum', read_only=True)
+##########
+# STATUS #
+##########
 
-    # def validate(self, data): --- function to access all data and validate between
-    # def validate_status(self, value): --- function to implicitly validate field "status"
+# read
+class StatusReadSerializer(serializers.ModelSerializer):
+    valid = serializers.CharField(source='verify_checksum')
 
     class Meta:
-        model = Status
+        model = models.Status
         exclude = ('checksum',)
 
-    # function for create (POST)
-    # def create(self, validated_data): --- overwrite always
-        # return Status.objects.create(status=validated_data['status')
 
+###############
+# PERMISSIONS #
+###############
 
-class PermissionsSerializer(serializers.ModelSerializer):
-    valid = serializers.CharField(source='verify_checksum', read_only=True)
+# read
+class PermissionsReadSerializer(serializers.ModelSerializer):
+    valid = serializers.CharField(source='verify_checksum')
 
     class Meta:
         model = Permissions
         exclude = ('checksum',)
 
 
-class RolesSerializer(serializers.ModelSerializer):
+#########
+# ROLES #
+#########
+
+# read
+class RolesReadSerializer(serializers.ModelSerializer):
+    valid = serializers.CharField(source='verify_checksum')
+    status = StatusReadSerializer()
+    permissions = PermissionsReadSerializer(many=True)
+
+    class Meta:
+        model = models.Roles
+        exclude = ('checksum',)
+
+
+# write - sub serializer to establish many to many self reference
+class SubRolesWriteSerializer(serializers.ModelSerializer):
     valid = serializers.CharField(source='verify_checksum', read_only=True)
-    status = StatusSerializer()
-    permissions = PermissionsSerializer(many=True)
+    status = StatusReadSerializer(read_only=True)
+    permissions = serializers.PrimaryKeyRelatedField(queryset=Permissions.objects.all(), many=True,
+                                                     required=False)
+
+    # function for create (POST)
+    def create(self, validated_data):
+        return Roles.objects.new(**validated_data)
+
+    """"# update
+    def update(self, instance, validated_data):
+        instance.status = validated_data.get('status', instance.status)
+        instance.save()
+        return instance"""
+
+    # def validate(self, data): --- function to access all data and validate between
+    # def validate_status(self, value): --- function to implicitly validate field "status"
 
     class Meta:
         model = Roles
         exclude = ('checksum', )
-        # fields = ('url', 'role', 'permissions', 'status', 'version', 'valid')
+        extra_kwargs = {'version': {'read_only': True}}
 
 
-class UsersSerializer(serializers.ModelSerializer):
-    valid = serializers.CharField(source='verify_checksum', read_only=True)
-    status = StatusSerializer()
-    roles = RolesSerializer(many=True)
+# write
+class RolesSerializer(SubRolesWriteSerializer):
+    sod_roles = SubRolesWriteSerializer(many=True, required=False)
+
+
+#########
+# USERS #
+#########
+
+# read
+class UsersReadSerializer(serializers.ModelSerializer):
+    valid = serializers.CharField(source='verify_checksum')
+    status = StatusReadSerializer()
+    roles = RolesReadSerializer(many=True)
 
     class Meta:
-        model = Users
-        exclude = ('checksum',)
-        extra_kwargs = {'password': {'write_only': True}}
+        model = models.Users
+        exclude = ('checksum', 'password',)

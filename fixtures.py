@@ -25,30 +25,32 @@ import json
 from forms.settings import require_file, BASE_DIR
 
 # app imports
-from UserRolesPermissions.custom import generate_checksum, generate_to_hash
+from basics.custom import generate_checksum, generate_to_hash
 
 # fixtures dir
-FIXTURES_DIR = os.path.join(BASE_DIR, 'UserRolesPermissions/fixtures/')
+FIXTURES_DIR_URP = os.path.join(BASE_DIR, 'UserRolesPermissions/fixtures/')
+FIXTURES_DIR_BASIC = os.path.join(BASE_DIR, 'basics/fixtures/')
 
 
-def generate_fixture(fixture, hash_sequence, hash_sequence_mtm=None):
-    fixtures = json.loads(require_file(path=FIXTURES_DIR, file_name='{}_template.json'.format(fixture)))
+def generate_fixture(path, fixture, hash_sequence, hash_sequence_mtm=None):
+    fixtures = json.loads(require_file(path=path, file_name='{}_template.json'.format(fixture)))
     fields = dict()
     for record in fixtures:
         for field in record['fields']:
             if field != 'checksum':
                 fields[field] = record['fields'][field]
         to_hash = generate_to_hash(fields, hash_sequence=hash_sequence, hash_sequence_mtm=hash_sequence_mtm,
-                                   record_id=record['pk'])
+                                   record_id=record['pk'], fixtures=True)
         record['fields']['checksum'] = generate_checksum(to_hash)
 
-    with open(FIXTURES_DIR + '{}.json'.format(fixture), 'w') as outfile:
+    with open(path + '{}.json'.format(fixture), 'w') as outfile:
         json.dump(fixtures, outfile)
 
 
 # status
-generate_fixture(fixture='status', hash_sequence=['status'])
+generate_fixture(path=FIXTURES_DIR_BASIC, fixture='status', hash_sequence=['status'])
 # permissions
-generate_fixture(fixture='permissions', hash_sequence=['permission'])
+generate_fixture(path=FIXTURES_DIR_URP, fixture='permissions', hash_sequence=['permission'])
 # roles
-generate_fixture(fixture='roles', hash_sequence=['role', 'status_id', 'version'], hash_sequence_mtm=['permissions'])
+generate_fixture(path=FIXTURES_DIR_URP, fixture='roles', hash_sequence=['role', 'status_id', 'version'],
+                 hash_sequence_mtm=['permissions', 'sod_roles'])
