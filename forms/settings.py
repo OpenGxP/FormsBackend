@@ -68,8 +68,8 @@ SECRET_HASH_KEY = require_file(path=SECURITY_DIR + '/keys/', file_name='SECRET_H
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
-ALLOWED_HOSTS = ['192.168.0.52']
-
+ALLOWED_HOSTS = ['*']
+APPEND_SLASH = False
 
 # Application definition
 INSTALLED_APPS = [

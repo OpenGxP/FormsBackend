@@ -54,23 +54,33 @@ class PermissionsReadSerializer(serializers.ModelSerializer):
 # ROLES #
 #########
 
+# read - sub to include own field
+class SubRolesReadSerializer(serializers.ModelSerializer):
+    valid = serializers.CharField(source='verify_checksum')
+
+    class Meta:
+        model = models.Roles
+        exclude = ('checksum', 'status', 'permissions', 'sod_roles')
+
+
 # read
 class RolesReadSerializer(serializers.ModelSerializer):
     valid = serializers.CharField(source='verify_checksum')
     status = StatusReadSerializer()
     permissions = PermissionsReadSerializer(many=True)
+    sod_roles = SubRolesReadSerializer(many=True)
 
     class Meta:
         model = models.Roles
         exclude = ('checksum',)
 
 
-# write - sub serializer to establish many to many self reference
-class SubRolesWriteSerializer(serializers.ModelSerializer):
+# write
+class RolesWriteSerializer(serializers.ModelSerializer):
     valid = serializers.CharField(source='verify_checksum', read_only=True)
     status = StatusReadSerializer(read_only=True)
-    permissions = serializers.PrimaryKeyRelatedField(queryset=Permissions.objects.all(), many=True,
-                                                     required=False)
+    permissions = serializers.PrimaryKeyRelatedField(queryset=Permissions.objects.all(), many=True, required=False)
+    sod_roles = serializers.PrimaryKeyRelatedField(queryset=Roles.objects.all(), many=True, required=False)
 
     # function for create (POST)
     def create(self, validated_data):
@@ -80,20 +90,15 @@ class SubRolesWriteSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         instance.status = validated_data.get('status', instance.status)
         instance.save()
-        return instance"""
+        return instance
 
-    # def validate(self, data): --- function to access all data and validate between
-    # def validate_status(self, value): --- function to implicitly validate field "status"
+    def validate(self, data): --- function to access all data and validate between
+    def validate_status(self, value): --- function to implicitly validate field "status"""
 
     class Meta:
         model = Roles
         exclude = ('checksum', )
         extra_kwargs = {'version': {'read_only': True}}
-
-
-# write
-class RolesSerializer(SubRolesWriteSerializer):
-    sod_roles = SubRolesWriteSerializer(many=True, required=False)
 
 
 #########

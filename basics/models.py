@@ -53,16 +53,15 @@ class GlobalManager(models.Manager):
     # many to many function
     def _add_many_to_many(self, record, fields):
         for field_name, values in fields.items():
-            print(field_name, values)
             field = getattr(record, field_name)
             if field_name in self.SELF_FIELDS:
                 for value in values:
                     rel = self.get(pk=value.id)
                     field.add(rel)
-            for value in values:
-                print(value)
-                rel = self.MTM_TABLES[field_name].objects.get(pk=value.id)
-                field.add(rel)
+            else:
+                for value in values:
+                    rel = self.MTM_TABLES[field_name].objects.get(pk=value.id)
+                    field.add(rel)
         return record
 
     def _generate_to_hash(self, fields, hash_sequence_mtm=None, record_id=None):
@@ -104,13 +103,6 @@ class GlobalManager(models.Manager):
         # "tbd" is no valid hash string and therefore always return False on check
         fields['checksum'] = 'tbd'
         # reduce fields by many to many fields, they are added later
-        """ 
-                info = model_meta.get_field_info(ModelClass)
-        many_to_many = {}
-        for field_name, relation_info in info.relations.items():
-            if relation_info.to_many and (field_name in validated_data):
-                many_to_many[field_name] = validated_data.pop(field_name)
-        """
         tmp_fields = dict(fields)
         if self.HASH_SEQUENCE_MTM:
             # in case of models that have many to many fields get the fields that are shipped

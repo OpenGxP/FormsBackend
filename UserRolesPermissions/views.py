@@ -26,7 +26,7 @@ from rest_framework.reverse import reverse
 # custom imports
 from .models import Status, Roles, Permissions, Users
 from .serializers import StatusReadSerializer, PermissionsReadSerializer, RolesReadSerializer, \
-    SubRolesWriteSerializer, UsersReadSerializer
+    RolesWriteSerializer, UsersReadSerializer
 
 
 ########
@@ -118,7 +118,7 @@ def roles_list(request, format=None):
         serializer = RolesReadSerializer(roles, many=True)
         return Response(serializer.data)
     if request.method == 'POST':
-        serializer = SubRolesWriteSerializer(data=request.data)
+        serializer = RolesWriteSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
