@@ -20,7 +20,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from rest_framework import serializers
 
 # custom imports
-import UserRolesPermissions.models as models
 from .models import Status, Permissions, Users, Roles
 
 
@@ -33,7 +32,7 @@ class StatusReadSerializer(serializers.ModelSerializer):
     valid = serializers.CharField(source='verify_checksum')
 
     class Meta:
-        model = models.Status
+        model = Status
         exclude = ('checksum',)
 
 
@@ -59,7 +58,7 @@ class SubRolesReadSerializer(serializers.ModelSerializer):
     valid = serializers.CharField(source='verify_checksum')
 
     class Meta:
-        model = models.Roles
+        model = Roles
         exclude = ('checksum', 'status', 'permissions', 'sod_roles')
 
 
@@ -71,7 +70,7 @@ class RolesReadSerializer(serializers.ModelSerializer):
     sod_roles = SubRolesReadSerializer(many=True)
 
     class Meta:
-        model = models.Roles
+        model = Roles
         exclude = ('checksum',)
 
 
@@ -112,5 +111,5 @@ class UsersReadSerializer(serializers.ModelSerializer):
     roles = RolesReadSerializer(many=True)
 
     class Meta:
-        model = models.Users
+        model = Users
         exclude = ('checksum', 'password',)
