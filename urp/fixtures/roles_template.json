@@ -1,4 +1,4 @@
-[{"model": "UserRolesPermissions.roles",
+[{"model": "urp.roles",
   "pk":1,
   "fields": {
     "role": "all",

@@ -21,5 +21,5 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from django.urls import path, include
 
 urlpatterns = [
-    path(r'', include('UserRolesPermissions.urls')),
+    path(r'', include('urp.urls')),
 ]

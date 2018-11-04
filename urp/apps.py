@@ -20,5 +20,5 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from django.apps import AppConfig
 
 
-class UserRolesPermissionsConfig(AppConfig):
-    name = 'UserRolesPermissions'
+class UrpConfig(AppConfig):
+    name = 'urp'

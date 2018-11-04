@@ -28,7 +28,7 @@ from forms.settings import require_file, BASE_DIR
 from basics.custom import generate_checksum, generate_to_hash
 
 # fixtures dir
-FIXTURES_DIR_URP = os.path.join(BASE_DIR, 'UserRolesPermissions/fixtures/')
+FIXTURES_DIR_URP = os.path.join(BASE_DIR, 'urp/fixtures/')
 FIXTURES_DIR_BASIC = os.path.join(BASE_DIR, 'basics/fixtures/')
 
 

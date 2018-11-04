@@ -23,7 +23,7 @@ from django.conf import settings
 from django.utils.translation import gettext_lazy as _
 
 # app imports
-from basics.custom import generate_checksum, generate_to_hash, HASH_ALGORITHM, intersection_two
+from .custom import generate_checksum, generate_to_hash, HASH_ALGORITHM, intersection_two
 
 
 ##########

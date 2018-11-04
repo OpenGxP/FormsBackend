@@ -74,8 +74,8 @@ APPEND_SLASH = False
 # Application definition
 INSTALLED_APPS = [
     # 'django.contrib.admin',
-    'UserRolesPermissions.apps.UserRolesPermissionsConfig',
     'basics.apps.BasicsConfig',
+    'urp.apps.UrpConfig',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     # 'django.contrib.sessions',
@@ -106,7 +106,7 @@ AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend'
 ]
 
-AUTH_USER_MODEL = 'UserRolesPermissions.Users'
+AUTH_USER_MODEL = 'urp.Users'
 
 PASSWORD_HASHERS = [
     'django.contrib.auth.hashers.Argon2PasswordHasher',

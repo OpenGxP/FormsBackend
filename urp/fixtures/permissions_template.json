@@ -1,22 +1,22 @@
-[{"model": "UserRolesPermissions.permissions",
+[{"model": "urp.permissions",
   "pk":1,
   "fields": {
     "permission": "read",
     "checksum": "tbd"
   }}, {
-  "model": "UserRolesPermissions.permissions",
+  "model": "urp.permissions",
   "pk":2,
   "fields": {
     "permission": "write",
     "checksum": "tbd"
   }}, {
-  "model": "UserRolesPermissions.permissions",
+  "model": "urp.permissions",
   "pk":3,
   "fields": {
     "permission": "delete",
     "checksum": "tbd"
   }}, {
-  "model": "UserRolesPermissions.permissions",
+  "model": "urp.permissions",
   "pk":4,
   "fields": {
     "permission": "start_circulation",
