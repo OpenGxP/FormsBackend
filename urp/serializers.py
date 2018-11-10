@@ -33,7 +33,7 @@ class StatusReadSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Status
-        exclude = ('checksum',)
+        exclude = ('id', 'checksum', )
 
 
 ###############
@@ -46,32 +46,22 @@ class PermissionsReadSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Permissions
-        exclude = ('checksum',)
+        exclude = ('id', 'checksum',)
 
 
 #########
 # ROLES #
 #########
 
-# read - sub to include own field
-class SubRolesReadSerializer(serializers.ModelSerializer):
-    valid = serializers.CharField(source='verify_checksum')
-
-    class Meta:
-        model = Roles
-        exclude = ('checksum', 'status', 'permissions', 'sod_roles')
-
-
 # read
 class RolesReadSerializer(serializers.ModelSerializer):
     valid = serializers.CharField(source='verify_checksum')
     status = StatusReadSerializer()
     permissions = PermissionsReadSerializer(many=True)
-    sod_roles = SubRolesReadSerializer(many=True)
 
     class Meta:
         model = Roles
-        exclude = ('checksum',)
+        exclude = ('id', 'checksum',)
 
 
 # write
@@ -79,7 +69,6 @@ class RolesWriteSerializer(serializers.ModelSerializer):
     valid = serializers.CharField(source='verify_checksum', read_only=True)
     status = StatusReadSerializer(read_only=True)
     permissions = serializers.PrimaryKeyRelatedField(queryset=Permissions.objects.all(), many=True, required=False)
-    sod_roles = serializers.PrimaryKeyRelatedField(queryset=Roles.objects.all(), many=True, required=False)
 
     # function for create (POST)
     def create(self, validated_data):
@@ -96,7 +85,7 @@ class RolesWriteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Roles
-        exclude = ('checksum', )
+        exclude = ('id', 'checksum', )
         extra_kwargs = {'version': {'read_only': True}}
 
 
@@ -112,4 +101,4 @@ class UsersReadSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Users
-        exclude = ('checksum', 'password',)
+        exclude = ('id', 'checksum', 'password',)

@@ -1,0 +1,28 @@
+[{"model": "basics.settings",
+  "pk":1,
+  "fields": {
+    "key": "status_draft_id",
+    "value": "tbd",
+    "checksum": "tbd"
+  }}, {
+  "model": "basics.settings",
+  "pk":2,
+  "fields": {
+    "key": "status_circulation_id",
+    "value": "tbd",
+    "checksum": "tbd"
+  }}, {
+  "model": "basics.settings",
+  "pk":3,
+  "fields": {
+    "key": "status_effective_id",
+    "value": "tbd",
+    "checksum": "tbd"
+  }}, {
+  "model": "basics.settings",
+  "pk":4,
+  "fields": {
+    "key": "status_blocked_id",
+    "value": "tbd",
+    "checksum": "tbd"
+  }}]

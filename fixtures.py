@@ -20,9 +20,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # python imports
 import os
 import json
+import uuid as python_uuid
 
-# app imports
-from forms.settings import require_file, BASE_DIR
+# projects imports
+from forms.settings import BASE_DIR, require_file
 
 # app imports
 from basics.custom import generate_checksum, generate_to_hash
@@ -32,25 +33,99 @@ FIXTURES_DIR_URP = os.path.join(BASE_DIR, 'urp/fixtures/')
 FIXTURES_DIR_BASIC = os.path.join(BASE_DIR, 'basics/fixtures/')
 
 
-def generate_fixture(path, fixture, hash_sequence, hash_sequence_mtm=None):
-    fixtures = json.loads(require_file(path=path, file_name='{}_template.json'.format(fixture)))
-    fields = dict()
-    for record in fixtures:
-        for field in record['fields']:
-            if field != 'checksum':
-                fields[field] = record['fields'][field]
-        to_hash = generate_to_hash(fields, hash_sequence=hash_sequence, hash_sequence_mtm=hash_sequence_mtm,
-                                   record_id=record['pk'], fixtures=True)
-        record['fields']['checksum'] = generate_checksum(to_hash)
+class Fixtures(object):
+    def __init__(self):
+        self._permissions = []
+        self._fixture = None
+        self._status = {}
 
-    with open(path + '{}.json'.format(fixture), 'w') as outfile:
-        json.dump(fixtures, outfile)
+    @property
+    def fixture(self):
+        return self._fixture
+
+    @fixture.setter
+    def fixture(self, value):
+        self._fixture = value
+
+    @property
+    def permissions(self):
+        return self._permissions
+
+    @permissions.setter
+    def permissions(self, value):
+        self._permissions.append(value)
+
+    @property
+    def status(self):
+        return self._status
+
+    @status.setter
+    def status(self, value):
+        for k, v in value.items():
+            self._status[k] = v
+
+    def load_fixture(self, path, fixture):
+        self.fixture = fixture
+        return json.loads(require_file(path=path, file_name='{}_template.json'.format(fixture)))
+
+    def records(self, fixtures, record):
+        # add uuid TODO #1 uuid shall be compatible with postgres that is not saving as char(32), but uuid field
+        record['fields']['lifecycle_id'] = str(python_uuid.uuid4())
+        record['pk'] = str(python_uuid.uuid4())
+        ids = {
+            'id': record['pk'],
+            'lifecycle_id': record['fields']['lifecycle_id']
+        }
+        # remember effective status pk for reference at initial "all" role
+        if self.fixture == 'status':
+            # store uuid pks into dict
+            self.status = {'status_{}_id'.format(record['fields']['status'].lower()): record['pk']}
+        # gather all permission pks
+        if self.fixture == 'permissions':
+            self.permissions = record['pk']
+        # write values on keys in settings
+        if self.fixture == 'settings':
+            record['fields']['value'] = self.status[record['fields']['key']]
+        fields = dict(record['fields'])
+        fields.pop('lifecycle_id')
+        fields.pop('checksum')
+        return fixtures, fields, ids
+
+    def generate_fixtures_basics(self, path, fixture, hash_sequence, hash_sequence_mtm=None):
+        fixtures = self.load_fixture(path=path, fixture=fixture)
+        for record in fixtures:
+            fixtures, fields, ids = self.records(fixtures, record)
+            to_hash = generate_to_hash(fields=fields, hash_sequence=hash_sequence, hash_sequence_mtm=hash_sequence_mtm,
+                                       ids=ids, fixtures=True)
+            record['fields']['checksum'] = generate_checksum(to_hash)
+
+        with open(path + '{}.json'.format(fixture), 'w') as outfile:
+            json.dump(fixtures, outfile)
+
+    def generate_fixtures_roles(self, path, fixture, hash_sequence, hash_sequence_mtm=None):
+        fixtures = self.load_fixture(path=path, fixture=fixture)
+        for record in fixtures:
+            fixtures, fields, ids = self.records(fixtures, record)
+
+            # relations
+            record['fields']['status_id'] = self.status['status_effective_id']
+            fields['status_id'] = self.status['status_effective_id']
+
+            record['fields']['permissions'] = self.permissions
+            fields['permissions'] = self.permissions
+
+            to_hash = generate_to_hash(fields=fields, hash_sequence=hash_sequence, hash_sequence_mtm=hash_sequence_mtm,
+                                       ids=ids, fixtures=True)
+            record['fields']['checksum'] = generate_checksum(to_hash)
+        with open(path + '{}.json'.format(fixture), 'w') as outfile:
+            json.dump(fixtures, outfile)
 
 
-# status
-generate_fixture(path=FIXTURES_DIR_BASIC, fixture='status', hash_sequence=['status'])
-# permissions
-generate_fixture(path=FIXTURES_DIR_URP, fixture='permissions', hash_sequence=['permission'])
-# roles
-generate_fixture(path=FIXTURES_DIR_URP, fixture='roles', hash_sequence=['role', 'status_id', 'version'],
-                 hash_sequence_mtm=['permissions', 'sod_roles'])
+fix = Fixtures()
+fix.generate_fixtures_basics(path=FIXTURES_DIR_BASIC, fixture='status', hash_sequence=['status'])
+fix.generate_fixtures_basics(path=FIXTURES_DIR_URP, fixture='permissions', hash_sequence=['permission'])
+fix.generate_fixtures_roles(path=FIXTURES_DIR_URP, fixture='roles', hash_sequence=['role', 'status_id', 'version'],
+                            hash_sequence_mtm=['permissions'])
+
+# fixture to fill settings table
+fix.generate_fixtures_basics(path=FIXTURES_DIR_BASIC, fixture='settings', hash_sequence=['key', 'value'])

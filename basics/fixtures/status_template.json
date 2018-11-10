@@ -7,7 +7,7 @@
   "model": "basics.status",
   "pk":2,
   "fields": {
-    "status": "In Circulation",
+    "status": "Circulation",
     "checksum": "tbd"
   }}, {
   "model": "basics.status",

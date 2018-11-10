@@ -49,7 +49,7 @@ def generate_checksum(to_hash):
     return HASH_ALGORITHM.using(rounds=1000).hash(to_hash)
 
 
-def generate_to_hash(fields, hash_sequence, hash_sequence_mtm=list(), record_id=None, fixtures=False):
+def generate_to_hash(fields, ids, hash_sequence, hash_sequence_mtm=list(), fixtures=False):
     """Generic function to build hash string for record fields.
 
     :param fields: dictionary containing all mandatory fields and values
@@ -61,8 +61,8 @@ def generate_to_hash(fields, hash_sequence, hash_sequence_mtm=list(), record_id=
     :param hash_sequence_mtm: list of many to many fields in correct hash order, default is None
     :type hash_sequence_mtm: list
 
-    :param record_id: id of the record to hash, default is no id
-    :type record_id: int / AutoField
+    :param ids: uuid of record and integrity id of versioned objects over their life cycle
+    :type ids: dict
 
     :param fixtures: flag to determine internal call or for fixtures, default is False for internal
     :type fixtures: bool
@@ -70,10 +70,7 @@ def generate_to_hash(fields, hash_sequence, hash_sequence_mtm=list(), record_id=
     :return: string to hash
     :rtype: str
     """
-    if record_id:
-        to_hash = 'id:{};'.format(record_id)
-    else:
-        to_hash = str()
+    to_hash = 'id:{};lifecycle_id:{};'.format(ids['id'], ids['lifecycle_id'])
     # add static fields
     for field in hash_sequence:
         to_hash += '{}:{};'.format(field, fields[field])

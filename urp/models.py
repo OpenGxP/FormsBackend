@@ -30,7 +30,7 @@ from django.utils.translation import gettext_lazy as _
 # app imports
 from .validators import validate_no_space, validate_no_specials, validate_no_specials_reduced, SPECIALS_REDUCED
 from basics.custom import generate_checksum, intersection_two
-from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, CHAR_MAX, FIELD_VERSION, Status
+from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, CHAR_MAX, FIELD_VERSION, Status, Settings
 
 
 ###############
@@ -69,11 +69,10 @@ class Permissions(GlobalModel):
 class RolesManager(GlobalManager):
     # hashing
     HASH_SEQUENCE = ['role', 'status_id', 'version']
-    HASH_SEQUENCE_MTM = ['permissions', 'sod_roles']
+    HASH_SEQUENCE_MTM = ['permissions']
     MTM_TABLES = {
-        'permissions': Permissions,
+        'permissions': Permissions
     }
-    SELF_FIELDS = ['sod_roles']
 
 
 # table
@@ -88,8 +87,7 @@ class Roles(GlobalModel):
         validators=[validate_no_specials_reduced,
                     validate_no_space],
         unique=True)
-    permissions = models.ManyToManyField(Permissions)
-    sod_roles = models.ManyToManyField('self', blank=True)
+    permissions = models.ManyToManyField(Permissions, blank=True)
     # defaults
     status = models.ForeignKey(Status, on_delete=models.PROTECT)
     version = FIELD_VERSION
@@ -102,16 +100,11 @@ class Roles(GlobalModel):
         # get permission objects ordered by id to guarantee correct hashing order
         permissions = self.permissions.order_by('id').all()
         perm_list = list()
-        roles = self.sod_roles.order_by('id').all()
-        roles_list = list()
         for perm in permissions:
-            perm_list.append(perm.id)
-        for role in roles:
-            roles_list.append(role.id)
-        to_hash_payload = 'role:{};status_id:{};version:{};permissions:{};sod_roles:{};'.format(self.role,
-                                                                                                self.status_id,
-                                                                                                self.version, perm_list,
-                                                                                                roles_list)
+            # TODO  # 1 uuid shall be compatible with postgres that is not saving as char(32), but uuid field
+            perm_list.append(str(perm.id))
+        to_hash_payload = 'role:{};status_id:{};version:{};permissions:{};'.format(self.role, self.status_id,
+                                                                                   self.version, perm_list)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
 
 
@@ -126,11 +119,13 @@ class UsersManager(BaseUserManager, GlobalManager):
                      'status_id', 'version']
     HASH_SEQUENCE_MTM = ['roles']
     MTM_TABLES = {
-        'roles': Roles,
+        'roles': Roles
     }
 
     # superuser function for createsuperuser
     def create_superuser(self, username, password):
+        # initial status "Effective" to immediately user superuser
+        status_id = Settings.objects.status_id(status='effective')
         fields = {'username': username,
                   'first_name': '--',
                   'last_name': '--',
@@ -138,22 +133,23 @@ class UsersManager(BaseUserManager, GlobalManager):
                   'is_active': True,
                   'initial_password': True,
                   'email': '--',
-                  'status_id': 3}  # initial status "Effective" to immediately user superuser
+                  'status_id': status_id}
         user = self.model(**fields)
         user.set_password(password)
         fields['password'] = user.password
-        user.checksum = 'tbd'
-        user.save(using=self._db)
-
         # build string with row id to generate hash
-        fields['roles'] = [Roles.objects.get(pk=1)]  # add initial "all" role
-        to_hash = self._generate_to_hash(fields, hash_sequence_mtm=self.HASH_SEQUENCE_MTM, record_id=user.id)
+        fields['roles'] = [Roles.objects.get(role="all")]  # add initial "all" role
+        ids = {
+            'id': user.id,
+            'lifecycle_id': user.lifecycle_id
+        }
+        to_hash = self._generate_to_hash(fields, hash_sequence_mtm=self.HASH_SEQUENCE_MTM, ids=ids)
+        user.checksum = generate_checksum(to_hash)
+        user.save()
         # get intersection
         intersection = intersection_two(fields.keys(), self.HASH_SEQUENCE_MTM)
         mtm_fields = {k: fields[k] for k in (fields.keys() & intersection)}
         user = self._add_many_to_many(record=user, fields=mtm_fields)
-        user.checksum = generate_checksum(to_hash)
-        user.save()
         return user
 
 
