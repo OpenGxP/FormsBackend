@@ -27,6 +27,7 @@ from rest_framework.reverse import reverse
 from .models import Status, Roles, Permissions, Users
 from .serializers import StatusReadSerializer, PermissionsReadSerializer, RolesReadSerializer, \
     RolesWriteSerializer, UsersReadSerializer
+from .decorators import auth_required
 
 
 ########
@@ -49,6 +50,7 @@ def api_root(request, format=None):
 
 # GET list
 @api_view(['GET'])
+@auth_required()
 def status_list(request, format=None):
     """
     List all status.
@@ -60,6 +62,7 @@ def status_list(request, format=None):
 
 # GET detail
 @api_view(['GET'])
+@auth_required()
 def status_detail(request, pk, format=None):
     """
     Retrieve status.
@@ -79,6 +82,7 @@ def status_detail(request, pk, format=None):
 
 # GET list
 @api_view(['GET'])
+@auth_required()
 def permissions_list(request, format=None):
     """
     List all permissions.
@@ -90,6 +94,7 @@ def permissions_list(request, format=None):
 
 # GET detail
 @api_view(['GET'])
+@auth_required()
 def permissions_detail(request, pk, format=None):
     """
     Retrieve permissions.
@@ -109,6 +114,7 @@ def permissions_detail(request, pk, format=None):
 
 # GET list
 @api_view(['GET', 'POST'])
+@auth_required()
 def roles_list(request, format=None):
     """
     List all roles.
@@ -127,6 +133,7 @@ def roles_list(request, format=None):
 
 # GET detail
 @api_view(['GET'])
+@auth_required()
 def roles_detail(request, pk, format=None):
     """
     Retrieve roles.
@@ -146,6 +153,7 @@ def roles_detail(request, pk, format=None):
 
 # GET list
 @api_view(['GET'])
+@auth_required()
 def users_list(request, format=None):
     """
     List all users.
@@ -157,6 +165,7 @@ def users_list(request, format=None):
 
 # GET detail
 @api_view(['GET'])
+@auth_required()
 def users_detail(request, pk, format=None):
     """
     Retrieve users.
