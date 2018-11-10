@@ -17,6 +17,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 
+# python imports
+import uuid
+
 # rest imports
 from rest_framework.response import Response
 from rest_framework import status
@@ -27,7 +30,7 @@ from rest_framework.reverse import reverse
 from .models import Status, Roles, Permissions, Users
 from .serializers import StatusReadSerializer, PermissionsReadSerializer, RolesReadSerializer, \
     RolesWriteSerializer, UsersReadSerializer
-from .decorators import auth_required
+from .decorators import auth_required, perm_required
 
 
 ########
@@ -63,6 +66,8 @@ def status_list(request, format=None):
 # GET detail
 @api_view(['GET'])
 @auth_required()
+# TODO #2 permissions shall be registered by their uuid in settings table, for dynamic call
+@perm_required(['tbd'])
 def status_detail(request, pk, format=None):
     """
     Retrieve status.

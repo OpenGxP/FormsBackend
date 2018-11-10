@@ -36,3 +36,16 @@ def auth_required():
                             headers={'WWW-Authenticate': 'Basic realm="api", charset="UTF-8"'})
         return wrapper
     return decorator
+
+
+def perm_required(permissions):
+    """Permission decorator to validate user permissions."""
+    def decorator(view_func):
+        @wraps(view_func)
+        def wrapper(request, *args, **kwargs):
+            for perm in permissions:
+                if request.user.permission(perm):
+                    return view_func(request, *args, **kwargs)
+            return Response(status=status.HTTP_403_FORBIDDEN)
+        return wrapper
+    return decorator

@@ -74,6 +74,13 @@ class RolesManager(GlobalManager):
         'permissions': Permissions
     }
 
+    """def permission(self, roles, permission):
+        return self.filter(lifecycle_id=lifecycle_id).get().permissions
+        if permission in self.filter(role=role)[0].permissions.split(','):
+            return True
+        else:
+            return False"""
+
 
 # table
 class Roles(GlobalModel):
@@ -196,11 +203,22 @@ class Users(AbstractBaseUser, GlobalModel):
                     self.password, self.status_id, self.version, roles_list)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
 
+    def valid_status(self):
+        # TODO #1 uuid shall be compatible with postgres that is not saving as char(32), but uuid field
+        if str(self.status.id) == Settings.objects.filter(key='status_effective_id').get().value:
+            return True
+
     # references
     EMAIL_FIELD = 'email'
     USERNAME_FIELD = 'username'
     REQUIRED_FIELDS = []
     last_login = None
+
+    def permission(self, permission):
+        for role in self.roles.all():
+            for perm in role.permissions.all():
+                if permission == perm.id:
+                    return True
 
     def get_full_name(self):
         return _('{} - {} {}').format(self.username, self.first_name, self.last_name)
