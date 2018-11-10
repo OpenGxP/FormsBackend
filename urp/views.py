@@ -43,7 +43,8 @@ def api_root(request, format=None):
         'status': reverse('status-list', request=request, format=format),
         'permissions': reverse('permissions-list', request=request, format=format),
         'roles': reverse('roles-list', request=request, format=format),
-        'users': reverse('users-list', request=request, format=format)
+        'users': reverse('users-list', request=request, format=format),
+        'token': reverse('token_obtain_pair', request=request, format=format)
     })
 
 
