@@ -1,24 +1,20 @@
 [{"model": "basics.status",
   "pk":1,
   "fields": {
-    "status": "Draft",
-    "checksum": "tbd"
+    "status": "Draft"
   }}, {
   "model": "basics.status",
   "pk":2,
   "fields": {
-    "status": "Circulation",
-    "checksum": "tbd"
+    "status": "Circulation"
   }}, {
   "model": "basics.status",
   "pk":3,
   "fields": {
-    "status": "Effective",
-    "checksum": "tbd"
+    "status": "Effective"
   }}, {
   "model": "basics.status",
   "pk":4,
   "fields": {
-    "status": "Blocked",
-    "checksum": "tbd"
+    "status": "Blocked"
   }}]

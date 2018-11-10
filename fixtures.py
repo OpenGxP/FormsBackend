@@ -88,7 +88,6 @@ class Fixtures(object):
             record['fields']['value'] = self.status[record['fields']['key']]
         fields = dict(record['fields'])
         fields.pop('lifecycle_id')
-        fields.pop('checksum')
         return fixtures, fields, ids
 
     def generate_fixtures_basics(self, path, fixture, hash_sequence, hash_sequence_mtm=None):

@@ -1,24 +1,20 @@
 [{"model": "urp.permissions",
   "pk":1,
   "fields": {
-    "permission": "read",
-    "checksum": "tbd"
+    "permission": "read"
   }}, {
   "model": "urp.permissions",
   "pk":2,
   "fields": {
-    "permission": "write",
-    "checksum": "tbd"
+    "permission": "write"
   }}, {
   "model": "urp.permissions",
   "pk":3,
   "fields": {
-    "permission": "delete",
-    "checksum": "tbd"
+    "permission": "delete"
   }}, {
   "model": "urp.permissions",
   "pk":4,
   "fields": {
-    "permission": "start_circulation",
-    "checksum": "tbd"
+    "permission": "start_circulation"
   }}]

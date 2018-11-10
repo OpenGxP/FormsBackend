@@ -2,7 +2,5 @@
   "pk":1,
   "fields": {
     "role": "all",
-    "status_id": 3,
-    "version": 1,
-    "checksum": "tbd"
+    "version": 1
   }}]
