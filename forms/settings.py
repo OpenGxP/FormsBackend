@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # python imports
 import os
+from datetime import timedelta
 
 # django imports
 from django.core.exceptions import ImproperlyConfigured
@@ -62,9 +63,10 @@ SECURITY_DIR = os.path.join(BASE_DIR, 'security')
 # SECRETS #
 ###########
 
-# django secret key
+# secret keys
 SECRET_KEY = require_file(path=SECURITY_DIR + '/keys/', file_name='SECRET_KEY')
 SECRET_HASH_KEY = require_file(path=SECURITY_DIR + '/keys/', file_name='SECRET_HASH_KEY')
+SECRET_JWT_SIGNING_KEY = require_file(path=SECURITY_DIR + '/keys/', file_name='SECRET_JWT_SIGNING_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -101,8 +103,31 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.AllowAny',
     ],
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.BasicAuthentication',
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        # 'rest_framework.authentication.BasicAuthentication',
     ]
+}
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ROTATE_REFRESH_TOKENS': False,
+    'BLACKLIST_AFTER_ROTATION': True,
+
+    'ALGORITHM': 'HS512',
+    'SIGNING_KEY': SECRET_JWT_SIGNING_KEY,
+    'VERIFYING_KEY': None,
+
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'USER_ID_FIELD': 'username',
+    'USER_ID_CLAIM': 'username',
+
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
+    'TOKEN_TYPE_CLAIM': 'token_type',
+
+    'SLIDING_TOKEN_REFRESH_EXP_CLAIM': 'refresh_exp',
+    'SLIDING_TOKEN_LIFETIME': timedelta(minutes=5),
+    'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
 }
 
 AUTHENTICATION_BACKENDS = [

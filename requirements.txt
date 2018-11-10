@@ -6,3 +6,5 @@ passlib===1.7.1
 djangorestframework===3.9.0
 markdown===3.0.1
 django-filter===2.0.0
+pyjwt===1.64
+djangorestframework-simplejwt===3.2.3
