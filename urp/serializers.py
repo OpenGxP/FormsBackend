@@ -101,4 +101,4 @@ class UsersReadSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Users
-        exclude = ('id', 'checksum', 'password',)
+        exclude = ('id', 'checksum', 'password', 'is_active')

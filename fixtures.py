@@ -28,6 +28,10 @@ from forms.settings import BASE_DIR, require_file
 # app imports
 from basics.custom import generate_checksum, generate_to_hash
 
+# django imports
+from django.utils import timezone
+
+
 # fixtures dir
 FIXTURES_DIR_URP = os.path.join(BASE_DIR, 'urp/fixtures/')
 FIXTURES_DIR_BASIC = os.path.join(BASE_DIR, 'basics/fixtures/')
@@ -110,6 +114,11 @@ class Fixtures(object):
             record['fields']['status_id'] = self.status['status_effective_id']
             fields['status_id'] = self.status['status_effective_id']
 
+            #
+            now = timezone.now()
+            record['fields']['valid_from'] = str(now)
+            fields['valid_from'] = str(now)
+
             record['fields']['permissions'] = self.permissions
             fields['permissions'] = self.permissions
 
@@ -123,7 +132,8 @@ class Fixtures(object):
 fix = Fixtures()
 fix.generate_fixtures_basics(path=FIXTURES_DIR_BASIC, fixture='status', hash_sequence=['status'])
 fix.generate_fixtures_basics(path=FIXTURES_DIR_URP, fixture='permissions', hash_sequence=['permission'])
-fix.generate_fixtures_roles(path=FIXTURES_DIR_URP, fixture='roles', hash_sequence=['role', 'status_id', 'version'],
+fix.generate_fixtures_roles(path=FIXTURES_DIR_URP, fixture='roles', hash_sequence=['role', 'status_id', 'version',
+                                                                                   'valid_from', 'valid_to'],
                             hash_sequence_mtm=['permissions'])
 
 # fixture to fill settings table

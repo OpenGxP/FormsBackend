@@ -71,3 +71,15 @@ def validate_no_specials_reduced(value):
     """
     if any(char in SPECIALS_REDUCED for char in value):
         raise ValidationError(_('Special characters "{}" are not permitted.').format(SPECIALS_REDUCED))
+
+
+def validate_no_numbers(value):
+    if any(char.isdigit() for char in value):
+        raise ValidationError(_('Numbers are not permitted.'))
+
+
+def validate_only_ascii(value):
+    try:
+        value.encode('ascii')
+    except UnicodeEncodeError:
+        raise ValidationError(_('Only ascii characters are allowed.'))

@@ -20,15 +20,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # python import
 import string
 
-
 # django imports
 from django.db import models
+from django.utils import timezone
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.utils.translation import gettext_lazy as _
 
-
 # app imports
-from .validators import validate_no_space, validate_no_specials, validate_no_specials_reduced, SPECIALS_REDUCED
+from .validators import validate_no_space, validate_no_specials, validate_no_specials_reduced, SPECIALS_REDUCED, \
+    validate_no_numbers, validate_only_ascii
 from basics.custom import generate_checksum, intersection_two
 from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, CHAR_MAX, FIELD_VERSION, Status, Settings
 
@@ -60,6 +60,9 @@ class Permissions(GlobalModel):
         to_hash_payload = 'permission:{};'.format(self.permission)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
 
+    valid_from = None
+    valid_to = None
+
 
 #########
 # ROLES #
@@ -68,7 +71,7 @@ class Permissions(GlobalModel):
 # manager
 class RolesManager(GlobalManager):
     # hashing
-    HASH_SEQUENCE = ['role', 'status_id', 'version']
+    HASH_SEQUENCE = ['role', 'status_id', 'version', 'valid_from', 'valid_to']
     HASH_SEQUENCE_MTM = ['permissions']
     MTM_TABLES = {
         'permissions': Permissions
@@ -92,7 +95,9 @@ class Roles(GlobalModel):
                     'No whitespaces.'
                     .format(CHAR_DEFAULT, SPECIALS_REDUCED)),
         validators=[validate_no_specials_reduced,
-                    validate_no_space],
+                    validate_no_space,
+                    validate_no_numbers,
+                    validate_only_ascii],
         unique=True)
     permissions = models.ManyToManyField(Permissions, blank=True)
     # defaults
@@ -110,8 +115,8 @@ class Roles(GlobalModel):
         for perm in permissions:
             # TODO  # 1 uuid shall be compatible with postgres that is not saving as char(32), but uuid field
             perm_list.append(str(perm.id))
-        to_hash_payload = 'role:{};status_id:{};version:{};permissions:{};'.format(self.role, self.status_id,
-                                                                                   self.version, perm_list)
+        to_hash_payload = 'role:{};status_id:{};version:{};valid_from:{};valid_to:{};permissions:{};'. \
+            format(self.role, self.status_id, self.version, self.valid_from, self.valid_to, perm_list)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
 
 
@@ -123,11 +128,15 @@ class Roles(GlobalModel):
 class UsersManager(BaseUserManager, GlobalManager):
     # hashing
     HASH_SEQUENCE = ['username', 'email', 'first_name', 'last_name', 'is_active', 'initial_password', 'password',
-                     'status_id', 'version']
+                     'status_id', 'version', 'valid_from', 'valid_to']
     HASH_SEQUENCE_MTM = ['roles']
     MTM_TABLES = {
         'roles': Roles
     }
+
+    def get_by_natural_key_effective(self, username):
+        status_effective_id = Settings.objects.filter(key='status_effective_id').get().value
+        return self.filter(status__id=status_effective_id).get(**{self.model.USERNAME_FIELD: username})
 
     # superuser function for createsuperuser
     def create_superuser(self, username, password):
@@ -138,6 +147,7 @@ class UsersManager(BaseUserManager, GlobalManager):
                   'last_name': '--',
                   'version': 1,
                   'is_active': True,
+                  'valid_from': timezone.now(),
                   'initial_password': True,
                   'email': '--',
                   'status_id': status_id}
@@ -163,7 +173,7 @@ class UsersManager(BaseUserManager, GlobalManager):
 # table
 class Users(AbstractBaseUser, GlobalModel):
     # custom fields
-    username = models.CharField(_('username'), max_length=CHAR_DEFAULT, unique=True)
+    username = models.CharField(_('username'), max_length=CHAR_DEFAULT)
     email = models.EmailField(_('email'), max_length=CHAR_MAX)
     first_name = models.CharField(
         _('first name'),
@@ -171,15 +181,18 @@ class Users(AbstractBaseUser, GlobalModel):
         help_text=_('Required. {} characters or fewer. Special characters "{}" are not permitted. No whitespaces.'
                     .format(CHAR_DEFAULT, string.punctuation)),
         validators=[validate_no_specials,
-                    validate_no_space])
+                    validate_no_space,
+                    validate_no_numbers,
+                    validate_only_ascii])
     last_name = models.CharField(
         _('last name'),
         max_length=CHAR_DEFAULT,
         help_text=_('Required. {} characters or fewer. Special characters "{}" are not permitted. No whitespaces.'
                     .format(CHAR_DEFAULT, string.punctuation)),
         validators=[validate_no_specials,
-                    validate_no_space])
-    is_active = models.BooleanField(_('active'))
+                    validate_no_space,
+                    validate_no_numbers,
+                    validate_only_ascii])
     initial_password = models.BooleanField(_('initial password'))
     password = models.CharField(_('password'), max_length=CHAR_MAX)
     roles = models.ManyToManyField(Roles)
@@ -198,21 +211,16 @@ class Users(AbstractBaseUser, GlobalModel):
         for role in roles:
             roles_list.append(role.id)
         to_hash_payload = 'username:{};email:{};first_name:{};last_name:{};is_active:{};initial_password:{};' \
-                          'password:{};status_id:{};version:{};roles:{};'\
+                          'password:{};status_id:{};version:{};valid_from:{};valid_to:{};roles:{};'\
             .format(self.username, self.email, self.first_name, self.last_name, self.is_active, self.initial_password,
-                    self.password, self.status_id, self.version, roles_list)
+                    self.password, self.status_id, self.version, self.valid_from, self.valid_to, roles_list)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
-
-    def valid_status(self):
-        # TODO #1 uuid shall be compatible with postgres that is not saving as char(32), but uuid field
-        if str(self.status.id) == Settings.objects.filter(key='status_effective_id').get().value:
-            return True
 
     # references
     EMAIL_FIELD = 'email'
     USERNAME_FIELD = 'username'
-    REQUIRED_FIELDS = []
     last_login = None
+    is_active = models.BooleanField(_('is_active'))
 
     def permission(self, permission):
         for role in self.roles.all():

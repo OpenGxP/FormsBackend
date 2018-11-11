@@ -72,6 +72,8 @@ SECRET_JWT_SIGNING_KEY = require_file(path=SECURITY_DIR + '/keys/', file_name='S
 DEBUG = True
 ALLOWED_HOSTS = ['*']
 APPEND_SLASH = False
+# disable warning that username is not unique
+SILENCED_SYSTEM_CHECKS = ['auth.W004']
 
 # Application definition
 INSTALLED_APPS = [

@@ -73,7 +73,13 @@ def generate_to_hash(fields, ids, hash_sequence, hash_sequence_mtm=list(), fixtu
     to_hash = 'id:{};lifecycle_id:{};'.format(ids['id'], ids['lifecycle_id'])
     # add static fields
     for field in hash_sequence:
-        to_hash += '{}:{};'.format(field, fields[field])
+        if field == 'valid_to':
+            try:
+                to_hash += '{}:{};'.format(field, fields[field])
+            except KeyError:
+                to_hash += '{}:None;'.format(field)
+        else:
+            to_hash += '{}:{};'.format(field, fields[field])
     # add many to many fields
     if hash_sequence_mtm:
         for mtm_field in hash_sequence_mtm:

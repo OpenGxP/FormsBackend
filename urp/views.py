@@ -120,7 +120,7 @@ def permissions_detail(request, pk, format=None):
 
 # GET list
 @api_view(['GET', 'POST'])
-@auth_required()
+# @auth_required()
 def roles_list(request, format=None):
     """
     List all roles.
@@ -159,7 +159,7 @@ def roles_detail(request, pk, format=None):
 
 # GET list
 @api_view(['GET'])
-@auth_required()
+# @auth_required()
 def users_list(request, format=None):
     """
     List all users.

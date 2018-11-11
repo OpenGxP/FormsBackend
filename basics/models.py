@@ -23,6 +23,7 @@ import uuid as python_uuid
 # django imports
 from django.db import models
 from django.conf import settings
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import ObjectDoesNotExist, ImproperlyConfigured
 
@@ -123,6 +124,8 @@ class GlobalModel(models.Model):
     id = models.UUIDField(primary_key=True, default=python_uuid.uuid4)
     lifecycle_id = models.UUIDField(default=python_uuid.uuid4)
     checksum = models.CharField(_('checksum'), max_length=CHAR_MAX)
+    valid_from = models.DateTimeField()
+    valid_to = models.DateTimeField(blank=True, null=True)
 
     class Meta:
         abstract = True
@@ -135,6 +138,14 @@ class GlobalModel(models.Model):
             return HASH_ALGORITHM.verify(to_hash, self.checksum)
         except ValueError:
             return False
+
+    @property
+    def verify_validity_range(self):
+        now = timezone.now()
+        if now > self.valid_from and self.valid_to is None:
+            return True
+        if self.valid_to > now > self.valid_from:
+            return True
 
 
 ##########
@@ -163,6 +174,9 @@ class Status(GlobalModel):
     def verify_checksum(self):
         to_hash_payload = 'status:{};'.format(self.status)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
+
+    valid_from = None
+    valid_to = None
 
 
 ############
@@ -200,3 +214,6 @@ class Settings(GlobalModel):
     def verify_checksum(self):
         to_hash_payload = 'key:{};value:{};'.format(self.key, self.value)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
+
+    valid_from = None
+    valid_to = None
