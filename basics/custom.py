@@ -73,7 +73,7 @@ def generate_to_hash(fields, ids, hash_sequence, hash_sequence_mtm=list(), fixtu
     to_hash = 'id:{};lifecycle_id:{};'.format(ids['id'], ids['lifecycle_id'])
     # add static fields
     for field in hash_sequence:
-        if field == 'valid_to':
+        if field == 'valid_to' or 'valid_from':
             try:
                 to_hash += '{}:{};'.format(field, fields[field])
             except KeyError:
@@ -92,7 +92,7 @@ def generate_to_hash(fields, ids, hash_sequence, hash_sequence_mtm=list(), fixtu
                 else:
                     tmp_list = list()
                     for item in fields[mtm_field]:
-                        tmp_list.append(item.id)
+                        tmp_list.append(str(item.id))
                         # sort lists to guarantee same has results every time
                     tmp_list.sort()
                     to_hash += '{}:{};'.format(mtm_field, tmp_list)

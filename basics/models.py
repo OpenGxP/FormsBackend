@@ -81,38 +81,43 @@ class GlobalManager(models.Manager):
         return generate_to_hash(fields=fields, hash_sequence=self.HASH_SEQUENCE, hash_sequence_mtm=hash_sequence_mtm,
                                 ids=ids)
 
-    def new(self, **fields):
+    def new(self, **kwargs):
         """Generic function to create new records, including hashing. "id" is always fist, "checksum" always last.
 
-            :param fields: dictionary containing all mandatory fields and values excluding "id", "version", "status"
+            :param kwargs: dictionary containing all mandatory fields and values excluding "id", "version", "status"
             and "checksum", many to many fields must be passed via a list containing integers on the pk/id of the
             related record
-            :type fields: dict
+            :type kwargs: dict
 
             :return: success flag
             :rtype: bool
         """
         # new records that have versions always start with version = 1
         if self.HAS_VERSION:
-            fields['version'] = 1
+            kwargs['version'] = 1
         # new records that have status always start with status = 1 (Draft)
         if self.HAS_STATUS:
-            fields['status_id'] = Settings.objects.status_id(status='draft')
+            kwargs['status_id'] = Settings.objects.status_id(status='draft')
+        fields = dict(kwargs)
         if self.HASH_SEQUENCE_MTM:
             # in case of models that have many to many fields get the fields that are shipped
-            intersection = intersection_two(fields.keys(), self.HASH_SEQUENCE_MTM)
+            intersection = intersection_two(kwargs.keys(), self.HASH_SEQUENCE_MTM)
+            fields = dict(kwargs)
+            for field in self.HASH_SEQUENCE_MTM:
+                if field in kwargs:
+                    fields.pop(field)
         record = self.model(**fields)
         ids = {
             'id': record.id,
             'lifecycle_id': record.lifecycle_id
         }
         if self.HASH_SEQUENCE_MTM:
-            to_hash = self._generate_to_hash(fields, hash_sequence_mtm=self.HASH_SEQUENCE_MTM, ids=ids)
+            to_hash = self._generate_to_hash(kwargs, hash_sequence_mtm=self.HASH_SEQUENCE_MTM, ids=ids)
             # add many to many fields
-            mtm_fields = {k: fields[k] for k in (fields.keys() & intersection)}
+            mtm_fields = {k: kwargs[k] for k in (kwargs.keys() & intersection)}
             record = self._add_many_to_many(record=record, fields=mtm_fields)
         else:
-            to_hash = self._generate_to_hash(fields, ids=ids)
+            to_hash = self._generate_to_hash(kwargs, ids=ids)
         # save valid checksum to record, including id
         record.checksum = generate_checksum(to_hash)
         record.save()
@@ -124,7 +129,7 @@ class GlobalModel(models.Model):
     id = models.UUIDField(primary_key=True, default=python_uuid.uuid4)
     lifecycle_id = models.UUIDField(default=python_uuid.uuid4)
     checksum = models.CharField(_('checksum'), max_length=CHAR_MAX)
-    valid_from = models.DateTimeField()
+    valid_from = models.DateTimeField(blank=True, null=True)
     valid_to = models.DateTimeField(blank=True, null=True)
 
     class Meta:

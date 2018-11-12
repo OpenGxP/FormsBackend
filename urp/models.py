@@ -97,8 +97,7 @@ class Roles(GlobalModel):
         validators=[validate_no_specials_reduced,
                     validate_no_space,
                     validate_no_numbers,
-                    validate_only_ascii],
-        unique=True)
+                    validate_only_ascii])
     permissions = models.ManyToManyField(Permissions, blank=True)
     # defaults
     status = models.ForeignKey(Status, on_delete=models.PROTECT)

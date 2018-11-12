@@ -38,7 +38,7 @@ urlpatterns = [
     path('permissions/<int:pk>/', permissions_detail),
     # roles
     path('roles/', roles_list, name='roles-list'),
-    path('roles/<int:pk>/', roles_detail),
+    path('roles/<str:lifecycle_id>/<int:version>', roles_detail),
     # users
     path('users/', users_list, name='users-list'),
     path('users/<int:pk>/', users_detail),

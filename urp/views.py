@@ -88,7 +88,7 @@ def status_detail(request, pk, format=None):
 
 # GET list
 @api_view(['GET'])
-@auth_required()
+# @auth_required()
 def permissions_list(request, format=None):
     """
     List all permissions.
@@ -107,7 +107,7 @@ def permissions_detail(request, pk, format=None):
     """
     try:
         perm = Permissions.objects.get(pk=pk)
-    except Status.DoesNotExist:
+    except Permissions.DoesNotExist:
         return Response(status=status.HTTP_404_NOT_FOUND)
 
     serializer = PermissionsReadSerializer(perm)
@@ -138,19 +138,27 @@ def roles_list(request, format=None):
 
 
 # GET detail
-@api_view(['GET'])
-@auth_required()
-def roles_detail(request, pk, format=None):
+@api_view(['GET', 'PUT'])
+# @auth_required()
+def roles_detail(request, lifecycle_id, version, format=None):
     """
     Retrieve roles.
     """
     try:
-        role = Roles.objects.get(pk=pk)
-    except Status.DoesNotExist:
+        role = Roles.objects.get(lifecycle_id=lifecycle_id, version=version)
+    except Roles.DoesNotExist:
         return Response(status=status.HTTP_404_NOT_FOUND)
 
-    serializer = RolesReadSerializer(role)
-    return Response(serializer.data)
+    if request.method == 'GET':
+        serializer = RolesReadSerializer(role)
+        return Response(serializer.data)
+
+    elif request.method == 'PUT':
+        serializer = RolesWriteSerializer(role, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 #########
@@ -178,7 +186,7 @@ def users_detail(request, pk, format=None):
     """
     try:
         stat = Users.objects.get(pk=pk)
-    except Status.DoesNotExist:
+    except Users.DoesNotExist:
         return Response(status=status.HTTP_404_NOT_FOUND)
 
     serializer = UsersReadSerializer(stat)
