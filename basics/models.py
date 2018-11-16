@@ -25,10 +25,9 @@ from django.db import models
 from django.conf import settings
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
-from django.core.exceptions import ObjectDoesNotExist, ImproperlyConfigured
 
 # app imports
-from .custom import generate_checksum, generate_to_hash, HASH_ALGORITHM, intersection_two
+from .custom import HASH_ALGORITHM
 
 
 ##########
@@ -46,82 +45,10 @@ FIELD_VERSION = models.PositiveIntegerField()
 class GlobalManager(models.Manager):
     # hashing
     HASH_SEQUENCE = list()
-    HASH_SEQUENCE_MTM = list()
-    # many to many
-    MTM_TABLES = dict()
 
     # flags
     HAS_VERSION = True
     HAS_STATUS = True
-
-    # many to many function
-    def _add_many_to_many(self, record, fields):
-        for field_name, values in fields.items():
-            field = getattr(record, field_name)
-            for value in values:
-                rel = self.MTM_TABLES[field_name].objects.get(pk=value.id)
-                field.add(rel)
-        return record
-
-    def _generate_to_hash(self, fields, ids, hash_sequence_mtm=None):
-        """Generic function to build hash string for record fields.
-
-        :param fields: dictionary containing all mandatory fields and values
-        :type fields: dict
-
-        :param hash_sequence_mtm: list of many to many fields in correct hash order, default is None
-        :type hash_sequence_mtm: list
-
-        :param ids: uuid of record and integrity id of versioned objects over their life cycle
-        :type ids: dict
-
-        :return: string to hash
-        :rtype: str
-        """
-        return generate_to_hash(fields=fields, hash_sequence=self.HASH_SEQUENCE, hash_sequence_mtm=hash_sequence_mtm,
-                                ids=ids)
-
-    def new(self, **kwargs):
-        """Generic function to create new records, including hashing. "id" is always fist, "checksum" always last.
-
-            :param kwargs: dictionary containing all mandatory fields and values excluding "id", "version", "status"
-            and "checksum", many to many fields must be passed via a list containing integers on the pk/id of the
-            related record
-            :type kwargs: dict
-
-            :return: success flag
-            :rtype: bool
-        """
-        # new records that have versions always start with version = 1
-        if self.HAS_VERSION:
-            kwargs['version'] = 1
-        # new records that have status always start with status = 1 (Draft)
-        if self.HAS_STATUS:
-            kwargs['status_id'] = Settings.objects.status_id(status='draft')
-        fields = dict(kwargs)
-        if self.HASH_SEQUENCE_MTM:
-            # in case of models that have many to many fields get the fields that are shipped
-            intersection = intersection_two(kwargs.keys(), self.HASH_SEQUENCE_MTM)
-            fields = dict(kwargs)
-            for field in self.HASH_SEQUENCE_MTM:
-                if field in kwargs:
-                    fields.pop(field)
-        record = self.model(**fields)
-        ids = {
-            'id': record.id,
-            'lifecycle_id': record.lifecycle_id
-        }
-        if self.HASH_SEQUENCE_MTM:
-            to_hash = self._generate_to_hash(kwargs, hash_sequence_mtm=self.HASH_SEQUENCE_MTM, ids=ids)
-            # add many to many fields
-            mtm_fields = {k: kwargs[k] for k in (kwargs.keys() & intersection)}
-            record = self._add_many_to_many(record=record, fields=mtm_fields)
-        else:
-            to_hash = self._generate_to_hash(kwargs, ids=ids)
-        # save valid checksum to record, including id
-        record.checksum = generate_checksum(to_hash)
-        record.save()
-        return record
 
 
 class GlobalModel(models.Model):
@@ -136,9 +63,11 @@ class GlobalModel(models.Model):
         abstract = True
 
     def _verify_checksum(self, to_hash_payload):
-        to_hash = 'id:{};lifecycle_id:{};'.format(self.id, self.lifecycle_id)
-        to_hash += to_hash_payload
-        to_hash += settings.SECRET_HASH_KEY
+        if not self.lifecycle_id:
+            to_hash = 'id:{};'.format(self.id)
+        else:
+            to_hash = 'id:{};lifecycle_id:{};'.format(self.id, self.lifecycle_id)
+        to_hash += '{}{}'.format(to_hash_payload, settings.SECRET_HASH_KEY)
         try:
             return HASH_ALGORITHM.verify(to_hash, self.checksum)
         except ValueError:
@@ -166,6 +95,14 @@ class StatusManager(GlobalManager):
     HAS_VERSION = False
     HAS_STATUS = False
 
+    @property
+    def productive(self):
+        return self.filter(status='productive').get().id
+
+    @property
+    def draft(self):
+        return self.filter(status='draft').get().id
+
 
 # table
 class Status(GlobalModel):
@@ -182,43 +119,4 @@ class Status(GlobalModel):
 
     valid_from = None
     valid_to = None
-
-
-############
-# SETTINGS #
-############
-
-
-# manager
-class SettingsManager(GlobalManager):
-    # hashing
-    HASH_SEQUENCE = ['key', 'value']
-
-    # flags
-    HAS_VERSION = False
-    HAS_STATUS = False
-
-    # return uuid of status
-    def status_id(self, status):
-        try:
-            return self.filter(key='status_{}_id'.format(status)).get().value
-        except ObjectDoesNotExist:
-            raise ImproperlyConfigured('Setting key "status_{}_id" is not defined.'.format(status))
-
-
-# table
-class Settings(GlobalModel):
-    # custom fields
-    key = models.CharField(_('key'), max_length=CHAR_DEFAULT, unique=True)
-    value = models.CharField(_('value'), max_length=CHAR_DEFAULT)
-
-    # manager
-    objects = SettingsManager()
-
-    # integrity check
-    def verify_checksum(self):
-        to_hash_payload = 'key:{};value:{};'.format(self.key, self.value)
-        return self._verify_checksum(to_hash_payload=to_hash_payload)
-
-    valid_from = None
-    valid_to = None
+    lifecycle_id = None

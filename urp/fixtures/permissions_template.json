@@ -1,20 +1,24 @@
 [{"model": "urp.permissions",
-  "pk":1,
   "fields": {
+    "key": "ro.re",
+    "dialog": "roles",
     "permission": "read"
   }}, {
   "model": "urp.permissions",
-  "pk":2,
   "fields": {
+    "key": "ro.wr",
+    "dialog": "roles",
     "permission": "write"
   }}, {
   "model": "urp.permissions",
-  "pk":3,
   "fields": {
+    "key": "ro.de",
+    "dialog": "roles",
     "permission": "delete"
   }}, {
   "model": "urp.permissions",
-  "pk":4,
   "fields": {
+    "key": "ro.sc",
+    "dialog": "roles",
     "permission": "start_circulation"
   }}]

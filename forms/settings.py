@@ -74,6 +74,7 @@ ALLOWED_HOSTS = ['*']
 APPEND_SLASH = False
 # disable warning that username is not unique
 SILENCED_SYSTEM_CHECKS = ['auth.W004']
+CSRF_COOKIE_SECURE = False
 
 # Application definition
 INSTALLED_APPS = [

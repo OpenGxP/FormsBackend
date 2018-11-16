@@ -29,8 +29,8 @@ from django.utils.translation import gettext_lazy as _
 # app imports
 from .validators import validate_no_space, validate_no_specials, validate_no_specials_reduced, SPECIALS_REDUCED, \
     validate_no_numbers, validate_only_ascii
-from basics.custom import generate_checksum, intersection_two
-from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, CHAR_MAX, FIELD_VERSION, Status, Settings
+from basics.custom import generate_checksum, generate_to_hash
+from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, CHAR_MAX, FIELD_VERSION, Status
 
 
 ###############
@@ -40,7 +40,7 @@ from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, CHAR_MAX, FI
 # manager
 class PermissionsManager(GlobalManager):
     # hashing
-    HASH_SEQUENCE = ['permission']
+    HASH_SEQUENCE = ['key', 'dialog', 'permission']
 
     # flags
     HAS_VERSION = False
@@ -50,18 +50,21 @@ class PermissionsManager(GlobalManager):
 # table
 class Permissions(GlobalModel):
     # custom fields
-    permission = models.CharField(_('permission'), max_length=CHAR_DEFAULT, unique=True)
+    key = models.CharField(_('key'), max_length=CHAR_DEFAULT, unique=True)
+    dialog = models.CharField(_('dialog'), max_length=CHAR_DEFAULT)
+    permission = models.CharField(_('permission'), max_length=CHAR_DEFAULT)
 
     # manager
     objects = PermissionsManager()
 
     # integrity check
     def verify_checksum(self):
-        to_hash_payload = 'permission:{};'.format(self.permission)
+        to_hash_payload = 'key:{};dialog:{};permission:{};'.format(self.key, self.dialog, self.permission)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
 
     valid_from = None
     valid_to = None
+    lifecycle_id = None
 
 
 #########
@@ -71,18 +74,7 @@ class Permissions(GlobalModel):
 # manager
 class RolesManager(GlobalManager):
     # hashing
-    HASH_SEQUENCE = ['role', 'status_id', 'version', 'valid_from', 'valid_to']
-    HASH_SEQUENCE_MTM = ['permissions']
-    MTM_TABLES = {
-        'permissions': Permissions
-    }
-
-    """def permission(self, roles, permission):
-        return self.filter(lifecycle_id=lifecycle_id).get().permissions
-        if permission in self.filter(role=role)[0].permissions.split(','):
-            return True
-        else:
-            return False"""
+    HASH_SEQUENCE = ['role', 'status_id', 'version', 'valid_from', 'valid_to', 'permissions']
 
 
 # table
@@ -98,7 +90,7 @@ class Roles(GlobalModel):
                     validate_no_space,
                     validate_no_numbers,
                     validate_only_ascii])
-    permissions = models.ManyToManyField(Permissions, blank=True)
+    permissions = models.CharField(_('permissions'), max_length=CHAR_DEFAULT, blank=True)
     # defaults
     status = models.ForeignKey(Status, on_delete=models.PROTECT)
     version = FIELD_VERSION
@@ -108,15 +100,13 @@ class Roles(GlobalModel):
 
     # integrity check
     def verify_checksum(self):
-        # get permission objects ordered by id to guarantee correct hashing order
-        permissions = self.permissions.order_by('id').all()
-        perm_list = list()
-        for perm in permissions:
-            # TODO  # 1 uuid shall be compatible with postgres that is not saving as char(32), but uuid field
-            perm_list.append(str(perm.id))
         to_hash_payload = 'role:{};status_id:{};version:{};valid_from:{};valid_to:{};permissions:{};'. \
-            format(self.role, self.status_id, self.version, self.valid_from, self.valid_to, perm_list)
+            format(self.role, self.status_id, self.version, self.valid_from, self.valid_to, self.permissions)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
+
+    @property
+    def get_status(self):
+        return self.status.status
 
 
 #########
@@ -127,20 +117,16 @@ class Roles(GlobalModel):
 class UsersManager(BaseUserManager, GlobalManager):
     # hashing
     HASH_SEQUENCE = ['username', 'email', 'first_name', 'last_name', 'is_active', 'initial_password', 'password',
-                     'status_id', 'version', 'valid_from', 'valid_to']
-    HASH_SEQUENCE_MTM = ['roles']
-    MTM_TABLES = {
-        'roles': Roles
-    }
+                     'status_id', 'version', 'valid_from', 'valid_to', 'roles']
 
     def get_by_natural_key_effective(self, username):
-        status_effective_id = Settings.objects.filter(key='status_effective_id').get().value
+        status_effective_id = Status.objects.productive
         return self.filter(status__id=status_effective_id).get(**{self.model.USERNAME_FIELD: username})
 
     # superuser function for createsuperuser
     def create_superuser(self, username, password):
         # initial status "Effective" to immediately user superuser
-        status_id = Settings.objects.status_id(status='effective')
+        status_id = Status.objects.productive
         fields = {'username': username,
                   'first_name': '--',
                   'last_name': '--',
@@ -149,23 +135,16 @@ class UsersManager(BaseUserManager, GlobalManager):
                   'valid_from': timezone.now(),
                   'initial_password': True,
                   'email': '--',
-                  'status_id': status_id}
+                  'status_id': status_id,
+                  'roles': 'all'}
         user = self.model(**fields)
         user.set_password(password)
         fields['password'] = user.password
         # build string with row id to generate hash
-        fields['roles'] = [Roles.objects.get(role="all")]  # add initial "all" role
-        ids = {
-            'id': user.id,
-            'lifecycle_id': user.lifecycle_id
-        }
-        to_hash = self._generate_to_hash(fields, hash_sequence_mtm=self.HASH_SEQUENCE_MTM, ids=ids)
+        to_hash = generate_to_hash(fields, hash_sequence=self.HASH_SEQUENCE, unique_id=user.id,
+                                   lifecycle_id=user.lifecycle_id)
         user.checksum = generate_checksum(to_hash)
         user.save()
-        # get intersection
-        intersection = intersection_two(fields.keys(), self.HASH_SEQUENCE_MTM)
-        mtm_fields = {k: fields[k] for k in (fields.keys() & intersection)}
-        user = self._add_many_to_many(record=user, fields=mtm_fields)
         return user
 
 
@@ -194,7 +173,7 @@ class Users(AbstractBaseUser, GlobalModel):
                     validate_only_ascii])
     initial_password = models.BooleanField(_('initial password'))
     password = models.CharField(_('password'), max_length=CHAR_MAX)
-    roles = models.ManyToManyField(Roles)
+    roles = models.CharField(_('roles'), max_length=CHAR_DEFAULT)
     # defaults
     status = models.ForeignKey(Status, on_delete=models.PROTECT)
     version = FIELD_VERSION
@@ -204,28 +183,21 @@ class Users(AbstractBaseUser, GlobalModel):
 
     # integrity check
     def verify_checksum(self):
-        # get permission objects ordered by id to guarantee correct hashing order
-        roles = self.roles.order_by('id').all()
-        roles_list = list()
-        for role in roles:
-            roles_list.append(role.id)
         to_hash_payload = 'username:{};email:{};first_name:{};last_name:{};is_active:{};initial_password:{};' \
                           'password:{};status_id:{};version:{};valid_from:{};valid_to:{};roles:{};'\
             .format(self.username, self.email, self.first_name, self.last_name, self.is_active, self.initial_password,
-                    self.password, self.status_id, self.version, self.valid_from, self.valid_to, roles_list)
+                    self.password, self.status_id, self.version, self.valid_from, self.valid_to, self.roles)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
+
+    @property
+    def get_status(self):
+        return self.status.status
 
     # references
     EMAIL_FIELD = 'email'
     USERNAME_FIELD = 'username'
     last_login = None
     is_active = models.BooleanField(_('is_active'))
-
-    def permission(self, permission):
-        for role in self.roles.all():
-            for perm in role.permissions.all():
-                if permission == perm.id:
-                    return True
 
     def get_full_name(self):
         return _('{} - {} {}').format(self.username, self.first_name, self.last_name)

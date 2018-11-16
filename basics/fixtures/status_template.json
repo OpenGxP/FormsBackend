@@ -1,20 +1,16 @@
 [{"model": "basics.status",
-  "pk":1,
   "fields": {
-    "status": "Draft"
+    "status": "draft"
   }}, {
   "model": "basics.status",
-  "pk":2,
   "fields": {
-    "status": "Circulation"
+    "status": "circulation"
   }}, {
   "model": "basics.status",
-  "pk":3,
   "fields": {
-    "status": "Effective"
+    "status": "productive"
   }}, {
   "model": "basics.status",
-  "pk":4,
   "fields": {
-    "status": "Blocked"
+    "status": "blocked"
   }}]

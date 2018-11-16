@@ -32,6 +32,9 @@ from .serializers import StatusReadSerializer, PermissionsReadSerializer, RolesR
     RolesWriteSerializer, UsersReadSerializer
 from .decorators import auth_required, perm_required
 
+# django imports
+from django.views.decorators.csrf import csrf_exempt, csrf_protect, requires_csrf_token, ensure_csrf_cookie
+
 
 ########
 # ROOT #
@@ -54,7 +57,7 @@ def api_root(request, format=None):
 
 # GET list
 @api_view(['GET'])
-@auth_required()
+# @auth_required()
 def status_list(request, format=None):
     """
     List all status.
@@ -121,29 +124,44 @@ def permissions_detail(request, pk, format=None):
 # GET list
 @api_view(['GET', 'POST'])
 # @auth_required()
+@ensure_csrf_cookie
 def roles_list(request, format=None):
     """
     List all roles.
     """
+    @csrf_protect
+    def post(_request):
+        _serializer = RolesWriteSerializer(data=_request.data)
+        if _serializer.is_valid():
+            _serializer.save()
+            return Response(_serializer.data, status=status.HTTP_201_CREATED)
+        return Response(_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
     if request.method == 'GET':
         roles = Roles.objects.all()
         serializer = RolesReadSerializer(roles, many=True)
         return Response(serializer.data)
     if request.method == 'POST':
-        serializer = RolesWriteSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return post(request)
 
 
 # GET detail
 @api_view(['GET', 'PUT'])
 # @auth_required()
+@ensure_csrf_cookie
 def roles_detail(request, lifecycle_id, version, format=None):
     """
     Retrieve roles.
     """
+
+    @csrf_protect
+    def put(_request):
+        _serializer = RolesWriteSerializer(role, data=_request.data)
+        if _serializer.is_valid():
+            _serializer.save()
+            return Response(_serializer.data)
+        return Response(_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
     try:
         role = Roles.objects.get(lifecycle_id=lifecycle_id, version=version)
     except Roles.DoesNotExist:
@@ -154,11 +172,7 @@ def roles_detail(request, lifecycle_id, version, format=None):
         return Response(serializer.data)
 
     elif request.method == 'PUT':
-        serializer = RolesWriteSerializer(role, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return put(request)
 
 
 #########

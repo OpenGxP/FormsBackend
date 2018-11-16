@@ -1,5 +1,4 @@
 [{"model": "urp.roles",
-  "pk":1,
   "fields": {
     "role": "all",
     "version": 1
