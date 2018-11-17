@@ -31,6 +31,45 @@ from basics.custom import generate_checksum, generate_to_hash
 class GlobalReadWriteSerializer(serializers.ModelSerializer):
     valid = serializers.BooleanField(source='verify_checksum', read_only=True)
 
+    # function for create (POST)
+    def create(self, validated_data):
+        # create role
+        # TODO #4 obj still explicit, needs to be generic
+        obj = Roles()
+        # add default fields for new objects
+        validated_data['version'] = 1
+        validated_data['status_id'] = Status.objects.draft
+        # passed keys
+        keys = validated_data.keys()
+        # set attributes of validated data
+        hash_sequence = obj.HASH_SEQUENCE
+        for attr in hash_sequence:
+            if attr in keys:
+                setattr(obj, attr, validated_data[attr])
+        # generate hash
+        to_hash = generate_to_hash(fields=validated_data, hash_sequence=hash_sequence, unique_id=obj.id,
+                                   lifecycle_id=obj.lifecycle_id)
+        obj.checksum = generate_checksum(to_hash)
+        # save obj
+        obj.save()
+        return obj
+
+    # update
+    def update(self, instance, validated_data):
+        hash_sequence = instance.HASH_SEQUENCE
+        fields = dict()
+        for attr in hash_sequence:
+            if attr in validated_data.keys():
+                fields[attr] = validated_data[attr]
+                setattr(instance, attr, validated_data[attr])
+            else:
+                fields[attr] = getattr(instance, attr)
+        to_hash = generate_to_hash(fields=fields, hash_sequence=hash_sequence, unique_id=instance.id,
+                                   lifecycle_id=instance.lifecycle_id)
+        instance.checksum = generate_checksum(to_hash)
+        instance.save()
+        return instance
+
 
 ##########
 # STATUS #
@@ -73,49 +112,14 @@ class RolesReadSerializer(GlobalReadWriteSerializer):
 class RolesWriteSerializer(GlobalReadWriteSerializer):
     status = serializers.CharField(source='get_status', read_only=True)
 
-    # function for create (POST)
-    def create(self, validated_data):
-        # create role
-        model = Roles
-        obj = Roles()
-        # add default fields for new objects
-        validated_data['version'] = 1
-        validated_data['status_id'] = Status.objects.draft
-        # passed keys
-        keys = validated_data.keys()
-        # set attributes of validated data
-        hash_sequence = model.objects.HASH_SEQUENCE
-        for attr in hash_sequence:
-            if attr in keys:
-                setattr(obj, attr, validated_data[attr])
-        # generate hash
-        to_hash = generate_to_hash(fields=validated_data, hash_sequence=hash_sequence, unique_id=obj.id,
-                                   lifecycle_id=obj.lifecycle_id)
-        obj.checksum = generate_checksum(to_hash)
-        # save obj
-        obj.save()
-        return obj
-
-    # update
-    def update(self, instance, validated_data):
-        hash_sequence = Roles.objects.HASH_SEQUENCE
-        fields = dict()
-        for attr in hash_sequence:
-            if attr in validated_data.keys():
-                fields[attr] = validated_data[attr]
-                setattr(instance, attr, validated_data[attr])
-            else:
-                fields[attr] = getattr(instance, attr)
-        to_hash = generate_to_hash(fields=fields, hash_sequence=hash_sequence, unique_id=instance.id,
-                                   lifecycle_id=instance.lifecycle_id)
-        instance.checksum = generate_checksum(to_hash)
-        instance.save()
-        return instance
-
     """def validate(self, data): --- function to access all data and validate between"""
     def validate(self, data):
-        if self.instance.status.id != Status.objects.draft:
-            raise serializers.ValidationError('Updates are only permitted in status "draft".')
+        try:
+            if self.instance.status.id != Status.objects.draft:
+                raise serializers.ValidationError('Updates are only permitted in status "draft".')
+        # TODO #3 check if this is a good way of handling this issue
+        except AttributeError:
+            pass
         return data
 
     class Meta:

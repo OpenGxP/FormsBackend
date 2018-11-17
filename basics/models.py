@@ -43,9 +43,6 @@ FIELD_VERSION = models.PositiveIntegerField()
 
 
 class GlobalManager(models.Manager):
-    # hashing
-    HASH_SEQUENCE = list()
-
     # flags
     HAS_VERSION = True
     HAS_STATUS = True
@@ -61,6 +58,8 @@ class GlobalModel(models.Model):
 
     class Meta:
         abstract = True
+
+    HASH_SEQUENCE = []
 
     def _verify_checksum(self, to_hash_payload):
         if not self.lifecycle_id:
@@ -88,9 +87,6 @@ class GlobalModel(models.Model):
 
 # manager
 class StatusManager(GlobalManager):
-    # hashing
-    HASH_SEQUENCE = ['status']
-
     # flags
     HAS_VERSION = False
     HAS_STATUS = False
@@ -120,3 +116,6 @@ class Status(GlobalModel):
     valid_from = None
     valid_to = None
     lifecycle_id = None
+
+    # hashing
+    HASH_SEQUENCE = ['status']

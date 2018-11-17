@@ -39,9 +39,6 @@ from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, CHAR_MAX, FI
 
 # manager
 class PermissionsManager(GlobalManager):
-    # hashing
-    HASH_SEQUENCE = ['key', 'dialog', 'permission']
-
     # flags
     HAS_VERSION = False
     HAS_STATUS = False
@@ -66,16 +63,13 @@ class Permissions(GlobalModel):
     valid_to = None
     lifecycle_id = None
 
+    # hashing
+    HASH_SEQUENCE = ['key', 'dialog', 'permission']
+
 
 #########
 # ROLES #
 #########
-
-# manager
-class RolesManager(GlobalManager):
-    # hashing
-    HASH_SEQUENCE = ['role', 'status_id', 'version', 'valid_from', 'valid_to', 'permissions']
-
 
 # table
 class Roles(GlobalModel):
@@ -95,9 +89,6 @@ class Roles(GlobalModel):
     status = models.ForeignKey(Status, on_delete=models.PROTECT)
     version = FIELD_VERSION
 
-    # manager
-    objects = RolesManager()
-
     # integrity check
     def verify_checksum(self):
         to_hash_payload = 'role:{};status_id:{};version:{};valid_from:{};valid_to:{};permissions:{};'. \
@@ -108,6 +99,8 @@ class Roles(GlobalModel):
     def get_status(self):
         return self.status.status
 
+    HASH_SEQUENCE = ['role', 'status_id', 'version', 'valid_from', 'valid_to', 'permissions']
+
 
 #########
 # USERS #
@@ -115,10 +108,6 @@ class Roles(GlobalModel):
 
 # manager
 class UsersManager(BaseUserManager, GlobalManager):
-    # hashing
-    HASH_SEQUENCE = ['username', 'email', 'first_name', 'last_name', 'is_active', 'initial_password', 'password',
-                     'status_id', 'version', 'valid_from', 'valid_to', 'roles']
-
     def get_by_natural_key_effective(self, username):
         status_effective_id = Status.objects.productive
         return self.filter(status__id=status_effective_id).get(**{self.model.USERNAME_FIELD: username})
@@ -141,7 +130,7 @@ class UsersManager(BaseUserManager, GlobalManager):
         user.set_password(password)
         fields['password'] = user.password
         # build string with row id to generate hash
-        to_hash = generate_to_hash(fields, hash_sequence=self.HASH_SEQUENCE, unique_id=user.id,
+        to_hash = generate_to_hash(fields, hash_sequence=user.HASH_SEQUENCE, unique_id=user.id,
                                    lifecycle_id=user.lifecycle_id)
         user.checksum = generate_checksum(to_hash)
         user.save()
@@ -198,6 +187,10 @@ class Users(AbstractBaseUser, GlobalModel):
     USERNAME_FIELD = 'username'
     last_login = None
     is_active = models.BooleanField(_('is_active'))
+
+    # hashing
+    HASH_SEQUENCE = ['username', 'email', 'first_name', 'last_name', 'is_active', 'initial_password', 'password',
+                     'status_id', 'version', 'valid_from', 'valid_to', 'roles']
 
     def get_full_name(self):
         return _('{} - {} {}').format(self.username, self.first_name, self.last_name)
