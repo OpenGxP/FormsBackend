@@ -69,9 +69,8 @@ def status_list(request, format=None):
 
 # GET detail
 @api_view(['GET'])
-@auth_required()
-# TODO #2 permissions shall be registered by their uuid in settings table, for dynamic call
-@perm_required(['tbd'])
+# @auth_required()
+# @perm_required(['tbd'])
 def status_detail(request, pk, format=None):
     """
     Retrieve status.
@@ -103,7 +102,7 @@ def permissions_list(request, format=None):
 
 # GET detail
 @api_view(['GET'])
-@auth_required()
+# @auth_required()
 def permissions_detail(request, pk, format=None):
     """
     Retrieve permissions.
@@ -193,7 +192,7 @@ def users_list(request, format=None):
 
 # GET detail
 @api_view(['GET'])
-@auth_required()
+# @auth_required()
 def users_detail(request, pk, format=None):
     """
     Retrieve users.

@@ -33,9 +33,9 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
 
     # function for create (POST)
     def create(self, validated_data):
-        # create role
-        # TODO #4 obj still explicit, needs to be generic
-        obj = Roles()
+        # get meta model assigned in custom serializer
+        model = getattr(getattr(self, 'Meta', None), 'model', None)
+        obj = model()
         # add default fields for new objects
         validated_data['version'] = 1
         validated_data['status_id'] = Status.objects.draft
@@ -69,6 +69,16 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         instance.checksum = generate_checksum(to_hash)
         instance.save()
         return instance
+
+    """def validate(self, data): --- function to access all data and validate between"""
+    def validate(self, data):
+        # verify if POST or PUT
+        try:
+            if self.instance.id != Status.objects.draft:
+                raise serializers.ValidationError('Updates are only permitted in status draft.')
+        except AttributeError:
+            pass
+        return data
 
 
 ##########
@@ -111,16 +121,6 @@ class RolesReadSerializer(GlobalReadWriteSerializer):
 # write
 class RolesWriteSerializer(GlobalReadWriteSerializer):
     status = serializers.CharField(source='get_status', read_only=True)
-
-    """def validate(self, data): --- function to access all data and validate between"""
-    def validate(self, data):
-        try:
-            if self.instance.status.id != Status.objects.draft:
-                raise serializers.ValidationError('Updates are only permitted in status "draft".')
-        # TODO #3 check if this is a good way of handling this issue
-        except AttributeError:
-            pass
-        return data
 
     class Meta:
         model = Roles
