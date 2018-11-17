@@ -60,6 +60,7 @@ class GlobalModel(models.Model):
         abstract = True
 
     HASH_SEQUENCE = []
+    UNIQUE = None
 
     def _verify_checksum(self, to_hash_payload):
         if not self.lifecycle_id:
@@ -92,12 +93,16 @@ class StatusManager(GlobalManager):
     HAS_STATUS = False
 
     @property
-    def productive(self):
-        return self.filter(status='productive').get().id
-
-    @property
     def draft(self):
         return self.filter(status='draft').get().id
+
+    @property
+    def circulation(self):
+        return self.filter(status='circulation').get().id
+
+    @property
+    def productive(self):
+        return self.filter(status='productive').get().id
 
 
 # table

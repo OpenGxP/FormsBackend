@@ -23,6 +23,9 @@ from rest_framework import serializers
 from .models import Status, Permissions, Users, Roles
 from basics.custom import generate_checksum, generate_to_hash
 
+# django imports
+from django.db import IntegrityError
+
 
 ##########
 # GLOBAL #
@@ -31,18 +34,34 @@ from basics.custom import generate_checksum, generate_to_hash
 class GlobalReadWriteSerializer(serializers.ModelSerializer):
     valid = serializers.BooleanField(source='verify_checksum', read_only=True)
 
+    @staticmethod
+    def new_version_check(data):
+        if 'lifecycle_id' in data and 'version' in data:
+            return True
+        return
+
     # function for create (POST)
     def create(self, validated_data):
         # get meta model assigned in custom serializer
         model = getattr(getattr(self, 'Meta', None), 'model', None)
         obj = model()
+        hash_sequence = obj.HASH_SEQUENCE
+        # check if new version or initial create
+        if self.new_version_check(validated_data):
+            lifecycle_id = validated_data['lifecycle_id']
+            version = validated_data['version']
+            old_obj = model.objects.get(lifecycle_id=lifecycle_id, version=version)
+            setattr(obj, 'lifecycle_id', lifecycle_id)
+            for attr in hash_sequence:
+                validated_data[attr] = getattr(old_obj, attr)
+            validated_data['version'] = version + 1
+        else:
+            validated_data['version'] = 1
         # add default fields for new objects
-        validated_data['version'] = 1
         validated_data['status_id'] = Status.objects.draft
         # passed keys
         keys = validated_data.keys()
         # set attributes of validated data
-        hash_sequence = obj.HASH_SEQUENCE
         for attr in hash_sequence:
             if attr in keys:
                 setattr(obj, attr, validated_data[attr])
@@ -51,8 +70,13 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                                    lifecycle_id=obj.lifecycle_id)
         obj.checksum = generate_checksum(to_hash)
         # save obj
-        obj.save()
-        return obj
+        try:
+            obj.save()
+        except IntegrityError as e:
+            if 'UNIQUE constraint' in e.args[0]:
+                raise serializers.ValidationError('Object already exists.')
+        else:
+            return obj
 
     # update
     def update(self, instance, validated_data):
@@ -70,14 +94,22 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
-    """def validate(self, data): --- function to access all data and validate between"""
     def validate(self, data):
         # verify if POST or PUT
         try:
-            if self.instance.id != Status.objects.draft:
+            if self.instance.status.id != Status.objects.draft:
                 raise serializers.ValidationError('Updates are only permitted in status draft.')
         except AttributeError:
-            pass
+            if self.new_version_check(data):
+                model = getattr(getattr(self, 'Meta', None), 'model', None)
+                try:
+                    old_obj = model.objects.get(lifecycle_id=data['lifecycle_id'], version=data['version'])
+                except model.DoesNotExist:
+                    raise serializers.ValidationError('Cannot create new version of non-existing object.')
+                else:
+                    if old_obj.status.id == Status.objects.draft or old_obj.status.id == Status.objects.circulation:
+                        raise serializers.ValidationError('New versions can only be created in status productive, '
+                                                          'blocked, inactive or archived.')
         return data
 
 
@@ -125,7 +157,7 @@ class RolesWriteSerializer(GlobalReadWriteSerializer):
     class Meta:
         model = Roles
         exclude = ('id', 'checksum', )
-        extra_kwargs = {'version': {'read_only': True}}
+        extra_kwargs = {'version': {'required': False}}
 
 
 #########
