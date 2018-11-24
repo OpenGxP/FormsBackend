@@ -1,0 +1,712 @@
+openapi: 3.0.0
+info:
+  version: '0.0.1'
+  title: 'OpenGxP Users Roles Permissions'
+  description: 'API for OpenGxp User, Roles and Permissions module'
+  termsOfService: https://github.com/OpenGxP/FormsBackend
+  contact:
+    name: enricoba
+    url: https://github.com/OpenGxP/FormsBackend
+    email: info@opengxp.org
+  license:
+    name: GPL-3.0
+    url: https://github.com/OpenGxP/FormsBackend/blob/master/LICENSE
+
+servers:
+  - url: http://localhost:8000
+    description: Dev local server
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  headers:
+    Set-Cookie:
+      schema:
+        type: string
+      description: csrftoken
+
+  responses:
+    # 202
+    NoContent:
+      description: No Content - Server successfully processed request and is not returning any content
+
+    # 400
+    BadRequest:
+      description: Bad Request - Server cannot process request
+
+    # 401
+    Unauthorized:
+      description: Unauthorized - Access token is missing or invalid
+
+    # 403
+    Forbidden:
+      description: Forbidden - Permissions missing
+
+    # 404
+    NotFound:
+      description: Not Found - Requested resource could not be found
+
+    # 405
+    MethodNotAllowed:
+      description: Method Not Allowed - Method is not allowed on this resource
+
+  schemas:
+    roles:
+      description: model for roles
+      type: object
+      properties:
+        lifecycle_id:
+          type: string
+          example: "cac8d0f0-ce96-421c-9327-a44e4703d26f"
+          readOnly: true
+        status:
+          type: string
+          example: "productive"
+          readOnly: true
+        version:
+          type: integer
+          example: 1
+          readOnly: true
+        valid:
+          type: boolean
+          example: true
+          readOnly: true
+        valid_from:
+          type: string
+          nullable: true
+          format: date-time
+          example: "2018-11-21T19:38:06.894442Z"
+        valid_to:
+          type: string
+          nullable: true
+          format: date-time
+          example: "2018-11-21T19:38:06.894442Z"
+        role:
+          type: string
+          example: "all"
+        permissions:
+          type: string
+          example: "ro.re,ro.wr,ro.de"
+      required:
+        - role
+
+    users:
+      description: model for users
+      type: object
+      properties:
+        lifecycle_id:
+          type: string
+          example: "cac8d0f0-ce96-421c-9327-a44e4703d26f"
+          readOnly: true
+        status:
+          type: string
+          example: "productive"
+          readOnly: true
+        version:
+          type: integer
+          example: 1
+          readOnly: true
+        valid:
+          type: boolean
+          example: true
+          readOnly: true
+        valid_from:
+          type: string
+          nullable: true
+          format: date-time
+          example: "2018-11-21T19:38:06.894442Z"
+        valid_to:
+          type: string
+          nullable: true
+          format: date-time
+          example: "2018-11-21T19:38:06.894442Z"
+        username:
+          type: string
+          example: "mustermannm"
+          readOnly: true
+        email:
+          type: string
+          example: "test@opengxp.org"
+        first_name:
+          type: string
+          example: "max"
+        last_name:
+          type: string
+          example: "mustermann"
+        initial_password:
+          type: boolean
+          example: true
+          readOnly: true
+        roles:
+          type: string
+          example: "all,superuser,editor"
+      required:
+        - first_name
+        - last_name
+        - roles
+
+  parameters:
+    csrftoken:
+      name: csrftoken
+      in: cookie
+      description: csrftoken
+      schema:
+        type: string
+      required: true
+
+    lifecycle_id:
+      name: lifecycle_id
+      in: path
+      description: lifecycle id (uuid) for all versions
+      schema:
+        type: string
+      required: true
+
+    version:
+      name: version
+      in: path
+      description: unique version
+      schema:
+        type: integer
+        minimum: 1
+      required: true
+
+    status:
+      name: status
+      in: path
+      description: object status (draft, circulation, productive, blocked, inactive, archived)
+      schema:
+        type: string
+      required: true
+
+security:
+  - bearerAuth: []
+
+paths:
+  /token/:
+    post:
+      description: Claim JWT
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/csrftoken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              description: username and password
+              type: object
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+      responses:
+        200:
+          description: JWT access and refresh
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  refresh:
+                    type: string
+                    example: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTU0MzE2NTcxMiwianRpIjoiODdlZGNhNDQ0ZDgyNDVkNjgwMGYxMDkwZDE4N2VkNjIiLCJ1c2VybmFtZSI6Im1heG11c3Rlcm1hbm4ifQ.rGSwTMLbjUY5aWFFKiRH8fZRidS_cKCG9CsP_z6fVuKm_hSrwsgzJtkR4Gqf83gAVsh0CGZyO0oT2xaGTblD2g
+                  access:
+                    type: string
+                    example: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNTQzMDc5NjEyLCJqdGkiOiIyMDIwNjQyMjFhZTA0MmJiYTBiNDQ5ZDAxYTZlMWVkOCIsInVzZXJuYW1lIjoibWF4bXVzdGVybWFubiJ9.zHvsx-tUCgbtFRdEmZRltMcT1cn2fXZBEsjn29PJTaGpP_lNmUT1w9iuVT357hcWWuYPPO7lRmd07Ih9Y-ZZSQ
+        400:
+          description: Invalid credentials
+
+  /status/:
+    get:
+      description: Optain a list of available status
+      responses:
+        200:
+          description: Successful pull of status
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    status:
+                      type: string
+                      example: "productive"
+                      readOnly: true
+                    valid:
+                      type: boolean
+                      example: true
+                      readOnly: true
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+  /permissions/:
+    get:
+      description: Optain a list of available permissions
+      responses:
+        200:
+          description: Successful pull of permissions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    key:
+                      type: string
+                      example: "ro.re"
+                      readOnly: true
+                    dialog:
+                      type: string
+                      example: "roles"
+                      readOnly: true
+                    permission:
+                      type: string
+                      example: "read"
+                      readOnly: true
+                    valid:
+                      type: boolean
+                      example: true
+                      readOnly: true
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+  /roles/:
+    get:
+      description: Optain a list of available roles
+      responses:
+        200:
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+              description: csrftoken
+          description: Sucessful pull of roles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/roles'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+    post:
+      description: Create a new role in status draft and version 1
+      parameters:
+        - $ref: '#/components/parameters/csrftoken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/roles'
+
+      responses:
+        201:
+          description: Successfully created a new role
+        400:
+          $ref: '#/components/responses/BadRequest'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+
+  /roles/{lifecycle_id}/:
+    get:
+      description: Obtain the audit trail of a role
+      parameters:
+        - $ref: '#/components/parameters/lifecycle_id'
+      responses:
+        200:
+          description: Successfully obtained the audit trail of a role
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+              description: csrftoken
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/roles'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+  /roles/{lifecycle_id}/{version}/:
+    get:
+      description: Obtain information about a specific role
+      parameters:
+        - $ref: '#/components/parameters/lifecycle_id'
+        - $ref: '#/components/parameters/version'
+      responses:
+        200:
+          description: Successful pull of single role
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+              description: csrftoken
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/roles'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+    post:
+      description: Create new version of roles in status productive, blocked, inactive or archived
+      parameters:
+        - $ref: '#/components/parameters/csrftoken'
+        - $ref: '#/components/parameters/lifecycle_id'
+        - $ref: '#/components/parameters/version'
+      responses:
+        200:
+          description: Successfully created a new version in status draft
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/roles'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      description: Copy an existing role and add a new role in status draft and version 1
+      parameters:
+        - $ref: '#/components/parameters/csrftoken'
+        - $ref: '#/components/parameters/lifecycle_id'
+        - $ref: '#/components/parameters/version'
+      responses:
+        200:
+          description: Successfully created a copy of an existing role in status draft and version 1
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/roles'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      description: Delete a role in status draft
+      parameters:
+        - $ref: '#/components/parameters/csrftoken'
+        - $ref: '#/components/parameters/lifecycle_id'
+        - $ref: '#/components/parameters/version'
+      responses:
+        204:
+          $ref: '#/components/responses/NoContent'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      description: Update a role in status draft
+      parameters:
+        - $ref: '#/components/parameters/csrftoken'
+        - $ref: '#/components/parameters/lifecycle_id'
+        - $ref: '#/components/parameters/version'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/roles'
+      responses:
+        200:
+          description: Successfully updated a role in status draft
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/roles'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+  /roles/{lifecycle_id}/{version}/{status}:
+    patch:
+      description: Change a status of a role
+      parameters:
+        - $ref: '#/components/parameters/csrftoken'
+        - $ref: '#/components/parameters/lifecycle_id'
+        - $ref: '#/components/parameters/version'
+        - $ref: '#/components/parameters/status'
+      responses:
+        200:
+          description: Successfully changed a role status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/roles'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+  /users/:
+    get:
+      description: Optain a list of available users
+      responses:
+        200:
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+              description: csrftoken
+          description: Sucessful pull of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/users'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+    post:
+      description: Create a new user in status draft and version 1
+      parameters:
+        - $ref: '#/components/parameters/csrftoken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/users'
+      responses:
+        201:
+          description: Successfully created a new user
+        400:
+          $ref: '#/components/responses/BadRequest'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+
+  /users/{lifecycle_id}/:
+    get:
+      description: Obtain the audit trail of a user
+      parameters:
+        - $ref: '#/components/parameters/lifecycle_id'
+      responses:
+        200:
+          description: Successfully obtained the audit trail of a user
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+              description: csrftoken
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/users'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+  /users/{lifecycle_id}/{version}/:
+    get:
+      description: Obtain information about a specific user
+      parameters:
+        - $ref: '#/components/parameters/lifecycle_id'
+        - $ref: '#/components/parameters/version'
+      responses:
+        200:
+          description: Successful pull of single user
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+              description: csrftoken
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/users'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+    post:
+      description: Create new version of users in status productive, blocked, inactive or archived
+      parameters:
+        - $ref: '#/components/parameters/csrftoken'
+        - $ref: '#/components/parameters/lifecycle_id'
+        - $ref: '#/components/parameters/version'
+      responses:
+        200:
+          description: Successfully created a new version in status draft
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/users'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      description: Copy an existing user and add a new user in status draft and version 1
+      parameters:
+        - $ref: '#/components/parameters/csrftoken'
+        - $ref: '#/components/parameters/lifecycle_id'
+        - $ref: '#/components/parameters/version'
+      responses:
+        200:
+          description: Successfully created a copy of an existing user in status draft and version 1
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/users'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      description: Delete a user in status draft
+      parameters:
+        - $ref: '#/components/parameters/csrftoken'
+        - $ref: '#/components/parameters/lifecycle_id'
+        - $ref: '#/components/parameters/version'
+      responses:
+        204:
+          $ref: '#/components/responses/NoContent'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      description: Update a user in status draft
+      parameters:
+        - $ref: '#/components/parameters/csrftoken'
+        - $ref: '#/components/parameters/lifecycle_id'
+        - $ref: '#/components/parameters/version'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/users'
+      responses:
+        200:
+          description: Successfully updated a user in status draft
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/users'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+  /users/{lifecycle_id}/{version}/{status}:
+    patch:
+      description: Change a status of a user
+      parameters:
+        - $ref: '#/components/parameters/csrftoken'
+        - $ref: '#/components/parameters/lifecycle_id'
+        - $ref: '#/components/parameters/version'
+        - $ref: '#/components/parameters/status'
+      responses:
+        200:
+          description: Successfully changed a user status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/users'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'

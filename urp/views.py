@@ -34,6 +34,7 @@ from .decorators import auth_required, perm_required
 
 # django imports
 from django.views.decorators.csrf import csrf_exempt, csrf_protect, requires_csrf_token, ensure_csrf_cookie
+from django.core.exceptions import ValidationError
 
 
 ########
@@ -57,7 +58,7 @@ def api_root(request, format=None):
 
 # GET list
 @api_view(['GET'])
-# @auth_required()
+@auth_required()
 def status_list(request, format=None):
     """
     List all status.
@@ -90,7 +91,7 @@ def status_detail(request, pk, format=None):
 
 # GET list
 @api_view(['GET'])
-# @auth_required()
+@auth_required()
 def permissions_list(request, format=None):
     """
     List all permissions.
@@ -165,6 +166,8 @@ def roles_detail(request, lifecycle_id, version, format=None):
         role = Roles.objects.get(lifecycle_id=lifecycle_id, version=version)
     except Roles.DoesNotExist:
         return Response(status=status.HTTP_404_NOT_FOUND)
+    except ValidationError:
+        return Response(status=status.HTTP_400_BAD_REQUEST)
 
     if request.method == 'GET':
         serializer = RolesReadSerializer(role)
