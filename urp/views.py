@@ -123,7 +123,7 @@ def permissions_detail(request, pk, format=None):
 
 # GET list
 @api_view(['GET', 'POST'])
-# @auth_required()
+@auth_required()
 @ensure_csrf_cookie
 def roles_list(request, format=None):
     """
@@ -147,7 +147,7 @@ def roles_list(request, format=None):
 
 # GET detail
 @api_view(['GET', 'PUT'])
-# @auth_required()
+@auth_required()
 @ensure_csrf_cookie
 def roles_detail(request, lifecycle_id, version, format=None):
     """
