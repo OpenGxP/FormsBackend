@@ -70,8 +70,14 @@ class Prerequisites(object):
         ext_client.credentials(HTTP_AUTHORIZATION='Bearer ' + response.data['access'])
 
     @staticmethod
-    def csrf(response):
+    def verify_csrf(response):
         return response.cookies['csrftoken']
+
+    @staticmethod
+    def get_csrf(ext_client, path):
+        response = ext_client.get(path, format='json')
+        assert response.status_code == status.HTTP_200_OK
+        return response.cookies['csrftoken'].value
 
 
 class Authenticate(APITestCase):
@@ -107,7 +113,7 @@ class GetStatus(APITestCase):
         self.prerequisites.status()
         self.prerequisites.users()
 
-    def test_status_authenticate_false(self):
+    def test_status_get_authenticate_false(self):
         # get API response
         response = self.client.get(reverse('status-list'), format='json')
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
@@ -135,7 +141,7 @@ class GetPermissions(APITestCase):
         self.prerequisites.users()
         self.prerequisites.permissions()
 
-    def test_permissions_authenticate_false(self):
+    def test_permissions_get_authenticate_false(self):
         # get API response
         response = self.client.get(reverse('permissions-list'), format='json')
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
@@ -164,7 +170,7 @@ class GetRoles(APITestCase):
         self.prerequisites.permissions()
         self.prerequisites.roles()
 
-    def test_roles_authenticate_false(self):
+    def test_roles_get_authenticate_false(self):
         # get API response
         response = self.client.get(reverse('roles-list'), format='json')
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
@@ -174,7 +180,7 @@ class GetRoles(APITestCase):
         self.prerequisites.auth(self.client)
         # get API response
         response = self.client.get(reverse('roles-list'), format='json')
-        self.assertIsNotNone(self.prerequisites.csrf(response))
+        self.assertIsNotNone(self.prerequisites.verify_csrf(response))
 
     def test_roles_get_all_positive(self):
         # authenticate
@@ -193,7 +199,7 @@ class GetRoles(APITestCase):
         # get API response
         path = '{}{}/{}'.format(reverse('roles-list'), self.prerequisites.role_uuid, self.prerequisites.role_version)
         response = self.client.get(path, format='json')
-        self.assertIsNotNone(self.prerequisites.csrf(response))
+        self.assertIsNotNone(self.prerequisites.verify_csrf(response))
 
     def test_roles_get_one_positive(self):
         # authenticate
@@ -230,3 +236,57 @@ class GetRoles(APITestCase):
         path = '{}{}/{}'.format(reverse('roles-list'), self.prerequisites.role_uuid, 'adasdw')
         response = self.client.get(path, format='json')
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
+class WriteRoles(APITestCase):
+    """Test module for get all permissions"""
+    def __init__(self, *args, **kwargs):
+        super(WriteRoles, self).__init__(*args, **kwargs)
+        self.prerequisites = Prerequisites()
+
+    def setUp(self):
+        self.client = APIClient(enforce_csrf_checks=True)
+        self.prerequisites.status()
+        self.prerequisites.users()
+        self.prerequisites.permissions()
+        self.prerequisites.roles()
+        self.valid_payload = {
+            'role': 'test'
+        }
+        self.invalid_payload = {
+            'role': ''
+        }
+
+    def test_roles_post_authenticate_false(self):
+        # get API response
+        response = self.client.post(reverse('roles-list'), data={'role': 'test'}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_roles_post_authenticate_positive_csrf_false(self):
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get API response
+        response = self.client.post(reverse('roles-list'), data={'role': 'test'}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_roles_post_false(self):
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client, reverse('roles-list'))
+        # get API response
+        response = self.client.post(reverse('roles-list'), data=self.invalid_payload, format='json',
+                                    HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_roles_post_positive(self):
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client, reverse('roles-list'))
+        # get API response
+        response = self.client.post(reverse('roles-list'), data=self.valid_payload, format='json',
+                                    HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['version'], 1)
+        self.assertEqual(response.data['status'], 'draft')
