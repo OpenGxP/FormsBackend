@@ -31,12 +31,15 @@ from ..models import Status, Permissions, Roles, Users
 from ..serializers import StatusReadSerializer, PermissionsReadSerializer, RolesReadSerializer
 
 
+ROLE_UUID = uuid.uuid4()
+USER_UUID = uuid.uuid4()
+
+
 class Prerequisites(object):
     def __init__(self):
-        self.token = uuid.uuid4()
-        self.role_uuid = uuid.uuid4()
+        self.role_uuid = ROLE_UUID
         self.role_version = 1
-        self.user_uuid = uuid.uuid4()
+        self.user_uuid = USER_UUID
         self.username = 'superuser'
         self.password = 'test1234'
         self.status_productive = None
@@ -290,3 +293,54 @@ class WriteRoles(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data['version'], 1)
         self.assertEqual(response.data['status'], 'draft')
+
+    def test_roles_post_new_version_authenticate_false(self):
+        # get API response
+        path = '{}{}/{}'.format(reverse('roles-list'), self.prerequisites.role_uuid, self.prerequisites.role_version)
+        response = self.client.post(path, format='json')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_roles_post_new_version_authenticate_positive_csrf_false(self):
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get API response
+        path = '{}{}/{}'.format(reverse('roles-list'), self.prerequisites.role_uuid, self.prerequisites.role_version)
+        response = self.client.post(path, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_roles_post_new_version_false_not_found(self):
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client, reverse('roles-list'))
+        # get API response
+        path = '{}{}/{}'.format(reverse('roles-list'), self.prerequisites.role_uuid, 2)
+        response = self.client.post(path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_roles_post_new_version_false_syntax_uuid(self):
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get API response
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client, reverse('roles-list'))
+        # get API response
+        path = '{}{}/{}'.format(reverse('roles-list'), '34faf5b2-02bb-4649-b1ef-', self.prerequisites.role_version)
+        response = self.client.post(path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_roles_post_new_version_positive(self):
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client, reverse('roles-list'))
+        # get API response
+        path = '{}{}/{}'.format(reverse('roles-list'), self.prerequisites.role_uuid, self.prerequisites.role_version)
+        response = self.client.post(path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['version'], 2)
+        self.assertEqual(response.data['lifecycle_id'], str(self.prerequisites.role_uuid))
+        self.assertEqual(response.data['status'], 'draft')
+        # second call for check that not a second version can be created
+        response = self.client.post(path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

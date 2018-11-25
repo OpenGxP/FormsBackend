@@ -102,7 +102,7 @@ class Roles(GlobalModel):
     HASH_SEQUENCE = ['role', 'status_id', 'version', 'valid_from', 'valid_to', 'permissions']
 
     class Meta:
-        unique_together = ('lifecycle_id', 'status', 'version')
+        unique_together = ('lifecycle_id', 'version')
 
 
 #########

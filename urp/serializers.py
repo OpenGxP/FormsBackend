@@ -47,14 +47,13 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         obj = model()
         hash_sequence = obj.HASH_SEQUENCE
         # check if new version or initial create
-        if self.new_version_check(validated_data):
-            lifecycle_id = validated_data['lifecycle_id']
-            version = validated_data['version']
-            old_obj = model.objects.get(lifecycle_id=lifecycle_id, version=version)
-            setattr(obj, 'lifecycle_id', lifecycle_id)
+        if self.context['function'] == 'new_version':
+            # lifecycle_id
+            setattr(obj, 'lifecycle_id', self.instance.lifecycle_id)
+            # version
             for attr in hash_sequence:
-                validated_data[attr] = getattr(old_obj, attr)
-            validated_data['version'] = version + 1
+                validated_data[attr] = getattr(self.instance, attr)
+            validated_data['version'] = self.instance.version + 1
         else:
             validated_data['version'] = 1
         # add default fields for new objects
@@ -76,6 +75,8 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
             if 'UNIQUE constraint' in e.args[0]:
                 raise serializers.ValidationError('Object already exists.')
         else:
+            # update instance in case of POST methods with initial instance (e.g. new version)
+            self.instance = obj
             return obj
 
     # update
@@ -95,21 +96,16 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         return instance
 
     def validate(self, data):
-        # verify if POST or PUT
-        try:
+        # verify if POST or PATCH
+        if self.context['method'] == 'PATCH':
             if self.instance.status.id != Status.objects.draft:
                 raise serializers.ValidationError('Updates are only permitted in status draft.')
-        except AttributeError:
-            if self.new_version_check(data):
-                model = getattr(getattr(self, 'Meta', None), 'model', None)
-                try:
-                    old_obj = model.objects.get(lifecycle_id=data['lifecycle_id'], version=data['version'])
-                except model.DoesNotExist:
-                    raise serializers.ValidationError('Cannot create new version of non-existing object.')
-                else:
-                    if old_obj.status.id == Status.objects.draft or old_obj.status.id == Status.objects.circulation:
-                        raise serializers.ValidationError('New versions can only be created in status productive, '
-                                                          'blocked, inactive or archived.')
+        elif self.context['method'] == 'POST':
+            if self.context['function'] == 'new_version':
+                if self.instance.status.id == Status.objects.draft or \
+                        self.instance.status.id == Status.objects.circulation:
+                    raise serializers.ValidationError('New versions can only be created in status productive, '
+                                                      'blocked, inactive or archived.')
         return data
 
 
@@ -158,6 +154,16 @@ class RolesWriteSerializer(GlobalReadWriteSerializer):
         model = Roles
         exclude = ('id', 'checksum', )
         extra_kwargs = {'version': {'required': False}}
+
+
+class RolesNewVersionSerializer(GlobalReadWriteSerializer):
+    status = serializers.CharField(source='get_status', read_only=True)
+
+    class Meta:
+        model = Roles
+        exclude = ('id', 'checksum', )
+        extra_kwargs = {'version': {'required': False},
+                        'role': {'required': False}}
 
 
 #########

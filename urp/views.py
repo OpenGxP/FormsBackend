@@ -29,7 +29,7 @@ from rest_framework.reverse import reverse
 # custom imports
 from .models import Status, Roles, Permissions, Users
 from .serializers import StatusReadSerializer, PermissionsReadSerializer, RolesReadSerializer, \
-    RolesWriteSerializer, UsersReadSerializer
+    RolesWriteSerializer, UsersReadSerializer, RolesNewVersionSerializer
 from .decorators import auth_required, perm_required
 
 # django imports
@@ -131,7 +131,10 @@ def roles_list(request, format=None):
     """
     @csrf_protect
     def post(_request):
-        _serializer = RolesWriteSerializer(data=_request.data)
+        # add version for new objects because of combined unique constraint
+        _request.data['version'] = 1
+        _serializer = RolesWriteSerializer(data=_request.data, context={'method': 'POST',
+                                                                        'function': 'new'})
         if _serializer.is_valid():
             _serializer.save()
             return Response(_serializer.data, status=status.HTTP_201_CREATED)
@@ -146,7 +149,7 @@ def roles_list(request, format=None):
 
 
 # GET detail
-@api_view(['GET', 'PUT'])
+@api_view(['GET', 'PATCH', 'POST'])
 @auth_required()
 @ensure_csrf_cookie
 def roles_detail(request, lifecycle_id, version, format=None):
@@ -155,11 +158,20 @@ def roles_detail(request, lifecycle_id, version, format=None):
     """
 
     @csrf_protect
-    def put(_request):
-        _serializer = RolesWriteSerializer(role, data=_request.data)
+    def patch(_request):
+        _serializer = RolesWriteSerializer(role, data=_request.data, context={'method': 'PATCH'})
         if _serializer.is_valid():
             _serializer.save()
             return Response(_serializer.data)
+        return Response(_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @csrf_protect
+    def post(_request):
+        _serializer = RolesNewVersionSerializer(role, data=_request.data, context={'method': 'POST',
+                                                                                   'function': 'new_version'})
+        if _serializer.is_valid():
+            _serializer.create(validated_data=_serializer.validated_data)
+            return Response(_serializer.data, status=status.HTTP_201_CREATED)
         return Response(_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     try:
@@ -173,8 +185,11 @@ def roles_detail(request, lifecycle_id, version, format=None):
         serializer = RolesReadSerializer(role)
         return Response(serializer.data)
 
-    elif request.method == 'PUT':
-        return put(request)
+    elif request.method == 'PATCH':
+        return patch(request)
+
+    elif request.method == 'POST':
+        return post(request)
 
 
 #########
