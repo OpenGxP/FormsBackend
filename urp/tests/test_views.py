@@ -16,9 +16,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-# python imports
-import uuid
-
 # django imports
 from django.urls import reverse
 
@@ -31,39 +28,13 @@ from ..models import Status, Permissions, Roles, Users
 from ..serializers import StatusReadSerializer, PermissionsReadSerializer, RolesReadSerializer
 
 
-ROLE_UUID = uuid.uuid4()
-USER_UUID = uuid.uuid4()
-
-
 class Prerequisites(object):
-    def __init__(self):
-        self.role_uuid = ROLE_UUID
-        self.role_version = 1
-        self.user_uuid = USER_UUID
+    def __init__(self, base_path=None):
         self.username = 'superuser'
         self.password = 'test1234'
-        self.status_productive = None
+        self.base_path = base_path
 
-    # status
-    def status(self):
-        Status.objects.create(status='draft', checksum='tbd')
-        Status.objects.create(status='circulation', checksum='tbd')
-        self.status_productive = Status.objects.create(status='productive', checksum='tbd').id
-        Status.objects.create(status='blocked', checksum='tbd')
-        Status.objects.create(status='inactive', checksum='tbd')
-        Status.objects.create(status='archived', checksum='tbd')
-
-    # permissions
-    @staticmethod
-    def permissions():
-        Permissions.objects.create(permission='read', key='ro.re', dialog='roles')
-
-    # roles
-    def roles(self):
-        Roles.objects.create(role='all', status_id=self.status_productive, checksum='tbd', version=self.role_version,
-                             lifecycle_id=self.role_uuid, permissions='ro.re')
-
-    def users(self):
+    def superuser(self):
         Users.objects.create_superuser(username=self.username, password=self.password)
 
     def auth(self, ext_client):
@@ -76,56 +47,62 @@ class Prerequisites(object):
     def verify_csrf(response):
         return response.cookies['csrftoken']
 
-    @staticmethod
-    def get_csrf(ext_client, path):
-        response = ext_client.get(path, format='json')
+    def get_csrf(self, ext_client):
+        response = ext_client.get(self.base_path, format='json')
         assert response.status_code == status.HTTP_200_OK
         return response.cookies['csrftoken'].value
 
 
 class Authenticate(APITestCase):
-    """Test module for authentication"""
     def __init__(self, *args, **kwargs):
         super(Authenticate, self).__init__(*args, **kwargs)
         self.prerequisites = Prerequisites()
+        self.path = reverse('token_obtain_pair')
+
+    fixtures = ['status', 'roles']
 
     def setUp(self):
-        self.prerequisites.status()
-        self.prerequisites.users()
+        self.prerequisites.superuser()
 
-    def test_authenticate_false(self):
+    def test_400(self):
         # get API response
         data = {'username': 'asdasdasd', 'password': 'sadasdasd'}
-        response = self.client.post(reverse('token_obtain_pair'), data=data, format='json')
+        response = self.client.post(self.path, data=data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    def test_authenticate_positive(self):
+    def test_200(self):
         # get API response
         data = {'username': self.prerequisites.username, 'password': self.prerequisites.password}
-        response = self.client.post(reverse('token_obtain_pair'), data=data, format='json')
+        response = self.client.post(self.path, data=data, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
 
+############
+# /status/ #
+############
+
+# get
 class GetStatus(APITestCase):
-    """Test module for get all status"""
     def __init__(self, *args, **kwargs):
         super(GetStatus, self).__init__(*args, **kwargs)
+        self.path = reverse('status-list')
         self.prerequisites = Prerequisites()
 
-    def setUp(self):
-        self.prerequisites.status()
-        self.prerequisites.users()
+    fixtures = ['status']
 
-    def test_status_get_authenticate_false(self):
+    def setUp(self):
+        self.prerequisites.superuser()
+
+    def test_401(self):
         # get API response
-        response = self.client.get(reverse('status-list'), format='json')
+        response = self.client.get(self.path, format='json')
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
-    def test_status_get_all_positive(self):
+    def test_200(self):
         # authenticate
         self.prerequisites.auth(self.client)
         # get API response
-        response = self.client.get(reverse('status-list'), format='json')
+        response = self.client.get(self.path, format='json')
         # get data from db
         query = Status.objects.all()
         serializer = StatusReadSerializer(query, many=True)
@@ -133,27 +110,32 @@ class GetStatus(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
 
+#################
+# /permissions/ #
+#################
+
+# get
 class GetPermissions(APITestCase):
-    """Test module for get all permissions"""
     def __init__(self, *args, **kwargs):
         super(GetPermissions, self).__init__(*args, **kwargs)
+        self.path = reverse('permissions-list')
         self.prerequisites = Prerequisites()
 
-    def setUp(self):
-        self.prerequisites.status()
-        self.prerequisites.users()
-        self.prerequisites.permissions()
+    fixtures = ['status', 'permissions']
 
-    def test_permissions_get_authenticate_false(self):
+    def setUp(self):
+        self.prerequisites.superuser()
+
+    def test_401(self):
         # get API response
-        response = self.client.get(reverse('permissions-list'), format='json')
+        response = self.client.get(self.path, format='json')
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
-    def test_permissions_get_all_positive(self):
+    def test_200(self):
         # authenticate
         self.prerequisites.auth(self.client)
         # get API response
-        response = self.client.get(reverse('permissions-list'), format='json')
+        response = self.client.get(self.path, format='json')
         # get data from db
         query = Permissions.objects.all()
         serializer = PermissionsReadSerializer(query, many=True)
@@ -161,98 +143,59 @@ class GetPermissions(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
 
+############
+# /roles/ #
+############
+
+# get
 class GetRoles(APITestCase):
-    """Test module for get all permissions"""
     def __init__(self, *args, **kwargs):
         super(GetRoles, self).__init__(*args, **kwargs)
+        self.path = reverse('roles-list')
         self.prerequisites = Prerequisites()
 
-    def setUp(self):
-        self.prerequisites.status()
-        self.prerequisites.users()
-        self.prerequisites.permissions()
-        self.prerequisites.roles()
+    fixtures = ['status', 'roles']
 
-    def test_roles_get_authenticate_false(self):
+    def setUp(self):
+        self.prerequisites.superuser()
+
+    def test_401(self):
         # get API response
-        response = self.client.get(reverse('roles-list'), format='json')
+        response = self.client.get(self.path, format='json')
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
-    def test_roles_get_all_csrf_positive(self):
+    # test to verify that response includes csrf token
+    def test_200_csrf(self):
         # authenticate
         self.prerequisites.auth(self.client)
         # get API response
-        response = self.client.get(reverse('roles-list'), format='json')
+        response = self.client.get(self.path, format='json')
         self.assertIsNotNone(self.prerequisites.verify_csrf(response))
 
-    def test_roles_get_all_positive(self):
+    def test_200(self):
         # authenticate
         self.prerequisites.auth(self.client)
         # get API response
-        response = self.client.get(reverse('roles-list'), format='json')
+        response = self.client.get(self.path, format='json')
         # get data from db
         query = Roles.objects.all()
         serializer = RolesReadSerializer(query, many=True)
         self.assertEqual(response.data, serializer.data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-    def test_roles_get_one_csrf_positive(self):
-        # authenticate
-        self.prerequisites.auth(self.client)
-        # get API response
-        path = '{}{}/{}'.format(reverse('roles-list'), self.prerequisites.role_uuid, self.prerequisites.role_version)
-        response = self.client.get(path, format='json')
-        self.assertIsNotNone(self.prerequisites.verify_csrf(response))
 
-    def test_roles_get_one_positive(self):
-        # authenticate
-        self.prerequisites.auth(self.client)
-        # get API response
-        path = '{}{}/{}'.format(reverse('roles-list'), self.prerequisites.role_uuid, self.prerequisites.role_version)
-        response = self.client.get(path, format='json')
-        # get data from db
-        query = Roles.objects.get(lifecycle_id=self.prerequisites.role_uuid, version=self.prerequisites.role_version)
-        serializer = RolesReadSerializer(query)
-        self.assertEqual(response.data, serializer.data)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-    def test_roles_get_one_false_not_found(self):
-        # authenticate
-        self.prerequisites.auth(self.client)
-        # get API response
-        path = '{}{}/{}'.format(reverse('roles-list'), self.prerequisites.role_uuid, 2)
-        response = self.client.get(path, format='json')
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-
-    def test_roles_get_one_false_syntax_uuid(self):
-        # authenticate
-        self.prerequisites.auth(self.client)
-        # get API response
-        path = '{}{}/{}'.format(reverse('roles-list'), '34faf5b2-02bb-4649-b1ef-', self.prerequisites.role_version)
-        response = self.client.get(path, format='json')
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-    def test_roles_get_one_false_syntax_version(self):
-        # authenticate
-        self.prerequisites.auth(self.client)
-        # get API response
-        path = '{}{}/{}'.format(reverse('roles-list'), self.prerequisites.role_uuid, 'adasdw')
-        response = self.client.get(path, format='json')
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-
-
-class WriteRoles(APITestCase):
-    """Test module for get all permissions"""
+# post
+class PostRoles(APITestCase):
     def __init__(self, *args, **kwargs):
-        super(WriteRoles, self).__init__(*args, **kwargs)
-        self.prerequisites = Prerequisites()
+        super(PostRoles, self).__init__(*args, **kwargs)
+        self.path = reverse('roles-list')
+        self.prerequisites = Prerequisites(base_path=self.path)
+
+    fixtures = ['status', 'permissions', 'roles']
 
     def setUp(self):
         self.client = APIClient(enforce_csrf_checks=True)
-        self.prerequisites.status()
-        self.prerequisites.users()
-        self.prerequisites.permissions()
-        self.prerequisites.roles()
+        self.prerequisites.superuser()
         self.valid_payload = {
             'role': 'test'
         }
@@ -260,87 +203,283 @@ class WriteRoles(APITestCase):
             'role': ''
         }
 
-    def test_roles_post_authenticate_false(self):
+    def test_401e(self):
         # get API response
-        response = self.client.post(reverse('roles-list'), data={'role': 'test'}, format='json')
+        response = self.client.post(self.path, data=self.valid_payload, format='json')
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
-    def test_roles_post_authenticate_positive_csrf_false(self):
+    def test_403_csrf(self):
         # authenticate
         self.prerequisites.auth(self.client)
         # get API response
-        response = self.client.post(reverse('roles-list'), data={'role': 'test'}, format='json')
+        response = self.client.post(self.path, data=self.valid_payload, format='json')
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_roles_post_false(self):
+    def test_400(self):
         # authenticate
         self.prerequisites.auth(self.client)
         # get csrf
-        csrf_token = self.prerequisites.get_csrf(self.client, reverse('roles-list'))
+        csrf_token = self.prerequisites.get_csrf(self.client)
         # get API response
-        response = self.client.post(reverse('roles-list'), data=self.invalid_payload, format='json',
-                                    HTTP_X_CSRFTOKEN=csrf_token)
+        response = self.client.post(self.path, data=self.invalid_payload, format='json', HTTP_X_CSRFTOKEN=csrf_token)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    def test_roles_post_positive(self):
+    def test_200(self):
         # authenticate
         self.prerequisites.auth(self.client)
         # get csrf
-        csrf_token = self.prerequisites.get_csrf(self.client, reverse('roles-list'))
+        csrf_token = self.prerequisites.get_csrf(self.client)
         # get API response
-        response = self.client.post(reverse('roles-list'), data=self.valid_payload, format='json',
-                                    HTTP_X_CSRFTOKEN=csrf_token)
+        response = self.client.post(self.path, data=self.valid_payload, format='json', HTTP_X_CSRFTOKEN=csrf_token)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data['version'], 1)
         self.assertEqual(response.data['status'], 'draft')
 
-    def test_roles_post_new_version_authenticate_false(self):
+
+####################################
+# /roles/{lifecycle_id}/{version}/ #
+####################################
+
+# get
+class GetRolesLifecycleIdVersion(APITestCase):
+    def __init__(self, *args, **kwargs):
+        super(GetRolesLifecycleIdVersion, self).__init__(*args, **kwargs)
+        self.base_path = reverse('roles-list')
+        self.prerequisites = Prerequisites()
+
+    fixtures = ['status', 'permissions', 'roles']
+
+    def setUp(self):
+        self.prerequisites.superuser()
+        self.role_lifecycle = Roles.objects.filter(role='all').get().lifecycle_id
+        self.role_version = 1
+        self.path = '{}{}/{}'.format(self.base_path, self.role_lifecycle, self.role_version)
+
+    def test_401(self):
         # get API response
-        path = '{}{}/{}'.format(reverse('roles-list'), self.prerequisites.role_uuid, self.prerequisites.role_version)
-        response = self.client.post(path, format='json')
+        response = self.client.get(self.path, format='json')
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
-    def test_roles_post_new_version_authenticate_positive_csrf_false(self):
+    def test_200_csrf(self):
         # authenticate
         self.prerequisites.auth(self.client)
         # get API response
-        path = '{}{}/{}'.format(reverse('roles-list'), self.prerequisites.role_uuid, self.prerequisites.role_version)
-        response = self.client.post(path, format='json')
+        response = self.client.get(self.path, format='json')
+        self.assertIsNotNone(self.prerequisites.verify_csrf(response))
+
+    def test_200(self):
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get API response
+        response = self.client.get(self.path, format='json')
+        # get data from db
+        query = Roles.objects.get(lifecycle_id=self.role_lifecycle, version=self.role_version)
+        serializer = RolesReadSerializer(query)
+        self.assertEqual(response.data, serializer.data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_404_version(self):
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get API response
+        path = '{}{}/{}'.format(self.base_path, self.role_lifecycle, 2)
+        response = self.client.get(path, format='json')
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_404_lifecycle(self):
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get API response
+        path = '{}{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f', self.role_version)
+        response = self.client.get(path, format='json')
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
+# post
+class PostRolesLifecycleIdVersion(APITestCase):
+    """Test module for get all permissions"""
+    def __init__(self, *args, **kwargs):
+        super(PostRolesLifecycleIdVersion, self).__init__(*args, **kwargs)
+        self.base_path = reverse('roles-list')
+        self.prerequisites = Prerequisites(base_path=self.base_path)
+
+    fixtures = ['status', 'permissions', 'roles']
+
+    def setUp(self):
+        self.client = APIClient(enforce_csrf_checks=True)
+        self.prerequisites.superuser()
+        self.role_lifecycle = Roles.objects.filter(role='all').get().lifecycle_id
+        self.role_version = 1
+        self.path = '{}{}/{}'.format(self.base_path, self.role_lifecycle, self.role_version)
+
+        # role in draft for 400 new version
+        self.role_draft_lifecycle = Roles.objects.create(role='draft', version=self.role_version,
+                                                         status_id=Status.objects.draft).lifecycle_id
+        # role in circulation for 400 new version
+        self.role_circulation_lifecycle = Roles.objects.create(role='circulation', version=self.role_version,
+                                                               status_id=Status.objects.circulation).lifecycle_id
+
+    def test_401(self):
+        # get API response
+        response = self.client.post(self.path, format='json')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_403_csrf(self):
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get API response
+        response = self.client.post(self.path, format='json')
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_roles_post_new_version_false_not_found(self):
+    def test_404_version(self):
         # authenticate
         self.prerequisites.auth(self.client)
         # get csrf
-        csrf_token = self.prerequisites.get_csrf(self.client, reverse('roles-list'))
+        csrf_token = self.prerequisites.get_csrf(self.client)
         # get API response
-        path = '{}{}/{}'.format(reverse('roles-list'), self.prerequisites.role_uuid, 2)
+        path = '{}{}/{}'.format(self.base_path, self.role_lifecycle, 2)
         response = self.client.post(path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
-    def test_roles_post_new_version_false_syntax_uuid(self):
+    def test_404_lifecycle(self):
         # authenticate
         self.prerequisites.auth(self.client)
-        # get API response
         # get csrf
-        csrf_token = self.prerequisites.get_csrf(self.client, reverse('roles-list'))
+        csrf_token = self.prerequisites.get_csrf(self.client)
         # get API response
-        path = '{}{}/{}'.format(reverse('roles-list'), '34faf5b2-02bb-4649-b1ef-', self.prerequisites.role_version)
+        path = '{}{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f', self.role_version)
+        response = self.client.post(path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_201(self):
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get API response
+        response = self.client.post(self.path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['version'], 2)
+        self.assertEqual(response.data['lifecycle_id'], str(self.role_lifecycle))
+        self.assertEqual(response.data['status'], 'draft')
+
+    def test_400_second(self):
+        # first add a new version
+        self.test_201()
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # second call for check that not a second version can be created
+        response = self.client.post(self.path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_400_draft(self):
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get API response
+        path = '{}{}/{}'.format(self.base_path, self.role_draft_lifecycle, self.role_version)
         response = self.client.post(path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    def test_roles_post_new_version_positive(self):
+    def test_400_circulation(self):
         # authenticate
         self.prerequisites.auth(self.client)
         # get csrf
-        csrf_token = self.prerequisites.get_csrf(self.client, reverse('roles-list'))
+        csrf_token = self.prerequisites.get_csrf(self.client)
         # get API response
-        path = '{}{}/{}'.format(reverse('roles-list'), self.prerequisites.role_uuid, self.prerequisites.role_version)
-        response = self.client.post(path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data['version'], 2)
-        self.assertEqual(response.data['lifecycle_id'], str(self.prerequisites.role_uuid))
-        self.assertEqual(response.data['status'], 'draft')
-        # second call for check that not a second version can be created
+        path = '{}{}/{}'.format(self.base_path, self.role_circulation_lifecycle, self.role_version)
         response = self.client.post(path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+# delete
+class DeleteRolesLifecycleIdVersion(APITestCase):
+    """Test module for get all permissions"""
+    def __init__(self, *args, **kwargs):
+        super(DeleteRolesLifecycleIdVersion, self).__init__(*args, **kwargs)
+        self.base_path = reverse('roles-list')
+        self.prerequisites = Prerequisites(base_path=self.base_path)
+
+    fixtures = ['status', 'permissions', 'roles']
+
+    def setUp(self):
+        self.client = APIClient(enforce_csrf_checks=True)
+        self.prerequisites.superuser()
+        self.role_lifecycle = Roles.objects.filter(role='all').get().lifecycle_id
+        self.role_version = 1
+        self.path = '{}{}/{}'.format(self.base_path, self.role_lifecycle, self.role_version)
+
+        # role in draft for 400 delete
+        self.role_400_status = []
+        self.role_draft_lifecycle = Roles.objects.create(role='draft', version=self.role_version,
+                                                         status_id=Status.objects.draft).lifecycle_id
+        self.role_400_status.append(self.role_draft_lifecycle)
+        self.role_400_status.append(self.role_lifecycle)
+        # role in circulation for 400 delete
+        self.role_400_status.append(Roles.objects.create(role='circulation', version=self.role_version,
+                                                         status_id=Status.objects.circulation).lifecycle_id)
+        # role in blocked for 400 delete
+        self.role_400_status.append(Roles.objects.create(role='blocked', version=self.role_version,
+                                                         status_id=Status.objects.blocked).lifecycle_id)
+        # role in inactive for 400 delete
+        self.role_400_status.append(Roles.objects.create(role='inactive', version=self.role_version,
+                                                         status_id=Status.objects.inactive).lifecycle_id)
+        # role in archived for 400 delete
+        self.role_400_status.append(Roles.objects.create(role='archived', version=self.role_version,
+                                                         status_id=Status.objects.archived).lifecycle_id)
+
+    def test_401(self):
+        # get API response
+        response = self.client.delete(self.path, format='json')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_403_csrf(self):
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get API response
+        response = self.client.delete(self.path, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_404_version(self):
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get API response
+        path = '{}{}/{}'.format(self.base_path, self.role_lifecycle, 2)
+        response = self.client.delete(path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_404_lifecycle(self):
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get API response
+        path = '{}{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f', self.role_version)
+        response = self.client.delete(path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_204(self):
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get API response
+        path = '{}{}/{}'.format(self.base_path, self.role_draft_lifecycle, self.role_version)
+        response = self.client.post(path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_400(self):
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get API response
+        for role in self.role_400_status:
+            path = '{}{}/{}'.format(self.base_path, role, self.role_version)
+            response = self.client.post(path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

@@ -104,6 +104,18 @@ class StatusManager(GlobalManager):
     def productive(self):
         return self.filter(status='productive').get().id
 
+    @property
+    def blocked(self):
+        return self.filter(status='blocked').get().id
+
+    @property
+    def inactive(self):
+        return self.filter(status='inactive').get().id
+
+    @property
+    def archived(self):
+        return self.filter(status='archived').get().id
+
 
 # table
 class Status(GlobalModel):
