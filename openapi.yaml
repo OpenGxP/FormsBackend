@@ -246,8 +246,6 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
-        404:
-          $ref: '#/components/responses/NotFound'
 
   /permissions/:
     get:
@@ -281,8 +279,6 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
-        404:
-          $ref: '#/components/responses/NotFound'
 
   /roles/:
     get:
@@ -305,8 +301,6 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
-        404:
-          $ref: '#/components/responses/NotFound'
 
     post:
       description: Create a new role in status draft and version 1
