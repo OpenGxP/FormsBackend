@@ -416,7 +416,6 @@ class DeleteRolesLifecycleIdVersion(APITestCase):
         self.role_400_status = []
         self.role_draft_lifecycle = Roles.objects.create(role='draft', version=self.role_version,
                                                          status_id=Status.objects.draft).lifecycle_id
-        self.role_400_status.append(self.role_draft_lifecycle)
         self.role_400_status.append(self.role_lifecycle)
         # role in circulation for 400 delete
         self.role_400_status.append(Roles.objects.create(role='circulation', version=self.role_version,
@@ -470,8 +469,14 @@ class DeleteRolesLifecycleIdVersion(APITestCase):
         csrf_token = self.prerequisites.get_csrf(self.client)
         # get API response
         path = '{}{}/{}'.format(self.base_path, self.role_draft_lifecycle, self.role_version)
-        response = self.client.post(path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        response = self.client.delete(path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        # verify that role is deleted
+        try:
+            Roles.objects.get(lifecycle_id=self.role_draft_lifecycle, version=self.role_version)
+            raise AssertionError('Role not deleted.')
+        except Roles.DoesNotExist:
+            pass
 
     def test_400(self):
         # authenticate
@@ -481,5 +486,5 @@ class DeleteRolesLifecycleIdVersion(APITestCase):
         # get API response
         for role in self.role_400_status:
             path = '{}{}/{}'.format(self.base_path, role, self.role_version)
-            response = self.client.post(path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            response = self.client.delete(path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

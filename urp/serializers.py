@@ -95,6 +95,10 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
+    def delete(self):
+        # get meta model assigned in custom serializer
+        self.instance.delete()
+
     def validate(self, data):
         # verify if POST or PATCH
         if self.context['method'] == 'PATCH':
@@ -106,6 +110,9 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                         self.instance.status.id == Status.objects.circulation:
                     raise serializers.ValidationError('New versions can only be created in status productive, '
                                                       'blocked, inactive or archived.')
+        elif self.context['method'] == 'DELETE':
+            if self.instance.status.id != Status.objects.draft:
+                raise serializers.ValidationError('Delete is only permitted in status draft.')
         return data
 
 
@@ -156,7 +163,7 @@ class RolesWriteSerializer(GlobalReadWriteSerializer):
         extra_kwargs = {'version': {'required': False}}
 
 
-class RolesNewVersionSerializer(GlobalReadWriteSerializer):
+class RolesNewVersionDeleteSerializer(GlobalReadWriteSerializer):
     status = serializers.CharField(source='get_status', read_only=True)
 
     class Meta:

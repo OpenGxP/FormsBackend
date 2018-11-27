@@ -17,9 +17,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 
-# python imports
-import uuid
-
 # rest imports
 from rest_framework.response import Response
 from rest_framework import status
@@ -29,11 +26,11 @@ from rest_framework.reverse import reverse
 # custom imports
 from .models import Status, Roles, Permissions, Users
 from .serializers import StatusReadSerializer, PermissionsReadSerializer, RolesReadSerializer, \
-    RolesWriteSerializer, UsersReadSerializer, RolesNewVersionSerializer
-from .decorators import auth_required, perm_required
+    RolesWriteSerializer, UsersReadSerializer, RolesNewVersionDeleteSerializer
+from .decorators import auth_required
 
 # django imports
-from django.views.decorators.csrf import csrf_exempt, csrf_protect, requires_csrf_token, ensure_csrf_cookie
+from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
 from django.core.exceptions import ValidationError
 
 
@@ -149,7 +146,7 @@ def roles_list(request, format=None):
 
 
 # GET detail
-@api_view(['GET', 'PATCH', 'POST'])
+@api_view(['GET', 'PATCH', 'POST', 'DELETE'])
 @auth_required()
 @ensure_csrf_cookie
 def roles_detail(request, lifecycle_id, version, format=None):
@@ -167,11 +164,19 @@ def roles_detail(request, lifecycle_id, version, format=None):
 
     @csrf_protect
     def post(_request):
-        _serializer = RolesNewVersionSerializer(role, data=_request.data, context={'method': 'POST',
-                                                                                   'function': 'new_version'})
+        _serializer = RolesNewVersionDeleteSerializer(role, data=_request.data, context={'method': 'POST',
+                                                                                         'function': 'new_version'})
         if _serializer.is_valid():
             _serializer.create(validated_data=_serializer.validated_data)
             return Response(_serializer.data, status=status.HTTP_201_CREATED)
+        return Response(_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @csrf_protect
+    def delete(_request):
+        _serializer = RolesNewVersionDeleteSerializer(role, data={}, context={'method': 'DELETE'})
+        if _serializer.is_valid():
+            _serializer.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
         return Response(_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     try:
@@ -190,6 +195,9 @@ def roles_detail(request, lifecycle_id, version, format=None):
 
     elif request.method == 'POST':
         return post(request)
+
+    elif request.method == 'DELETE':
+        return delete(request)
 
 
 #########

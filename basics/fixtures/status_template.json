@@ -13,4 +13,12 @@
   "model": "basics.status",
   "fields": {
     "status": "blocked"
+  }}, {
+  "model": "basics.status",
+  "fields": {
+    "status": "inactive"
+  }}, {
+  "model": "basics.status",
+  "fields": {
+    "status": "archived"
   }}]
