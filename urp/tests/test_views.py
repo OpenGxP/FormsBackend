@@ -203,7 +203,7 @@ class PostRoles(APITestCase):
             'role': ''
         }
 
-    def test_401e(self):
+    def test_401(self):
         # get API response
         response = self.client.post(self.path, data=self.valid_payload, format='json')
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
@@ -224,7 +224,7 @@ class PostRoles(APITestCase):
         response = self.client.post(self.path, data=self.invalid_payload, format='json', HTTP_X_CSRFTOKEN=csrf_token)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    def test_200(self):
+    def test_201(self):
         # authenticate
         self.prerequisites.auth(self.client)
         # get csrf
@@ -488,3 +488,111 @@ class DeleteRolesLifecycleIdVersion(APITestCase):
             path = '{}{}/{}'.format(self.base_path, role, self.role_version)
             response = self.client.delete(path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+# patch
+class PatchRolesLifecycleIdVersion(APITestCase):
+    """Test module for get all permissions"""
+    def __init__(self, *args, **kwargs):
+        super(PatchRolesLifecycleIdVersion, self).__init__(*args, **kwargs)
+        self.base_path = reverse('roles-list')
+        self.prerequisites = Prerequisites(base_path=self.base_path)
+        self.valid_payload = {
+            'role': 'new_role'
+        }
+        self.invalid_payload = {
+            'role': ''
+        }
+
+    fixtures = ['status', 'permissions', 'roles']
+
+    def setUp(self):
+        self.client = APIClient(enforce_csrf_checks=True)
+        self.prerequisites.superuser()
+        self.role_lifecycle = Roles.objects.filter(role='all').get().lifecycle_id
+        self.role_version = 1
+        self.path = '{}{}/{}'.format(self.base_path, self.role_lifecycle, self.role_version)
+
+        # role in draft for 400 delete
+        self.role_400_status = []
+        self.role_draft_lifecycle = Roles.objects.create(role='draft', version=self.role_version,
+                                                         status_id=Status.objects.draft).lifecycle_id
+        self.role_400_status.append(self.role_lifecycle)
+        # role in circulation for 400 delete
+        self.role_400_status.append(Roles.objects.create(role='circulation', version=self.role_version,
+                                                         status_id=Status.objects.circulation).lifecycle_id)
+        # role in blocked for 400 delete
+        self.role_400_status.append(Roles.objects.create(role='blocked', version=self.role_version,
+                                                         status_id=Status.objects.blocked).lifecycle_id)
+        # role in inactive for 400 delete
+        self.role_400_status.append(Roles.objects.create(role='inactive', version=self.role_version,
+                                                         status_id=Status.objects.inactive).lifecycle_id)
+        # role in archived for 400 delete
+        self.role_400_status.append(Roles.objects.create(role='archived', version=self.role_version,
+                                                         status_id=Status.objects.archived).lifecycle_id)
+
+    def test_401(self):
+        # get API response
+        response = self.client.patch(self.path, data=self.valid_payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_403_csrf(self):
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get API response
+        response = self.client.delete(self.path, data=self.valid_payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_404_version(self):
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get API response
+        path = '{}{}/{}'.format(self.base_path, self.role_lifecycle, 2)
+        response = self.client.patch(path, data=self.valid_payload, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_404_lifecycle(self):
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get API response
+        path = '{}{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f', self.role_version)
+        response = self.client.patch(path, data=self.valid_payload, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_400_status(self):
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get API response
+        for role in self.role_400_status:
+            path = '{}{}/{}'.format(self.base_path, role, self.role_version)
+            response = self.client.patch(path, data=self.valid_payload, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_400_data(self):
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get API response
+        path = '{}{}/{}'.format(self.base_path, self.role_draft_lifecycle, self.role_version)
+        response = self.client.patch(path, data=self.invalid_payload, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_200(self):
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get API response
+        path = '{}{}/{}'.format(self.base_path, self.role_draft_lifecycle, self.role_version)
+        response = self.client.patch(path, data=self.valid_payload, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+        query = Roles.objects.filter(lifecycle_id=self.role_draft_lifecycle, version=self.role_version).get()
+        serializer = RolesReadSerializer(query)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, serializer.data)
