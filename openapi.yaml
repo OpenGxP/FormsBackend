@@ -178,7 +178,7 @@ components:
     status:
       name: status
       in: path
-      description: object status (draft, circulation, productive, blocked, inactive, archived)
+      description: object status (circulation, productive, blocked, inactive, archived)
       schema:
         type: string
       required: true
