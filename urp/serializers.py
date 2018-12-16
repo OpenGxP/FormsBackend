@@ -102,8 +102,23 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
     def validate(self, data):
         # verify if POST or PATCH
         if self.context['method'] == 'PATCH':
-            if self.instance.status.id != Status.objects.draft:
-                raise serializers.ValidationError('Updates are only permitted in status draft.')
+            if 'function' in self.context.keys():
+                if self.context['function'] == 'status_change':
+                    if self.context['status'] == 'draft':
+                        raise serializers.ValidationError('Draft can not be set as a status. Use new version or new.')
+                    if self.instance.status.id == Status.objects.draft:
+                        if self.context['status'] != 'circulation':
+                            raise serializers.ValidationError('Circulation can only be started from status draft.')
+                    elif self.instance.status.id == Status.objects.circulation:
+                        if self.context['status'] != 'productive':
+                            raise serializers.ValidationError('Set productive can only origin from status circulation.')
+                    elif self.instance.status.id == Status.objects.productive:
+                        if self.context['status'] == 'productive' or self.context['status'] == 'circulation':
+                            raise serializers.ValidationError('Circulation and  set productive can not origin from '
+                                                              'status productive.')
+            else:
+                if self.instance.status.id != Status.objects.draft:
+                    raise serializers.ValidationError('Updates are only permitted in status draft.')
         elif self.context['method'] == 'POST':
             if self.context['function'] == 'new_version':
                 if self.instance.status.id == Status.objects.draft or \

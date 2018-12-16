@@ -26,7 +26,7 @@ from django.urls import path
 
 # app imports
 from .views import permissions_list, permissions_detail, status_list, status_detail, roles_list, roles_detail, \
-    users_list, users_detail, api_root
+    roles_status, users_list, users_detail, api_root
 
 
 urlpatterns = [
@@ -39,6 +39,7 @@ urlpatterns = [
     # roles
     path('roles/', roles_list, name='roles-list'),
     path('roles/<str:lifecycle_id>/<int:version>', roles_detail),
+    path('roles/<str:lifecycle_id>/<int:version>/<str:status>', roles_status, name='roles-status'),
     # users
     path('users/', users_list, name='users-list'),
     path('users/<int:pk>/', users_detail),

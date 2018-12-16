@@ -19,7 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # rest imports
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import status as http_status
 from rest_framework.decorators import api_view
 from rest_framework.reverse import reverse
 
@@ -76,7 +76,7 @@ def status_detail(request, pk, format=None):
     try:
         stat = Status.objects.get(pk=pk)
     except Status.DoesNotExist:
-        return Response(status=status.HTTP_404_NOT_FOUND)
+        return Response(status=http_status.HTTP_404_NOT_FOUND)
 
     serializer = StatusReadSerializer(stat)
     return Response(serializer.data)
@@ -108,7 +108,7 @@ def permissions_detail(request, pk, format=None):
     try:
         perm = Permissions.objects.get(pk=pk)
     except Permissions.DoesNotExist:
-        return Response(status=status.HTTP_404_NOT_FOUND)
+        return Response(status=http_status.HTTP_404_NOT_FOUND)
 
     serializer = PermissionsReadSerializer(perm)
     return Response(serializer.data)
@@ -134,8 +134,8 @@ def roles_list(request, format=None):
                                                                         'function': 'new'})
         if _serializer.is_valid():
             _serializer.save()
-            return Response(_serializer.data, status=status.HTTP_201_CREATED)
-        return Response(_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response(_serializer.data, status=http_status.HTTP_201_CREATED)
+        return Response(_serializer.errors, status=http_status.HTTP_400_BAD_REQUEST)
 
     if request.method == 'GET':
         roles = Roles.objects.all()
@@ -160,7 +160,7 @@ def roles_detail(request, lifecycle_id, version, format=None):
         if _serializer.is_valid():
             _serializer.save()
             return Response(_serializer.data)
-        return Response(_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response(_serializer.errors, status=http_status.HTTP_400_BAD_REQUEST)
 
     @csrf_protect
     def post(_request):
@@ -168,23 +168,23 @@ def roles_detail(request, lifecycle_id, version, format=None):
                                                                                          'function': 'new_version'})
         if _serializer.is_valid():
             _serializer.create(validated_data=_serializer.validated_data)
-            return Response(_serializer.data, status=status.HTTP_201_CREATED)
-        return Response(_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response(_serializer.data, status=http_status.HTTP_201_CREATED)
+        return Response(_serializer.errors, status=http_status.HTTP_400_BAD_REQUEST)
 
     @csrf_protect
     def delete(_request):
         _serializer = RolesNewVersionDeleteSerializer(role, data={}, context={'method': 'DELETE'})
         if _serializer.is_valid():
             _serializer.delete()
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        return Response(_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response(status=http_status.HTTP_204_NO_CONTENT)
+        return Response(_serializer.errors, status=http_status.HTTP_400_BAD_REQUEST)
 
     try:
         role = Roles.objects.get(lifecycle_id=lifecycle_id, version=version)
     except Roles.DoesNotExist:
-        return Response(status=status.HTTP_404_NOT_FOUND)
+        return Response(status=http_status.HTTP_404_NOT_FOUND)
     except ValidationError:
-        return Response(status=status.HTTP_400_BAD_REQUEST)
+        return Response(status=http_status.HTTP_400_BAD_REQUEST)
 
     if request.method == 'GET':
         serializer = RolesReadSerializer(role)
@@ -198,6 +198,30 @@ def roles_detail(request, lifecycle_id, version, format=None):
 
     elif request.method == 'DELETE':
         return delete(request)
+
+
+@api_view(['PATCH'])
+@auth_required()
+def roles_status(request, lifecycle_id, version, status, format=None):
+    @csrf_protect
+    def patch(_request):
+        _serializer = RolesNewVersionDeleteSerializer(role, data={}, context={'method': 'PATCH',
+                                                                              'function': 'status_change',
+                                                                              'status': status})
+        if _serializer.is_valid():
+            _serializer.save()
+            return Response(_serializer.data)
+        return Response(_serializer.errors, status=http_status.HTTP_400_BAD_REQUEST)
+
+    try:
+        role = Roles.objects.get(lifecycle_id=lifecycle_id, version=version)
+    except Roles.DoesNotExist:
+        return Response(status=http_status.HTTP_404_NOT_FOUND)
+    except ValidationError:
+        return Response(status=http_status.HTTP_400_BAD_REQUEST)
+
+    if request.method == 'PATCH':
+        return patch(request)
 
 
 #########
@@ -226,7 +250,7 @@ def users_detail(request, pk, format=None):
     try:
         stat = Users.objects.get(pk=pk)
     except Users.DoesNotExist:
-        return Response(status=status.HTTP_404_NOT_FOUND)
+        return Response(status=http_status.HTTP_404_NOT_FOUND)
 
     serializer = UsersReadSerializer(stat)
     return Response(serializer.data)
