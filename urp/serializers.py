@@ -81,6 +81,9 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
 
     # update
     def update(self, instance, validated_data):
+        if 'function' in self.context.keys():
+            if self.context['function'] == 'status_change':
+                validated_data['status_id'] = Status.objects.status_by_text(self.context['status'])
         hash_sequence = instance.HASH_SEQUENCE
         fields = dict()
         for attr in hash_sequence:
@@ -104,18 +107,25 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         if self.context['method'] == 'PATCH':
             if 'function' in self.context.keys():
                 if self.context['function'] == 'status_change':
-                    if self.context['status'] == 'draft':
-                        raise serializers.ValidationError('Draft can not be set as a status. Use new version or new.')
                     if self.instance.status.id == Status.objects.draft:
                         if self.context['status'] != 'circulation':
                             raise serializers.ValidationError('Circulation can only be started from status draft.')
                     elif self.instance.status.id == Status.objects.circulation:
-                        if self.context['status'] != 'productive':
-                            raise serializers.ValidationError('Set productive can only origin from status circulation.')
+                        if self.context['status'] not in ['productive', 'draft']:
+                            raise serializers.ValidationError('From circulation only reject to draft and set '
+                                                              'productive are allowed.')
                     elif self.instance.status.id == Status.objects.productive:
-                        if self.context['status'] == 'productive' or self.context['status'] == 'circulation':
-                            raise serializers.ValidationError('Circulation and  set productive can not origin from '
-                                                              'status productive.')
+                        if self.context['status'] not in ['blocked', 'inactive', 'archived']:
+                            raise serializers.ValidationError('From productive only block, archive and inactivate are '
+                                                              'allowed.')
+                    elif self.instance.status.id == Status.objects.blocked:
+                        if self.context['status'] != 'productive':
+                            raise serializers.ValidationError('From blocked only back to productive is allowed')
+                    elif self.instance.status.id == Status.objects.archived:
+                        raise serializers.ValidationError('No status change is allowed from archived.')
+                    elif self.instance.status.id == Status.objects.inactive:
+                        if self.context['status'] != 'blocked':
+                            raise serializers.ValidationError('From inactive only blocked is allowed')
             else:
                 if self.instance.status.id != Status.objects.draft:
                     raise serializers.ValidationError('Updates are only permitted in status draft.')

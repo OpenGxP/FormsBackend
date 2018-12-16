@@ -67,7 +67,7 @@ def status_list(request, format=None):
 
 # GET detail
 @api_view(['GET'])
-# @auth_required()
+@auth_required()
 # @perm_required(['tbd'])
 def status_detail(request, pk, format=None):
     """
@@ -100,7 +100,7 @@ def permissions_list(request, format=None):
 
 # GET detail
 @api_view(['GET'])
-# @auth_required()
+@auth_required()
 def permissions_detail(request, pk, format=None):
     """
     Retrieve permissions.
@@ -230,7 +230,7 @@ def roles_status(request, lifecycle_id, version, status, format=None):
 
 # GET list
 @api_view(['GET'])
-# @auth_required()
+@auth_required()
 def users_list(request, format=None):
     """
     List all users.
@@ -242,7 +242,7 @@ def users_list(request, format=None):
 
 # GET detail
 @api_view(['GET'])
-# @auth_required()
+@auth_required()
 def users_detail(request, pk, format=None):
     """
     Retrieve users.

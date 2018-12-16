@@ -610,9 +610,17 @@ class PatchRolesLifecycleIdVersionStatus(APITestCase):
         self.base_path = reverse('roles-list')
         self.prerequisites = Prerequisites(base_path=self.base_path)
         self.valid_payload = {}
-        self.not_allowed_status = ['draft']
 
     fixtures = ['status', 'permissions', 'roles']
+
+    def status_life_cycle(self, csrf_token, _status):
+        path = '{}{}/{}/{}'.format(self.base_path, self.role_draft.lifecycle_id, self.role_draft.version, _status)
+        response = self.client.patch(path, data=self.valid_payload, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+        query = Roles.objects.filter(lifecycle_id=self.role_draft.lifecycle_id, version=self.role_version).get()
+        serializer = RolesReadSerializer(query)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, serializer.data)
+        self.assertEqual(response.data['status'], _status)
 
     def setUp(self):
         self.client = APIClient(enforce_csrf_checks=True)
@@ -622,25 +630,15 @@ class PatchRolesLifecycleIdVersionStatus(APITestCase):
         self.role_status = 'productive'
         self.path = '{}{}/{}/{}'.format(self.base_path, self.role_lifecycle, self.role_version, self.role_status)
 
-        # role in draft for 400 delete
-        # self.role_400_status = []
         self.role_draft = Roles.objects.create(role='draft', version=self.role_version, status_id=Status.objects.draft)
         self.role_circulation = Roles.objects.create(role='circulation', version=self.role_version,
                                                      status_id=Status.objects.circulation)
-
-        """
-        self.role_400_status.append(self.role_lifecycle)
-        # role in circulation for 400 delete
-        # role in blocked for 400 delete
-        self.role_400_status.append(Roles.objects.create(role='blocked', version=self.role_version,
-                                                         status_id=Status.objects.blocked).lifecycle_id)
-        # role in inactive for 400 delete
-        self.role_400_status.append(Roles.objects.create(role='inactive', version=self.role_version,
-                                                         status_id=Status.objects.inactive).lifecycle_id)
-        # role in archived for 400 delete
-        self.role_400_status.append(Roles.objects.create(role='archived', version=self.role_version,
-                                                         status_id=Status.objects.archived).lifecycle_id)
-                                                         """
+        self.role_blocked = Roles.objects.create(role='blocked', version=self.role_version,
+                                                 status_id=Status.objects.blocked)
+        self.role_archived = Roles.objects.create(role='archived', version=self.role_version,
+                                                  status_id=Status.objects.archived)
+        self.role_inactive = Roles.objects.create(role='inactive', version=self.role_version,
+                                                  status_id=Status.objects.inactive)
 
     def test_401(self):
         # get API response
@@ -683,9 +681,8 @@ class PatchRolesLifecycleIdVersionStatus(APITestCase):
         # get csrf
         csrf_token = self.prerequisites.get_csrf(self.client)
         # get API response
-        not_allowed_status = ['productive', 'blocked', 'inactive', 'archived']
-        self.not_allowed_status += not_allowed_status
-        for _status in self.not_allowed_status:
+        not_allowed_status = ['draft', 'productive', 'blocked', 'inactive', 'archived']
+        for _status in not_allowed_status:
             path = '{}{}/{}/{}'.format(self.base_path, self.role_draft.lifecycle_id, self.role_draft.version, _status)
             response = self.client.patch(path, data=self.valid_payload, format='json', HTTP_X_CSRFTOKEN=csrf_token)
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
@@ -700,8 +697,7 @@ class PatchRolesLifecycleIdVersionStatus(APITestCase):
         csrf_token = self.prerequisites.get_csrf(self.client)
         # get API response
         not_allowed_status = ['circulation', 'blocked', 'inactive', 'archived']
-        self.not_allowed_status += not_allowed_status
-        for _status in self.not_allowed_status:
+        for _status in not_allowed_status:
             path = '{}{}/{}/{}'.format(self.base_path, self.role_circulation.lifecycle_id, self.role_draft.version,
                                        _status)
             response = self.client.patch(path, data=self.valid_payload, format='json', HTTP_X_CSRFTOKEN=csrf_token)
@@ -716,9 +712,83 @@ class PatchRolesLifecycleIdVersionStatus(APITestCase):
         # get csrf
         csrf_token = self.prerequisites.get_csrf(self.client)
         # get API response
-        not_allowed_status = ['circulation', 'productive']
-        self.not_allowed_status += not_allowed_status
-        for _status in self.not_allowed_status:
+        not_allowed_status = ['draft', 'circulation', 'productive']
+        for _status in not_allowed_status:
             path = '{}{}/{}/{}'.format(self.base_path, self.role_lifecycle, self.role_version, _status)
             response = self.client.patch(path, data=self.valid_payload, format='json', HTTP_X_CSRFTOKEN=csrf_token)
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_400_blocked(self):
+        """
+        Attempt to change an object in status "blocked", nothing shall be allowed except "productive"
+        """
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get API response
+        not_allowed_status = ['draft', 'circulation', 'archived', 'inactive', 'blocked']
+        for _status in not_allowed_status:
+            path = '{}{}/{}/{}'.format(self.base_path, self.role_blocked.lifecycle_id, self.role_version, _status)
+            response = self.client.patch(path, data=self.valid_payload, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_400_archived(self):
+        """
+        Attempt to change an object in status "archived", nothing shall be allowed
+        """
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get API response
+        not_allowed_status = ['draft', 'circulation', 'productive', 'archived', 'inactive', 'blocked']
+        for _status in not_allowed_status:
+            path = '{}{}/{}/{}'.format(self.base_path, self.role_archived.lifecycle_id, self.role_version, _status)
+            response = self.client.patch(path, data=self.valid_payload, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_400_inactive(self):
+        """
+        Attempt to change an object in status "inactive", nothing shall be allowed excepted "blocked"
+        """
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get API response
+        not_allowed_status = ['draft', 'circulation', 'productive', 'archived', 'inactive']
+        for _status in not_allowed_status:
+            path = '{}{}/{}/{}'.format(self.base_path, self.role_inactive.lifecycle_id, self.role_version, _status)
+            response = self.client.patch(path, data=self.valid_payload, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_200(self):
+        """
+        Successfully go through all possible status
+        """
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get API response
+        # draft to circulation
+        self.status_life_cycle(csrf_token, 'circulation')
+        # circulation back to draft
+        self.status_life_cycle(csrf_token, 'draft')
+        # start circulation again
+        self.status_life_cycle(csrf_token, 'circulation')
+        # set productive
+        self.status_life_cycle(csrf_token, 'productive')
+        # block
+        self.status_life_cycle(csrf_token, 'blocked')
+        # back to productive
+        self.status_life_cycle(csrf_token, 'productive')
+        # set inactive
+        self.status_life_cycle(csrf_token, 'inactive')
+        # block from inactive
+        self.status_life_cycle(csrf_token, 'blocked')
+        # again back to productive
+        self.status_life_cycle(csrf_token, 'productive')
+        # finally to archive
+        self.status_life_cycle(csrf_token, 'archived')

@@ -92,6 +92,15 @@ class StatusManager(GlobalManager):
     HAS_VERSION = False
     HAS_STATUS = False
 
+    def status_by_text(self, value):
+        try:
+            if self.filter(status=value).exists():
+                return self.filter(status=value).get().id
+            else:
+                return False
+        except IndexError:
+            return False
+
     @property
     def draft(self):
         return self.filter(status='draft').get().id
