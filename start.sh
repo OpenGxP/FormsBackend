@@ -10,7 +10,8 @@ python manage.py migrate
 export DJANGO_SETTINGS_MODULE=forms.settings
 python fixtures.py
 python manage.py loaddata status
-python manage.py loaddata permissions
+# python manage.py loaddata permissions
+python manage.py collect_permissions
 python manage.py loaddata roles
 python manage.py createsuperuser --username superuser
 python manage.py runserver

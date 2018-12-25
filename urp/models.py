@@ -48,7 +48,7 @@ class PermissionsManager(GlobalManager):
 class Permissions(GlobalModel):
     # custom fields
     key = models.CharField(_('key'), max_length=CHAR_DEFAULT, unique=True)
-    dialog = models.CharField(_('dialog'), max_length=CHAR_DEFAULT)
+    model = models.CharField(_('model'), max_length=CHAR_DEFAULT)
     permission = models.CharField(_('permission'), max_length=CHAR_DEFAULT)
 
     # manager
@@ -56,7 +56,7 @@ class Permissions(GlobalModel):
 
     # integrity check
     def verify_checksum(self):
-        to_hash_payload = 'key:{};dialog:{};permission:{};'.format(self.key, self.dialog, self.permission)
+        to_hash_payload = 'key:{};model:{};permission:{};'.format(self.key, self.model, self.permission)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
 
     valid_from = None
@@ -64,12 +64,20 @@ class Permissions(GlobalModel):
     lifecycle_id = None
 
     # hashing
-    HASH_SEQUENCE = ['key', 'dialog', 'permission']
+    HASH_SEQUENCE = ['key', 'model', 'permission']
+
+    # permissions
+    perms = ['read']
 
 
 #########
 # ROLES #
 #########
+
+# manager
+class RolesManager(GlobalManager):
+    pass
+
 
 # table
 class Roles(GlobalModel):
@@ -99,7 +107,14 @@ class Roles(GlobalModel):
     def get_status(self):
         return self.status.status
 
+    # manager
+    objects = RolesManager()
+
+    # hashing
     HASH_SEQUENCE = ['role', 'status_id', 'version', 'valid_from', 'valid_to', 'permissions']
+
+    # permissions
+    perms = ['read', 'add', 'edit', 'delete', 'circulation', 'reject', 'productive', 'block', 'archive', 'inactivate']
 
     class Meta:
         unique_together = ('lifecycle_id', 'version')
@@ -194,6 +209,9 @@ class Users(AbstractBaseUser, GlobalModel):
     # hashing
     HASH_SEQUENCE = ['username', 'email', 'first_name', 'last_name', 'is_active', 'initial_password', 'password',
                      'status_id', 'version', 'valid_from', 'valid_to', 'roles']
+
+    # permissions
+    perms = ['read', 'add', 'edit', 'delete', 'circulation', 'reject', 'productive', 'block', 'archive', 'inactivate']
 
     def get_full_name(self):
         return _('{} - {} {}').format(self.username, self.first_name, self.last_name)

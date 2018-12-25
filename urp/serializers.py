@@ -57,7 +57,8 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         else:
             validated_data['version'] = 1
         # add default fields for new objects
-        validated_data['status_id'] = Status.objects.draft
+        if model.objects.HAS_STATUS:
+            validated_data['status_id'] = Status.objects.draft
         # passed keys
         keys = validated_data.keys()
         # set attributes of validated data
@@ -158,7 +159,7 @@ class StatusReadSerializer(GlobalReadWriteSerializer):
 ###############
 
 # read
-class PermissionsReadSerializer(GlobalReadWriteSerializer):
+class PermissionsReadWriteSerializer(GlobalReadWriteSerializer):
 
     class Meta:
         model = Permissions

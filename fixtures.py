@@ -119,8 +119,8 @@ class Fixtures(object):
 
 fix = Fixtures()
 fix.generate_fixtures_basics(path=FIXTURES_DIR_BASIC, fixture='status', hash_sequence=['status'])
-fix.generate_fixtures_basics(path=FIXTURES_DIR_URP, fixture='permissions', hash_sequence=['key', 'dialog',
-                                                                                          'permission'])
+# fix.generate_fixtures_basics(path=FIXTURES_DIR_URP, fixture='permissions', hash_sequence=['key', 'model',
+#                                                                                           'permission'])
 fix.generate_fixtures_roles(path=FIXTURES_DIR_URP, fixture='roles', hash_sequence=['role', 'status_id', 'version',
                                                                                    'valid_from', 'valid_to',
                                                                                    'permissions'])

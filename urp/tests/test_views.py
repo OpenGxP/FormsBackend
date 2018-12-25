@@ -18,6 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # django imports
 from django.urls import reverse
+from django.core.management import call_command
 
 # rest framework imports
 from rest_framework import status
@@ -25,7 +26,7 @@ from rest_framework.test import APITestCase, APIClient
 
 # app imports
 from ..models import Status, Permissions, Roles, Users
-from ..serializers import StatusReadSerializer, PermissionsReadSerializer, RolesReadSerializer
+from ..serializers import StatusReadSerializer, PermissionsReadWriteSerializer, RolesReadSerializer
 
 
 class Prerequisites(object):
@@ -121,9 +122,10 @@ class GetPermissions(APITestCase):
         self.path = reverse('permissions-list')
         self.prerequisites = Prerequisites()
 
-    fixtures = ['status', 'permissions']
+    fixtures = ['status']
 
     def setUp(self):
+        call_command('collect_permissions')
         self.prerequisites.superuser()
 
     def test_401(self):
@@ -138,7 +140,7 @@ class GetPermissions(APITestCase):
         response = self.client.get(self.path, format='json')
         # get data from db
         query = Permissions.objects.all()
-        serializer = PermissionsReadSerializer(query, many=True)
+        serializer = PermissionsReadWriteSerializer(query, many=True)
         self.assertEqual(response.data, serializer.data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -191,7 +193,7 @@ class PostRoles(APITestCase):
         self.path = reverse('roles-list')
         self.prerequisites = Prerequisites(base_path=self.path)
 
-    fixtures = ['status', 'permissions', 'roles']
+    fixtures = ['status', 'roles']
 
     def setUp(self):
         self.client = APIClient(enforce_csrf_checks=True)
@@ -247,7 +249,7 @@ class GetRolesLifecycleIdVersion(APITestCase):
         self.base_path = reverse('roles-list')
         self.prerequisites = Prerequisites()
 
-    fixtures = ['status', 'permissions', 'roles']
+    fixtures = ['status', 'roles']
 
     def setUp(self):
         self.prerequisites.superuser()
@@ -303,7 +305,7 @@ class PostRolesLifecycleIdVersion(APITestCase):
         self.base_path = reverse('roles-list')
         self.prerequisites = Prerequisites(base_path=self.base_path)
 
-    fixtures = ['status', 'permissions', 'roles']
+    fixtures = ['status', 'roles']
 
     def setUp(self):
         self.client = APIClient(enforce_csrf_checks=True)
@@ -403,7 +405,7 @@ class DeleteRolesLifecycleIdVersion(APITestCase):
         self.base_path = reverse('roles-list')
         self.prerequisites = Prerequisites(base_path=self.base_path)
 
-    fixtures = ['status', 'permissions', 'roles']
+    fixtures = ['status', 'roles']
 
     def setUp(self):
         self.client = APIClient(enforce_csrf_checks=True)
@@ -504,7 +506,7 @@ class PatchRolesLifecycleIdVersion(APITestCase):
             'role': ''
         }
 
-    fixtures = ['status', 'permissions', 'roles']
+    fixtures = ['status', 'roles']
 
     def setUp(self):
         self.client = APIClient(enforce_csrf_checks=True)
@@ -611,7 +613,7 @@ class PatchRolesLifecycleIdVersionStatus(APITestCase):
         self.prerequisites = Prerequisites(base_path=self.base_path)
         self.valid_payload = {}
 
-    fixtures = ['status', 'permissions', 'roles']
+    fixtures = ['status', 'roles']
 
     def status_life_cycle(self, csrf_token, _status):
         path = '{}{}/{}/{}'.format(self.base_path, self.role_draft.lifecycle_id, self.role_draft.version, _status)

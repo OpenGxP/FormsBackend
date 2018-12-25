@@ -25,7 +25,7 @@ from rest_framework.reverse import reverse
 
 # custom imports
 from .models import Status, Roles, Permissions, Users
-from .serializers import StatusReadSerializer, PermissionsReadSerializer, RolesReadSerializer, \
+from .serializers import StatusReadSerializer, PermissionsReadWriteSerializer, RolesReadSerializer, \
     RolesWriteSerializer, UsersReadSerializer, RolesNewVersionDeleteSerializer
 from .decorators import auth_required
 
@@ -94,7 +94,7 @@ def permissions_list(request, format=None):
     List all permissions.
     """
     perm = Permissions.objects.all()
-    serializer = PermissionsReadSerializer(perm, many=True)
+    serializer = PermissionsReadWriteSerializer(perm, many=True)
     return Response(serializer.data)
 
 
@@ -110,7 +110,7 @@ def permissions_detail(request, pk, format=None):
     except Permissions.DoesNotExist:
         return Response(status=http_status.HTTP_404_NOT_FOUND)
 
-    serializer = PermissionsReadSerializer(perm)
+    serializer = PermissionsReadWriteSerializer(perm)
     return Response(serializer.data)
 
 

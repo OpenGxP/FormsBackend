@@ -145,3 +145,6 @@ class Status(GlobalModel):
 
     # hashing
     HASH_SEQUENCE = ['status']
+
+    # permissions
+    perms = ['read']
