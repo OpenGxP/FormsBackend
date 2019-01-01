@@ -153,7 +153,7 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
 ##########
 
 # read
-class StatusReadSerializer(GlobalReadWriteSerializer):
+class StatusReadWriteSerializer(GlobalReadWriteSerializer):
 
     class Meta:
         model = Status

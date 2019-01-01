@@ -25,7 +25,7 @@ from rest_framework.reverse import reverse
 
 # custom imports
 from .models import Status, Roles, Permissions, Users
-from .serializers import StatusReadSerializer, PermissionsReadWriteSerializer, RolesReadSerializer, \
+from .serializers import StatusReadWriteSerializer, PermissionsReadWriteSerializer, RolesReadSerializer, \
     RolesWriteSerializer, UsersReadSerializer, RolesNewVersionDeleteSerializer
 from .decorators import auth_required
 
@@ -61,7 +61,7 @@ def status_list(request, format=None):
     List all status.
     """
     stat = Status.objects.all()
-    serializer = StatusReadSerializer(stat, many=True)
+    serializer = StatusReadWriteSerializer(stat, many=True)
     return Response(serializer.data)
 
 
@@ -78,7 +78,7 @@ def status_detail(request, pk, format=None):
     except Status.DoesNotExist:
         return Response(status=http_status.HTTP_404_NOT_FOUND)
 
-    serializer = StatusReadSerializer(stat)
+    serializer = StatusReadWriteSerializer(stat)
     return Response(serializer.data)
 
 

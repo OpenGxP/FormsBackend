@@ -26,7 +26,7 @@ from rest_framework.test import APITestCase, APIClient
 
 # app imports
 from ..models import Status, Permissions, Roles, Users
-from ..serializers import StatusReadSerializer, PermissionsReadWriteSerializer, RolesReadSerializer
+from ..serializers import StatusReadWriteSerializer, PermissionsReadWriteSerializer, RolesReadSerializer
 
 
 class Prerequisites(object):
@@ -36,6 +36,8 @@ class Prerequisites(object):
         self.base_path = base_path
 
     def role_superuser(self):
+        call_command('initialize-status')
+        call_command('collect-permissions')
         role = 'all'
         call_command('create-role', name=role)
         Users.objects.create_superuser(username=self.username, password=self.password, role=role)
@@ -61,8 +63,6 @@ class Authenticate(APITestCase):
         super(Authenticate, self).__init__(*args, **kwargs)
         self.prerequisites = Prerequisites()
         self.path = reverse('token_obtain_pair')
-
-    fixtures = ['status']
 
     def setUp(self):
         self.prerequisites.role_superuser()
@@ -91,8 +91,6 @@ class GetStatus(APITestCase):
         self.path = reverse('status-list')
         self.prerequisites = Prerequisites()
 
-    fixtures = ['status']
-
     def setUp(self):
         self.prerequisites.role_superuser()
 
@@ -108,7 +106,7 @@ class GetStatus(APITestCase):
         response = self.client.get(self.path, format='json')
         # get data from db
         query = Status.objects.all()
-        serializer = StatusReadSerializer(query, many=True)
+        serializer = StatusReadWriteSerializer(query, many=True)
         self.assertEqual(response.data, serializer.data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -124,10 +122,7 @@ class GetPermissions(APITestCase):
         self.path = reverse('permissions-list')
         self.prerequisites = Prerequisites()
 
-    fixtures = ['status']
-
     def setUp(self):
-        call_command('collect-permissions')
         self.prerequisites.role_superuser()
 
     def test_401(self):
@@ -157,8 +152,6 @@ class GetRoles(APITestCase):
         super(GetRoles, self).__init__(*args, **kwargs)
         self.path = reverse('roles-list')
         self.prerequisites = Prerequisites()
-
-    fixtures = ['status']
 
     def setUp(self):
         self.prerequisites.role_superuser()
@@ -194,8 +187,6 @@ class PostRoles(APITestCase):
         super(PostRoles, self).__init__(*args, **kwargs)
         self.path = reverse('roles-list')
         self.prerequisites = Prerequisites(base_path=self.path)
-
-    fixtures = ['status']
 
     def setUp(self):
         self.client = APIClient(enforce_csrf_checks=True)
@@ -251,8 +242,6 @@ class GetRolesLifecycleIdVersion(APITestCase):
         self.base_path = reverse('roles-list')
         self.prerequisites = Prerequisites()
 
-    fixtures = ['status']
-
     def setUp(self):
         self.prerequisites.role_superuser()
         self.role_lifecycle = Roles.objects.filter(role='all').get().lifecycle_id
@@ -306,8 +295,6 @@ class PostRolesLifecycleIdVersion(APITestCase):
         super(PostRolesLifecycleIdVersion, self).__init__(*args, **kwargs)
         self.base_path = reverse('roles-list')
         self.prerequisites = Prerequisites(base_path=self.base_path)
-
-    fixtures = ['status']
 
     def setUp(self):
         self.client = APIClient(enforce_csrf_checks=True)
@@ -407,8 +394,6 @@ class DeleteRolesLifecycleIdVersion(APITestCase):
         self.base_path = reverse('roles-list')
         self.prerequisites = Prerequisites(base_path=self.base_path)
 
-    fixtures = ['status']
-
     def setUp(self):
         self.client = APIClient(enforce_csrf_checks=True)
         self.prerequisites.role_superuser()
@@ -507,8 +492,6 @@ class PatchRolesLifecycleIdVersion(APITestCase):
         self.invalid_payload = {
             'role': ''
         }
-
-    fixtures = ['status']
 
     def setUp(self):
         self.client = APIClient(enforce_csrf_checks=True)
@@ -614,8 +597,6 @@ class PatchRolesLifecycleIdVersionStatus(APITestCase):
         self.base_path = reverse('roles-list')
         self.prerequisites = Prerequisites(base_path=self.base_path)
         self.valid_payload = {}
-
-    fixtures = ['status']
 
     def status_life_cycle(self, csrf_token, _status):
         path = '{}{}/{}/{}'.format(self.base_path, self.role_draft.lifecycle_id, self.role_draft.version, _status)
@@ -808,17 +789,6 @@ class RolesFullLifecycle(APITestCase):
         self.valid_payload = {
             'role': 'test'
         }
-
-    fixtures = ['status']
-
-    def status_life_cycle(self, csrf_token, _status):
-        path = '{}{}/{}/{}'.format(self.base_path, self.role_draft.lifecycle_id, self.role_draft.version, _status)
-        response = self.client.patch(path, data=self.valid_payload, format='json', HTTP_X_CSRFTOKEN=csrf_token)
-        query = Roles.objects.filter(lifecycle_id=self.role_draft.lifecycle_id, version=self.role_version).get()
-        serializer = RolesReadSerializer(query)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data, serializer.data)
-        self.assertEqual(response.data['status'], _status)
 
     def setUp(self):
         self.client = APIClient(enforce_csrf_checks=True)

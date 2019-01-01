@@ -25,6 +25,18 @@ from django.core.management import call_command
 from django.test import TestCase
 
 
+class InitializeStatus(TestCase):
+    def test_OK(self):
+        out = StringIO()
+        call_command('initialize-status', stdout=out)
+        self.assertIn('Successfully added status "draft".', out.getvalue())
+        self.assertIn('Successfully added status "circulation".', out.getvalue())
+        self.assertIn('Successfully added status "productive".', out.getvalue())
+        self.assertIn('Successfully added status "blocked".', out.getvalue())
+        self.assertIn('Successfully added status "inactive".', out.getvalue())
+        self.assertIn('Successfully added status "archived".', out.getvalue())
+
+
 class CollectPermissionsTest(TestCase):
     def test_OK(self):
         out = StringIO()
@@ -33,7 +45,8 @@ class CollectPermissionsTest(TestCase):
 
 
 class CreateRole(TestCase):
-    fixtures = ['status']
+    def setUp(self):
+        call_command('initialize-status')
 
     def test_OK(self):
         out = StringIO()
@@ -56,7 +69,8 @@ class CreateRole(TestCase):
 
 
 class CreateSuperuser(TestCase):
-    fixtures = ['status']
+    def setUp(self):
+        call_command('initialize-status')
 
     def test_OK(self):
         out = StringIO()
