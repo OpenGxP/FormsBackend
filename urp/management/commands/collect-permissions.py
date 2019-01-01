@@ -1,6 +1,6 @@
 """
 opengxp.org
-Copyright (C) 2018  Henrik Baran
+Copyright (C) 2019  Henrik Baran
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

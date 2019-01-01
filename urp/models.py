@@ -43,6 +43,14 @@ class PermissionsManager(GlobalManager):
     HAS_VERSION = False
     HAS_STATUS = False
 
+    @property
+    def all_comma_separated_list(self):
+        comma_list = ''
+        query = self.all()
+        for perm in query:
+            comma_list += '{},'.format(perm.key)
+        return comma_list[:-1]
+
 
 # table
 class Permissions(GlobalModel):
@@ -69,6 +77,9 @@ class Permissions(GlobalModel):
     # permissions
     perms = ['read']
 
+    # unique field
+    UNIQUE = 'key'
+
 
 #########
 # ROLES #
@@ -92,7 +103,7 @@ class Roles(GlobalModel):
                     validate_no_space,
                     validate_no_numbers,
                     validate_only_ascii])
-    permissions = models.CharField(_('permissions'), max_length=CHAR_DEFAULT, blank=True)
+    permissions = models.CharField(_('permissions'), max_length=CHAR_MAX, blank=True)
     # defaults
     status = models.ForeignKey(Status, on_delete=models.PROTECT)
     version = FIELD_VERSION
@@ -116,6 +127,9 @@ class Roles(GlobalModel):
     # permissions
     perms = ['read', 'add', 'edit', 'delete', 'circulation', 'reject', 'productive', 'block', 'archive', 'inactivate']
 
+    # unique field
+    UNIQUE = 'role'
+
     class Meta:
         unique_together = ('lifecycle_id', 'version')
 
@@ -131,7 +145,7 @@ class UsersManager(BaseUserManager, GlobalManager):
         return self.filter(status__id=status_effective_id).get(**{self.model.USERNAME_FIELD: username})
 
     # superuser function for createsuperuser
-    def create_superuser(self, username, password):
+    def create_superuser(self, username, password, role):
         # initial status "Effective" to immediately user superuser
         status_id = Status.objects.productive
         fields = {'username': username,
@@ -143,7 +157,7 @@ class UsersManager(BaseUserManager, GlobalManager):
                   'initial_password': True,
                   'email': '--',
                   'status_id': status_id,
-                  'roles': 'all'}
+                  'roles': role}
         user = self.model(**fields)
         user.set_password(password)
         fields['password'] = user.password
@@ -205,6 +219,9 @@ class Users(AbstractBaseUser, GlobalModel):
     USERNAME_FIELD = 'username'
     last_login = None
     is_active = models.BooleanField(_('is_active'))
+
+    # unique field
+    UNIQUE = 'username'
 
     # hashing
     HASH_SEQUENCE = ['username', 'email', 'first_name', 'last_name', 'is_active', 'initial_password', 'password',

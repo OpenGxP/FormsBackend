@@ -111,6 +111,12 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                     if self.instance.status.id == Status.objects.draft:
                         if self.context['status'] != 'circulation':
                             raise serializers.ValidationError('Circulation can only be started from status draft.')
+
+                        # validation for unique characteristic on start circulation
+                        model = getattr(getattr(self, 'Meta', None), 'model', None)
+                        validation_unique = model.objects.validate_unique(self.instance)
+                        if validation_unique:
+                            raise serializers.ValidationError(validation_unique)
                     elif self.instance.status.id == Status.objects.circulation:
                         if self.context['status'] not in ['productive', 'draft']:
                             raise serializers.ValidationError('From circulation only reject to draft and set '

@@ -24,6 +24,7 @@ import uuid as python_uuid
 from django.db import models
 from django.conf import settings
 from django.utils import timezone
+from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
 
 # app imports
@@ -46,6 +47,19 @@ class GlobalManager(models.Manager):
     # flags
     HAS_VERSION = True
     HAS_STATUS = True
+
+    def validate_unique(self, instance):
+        model_unique = self.model.UNIQUE
+        unique = getattr(instance, self.model.UNIQUE)
+        _filter = {model_unique: unique}
+        try:
+            query = self.filter(**_filter).filter(~Q(lifecycle_id=getattr(instance, 'lifecycle_id'))).\
+                filter(Q(status=Status.objects.circulation) | Q(status=Status.objects.productive)).all()
+            for item in query:
+                return (_('{} "{}" does already exist in status "{}" and version "{}".'.format(
+                    model_unique.capitalize(), unique, item.status.status, item.version)))
+        except self.model.DoesNotExist:
+            return None
 
 
 class GlobalModel(models.Model):
