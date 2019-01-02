@@ -26,6 +26,7 @@ from urp.models import Roles, Permissions
 
 # django imports
 from django.core import exceptions
+from django.utils import timezone
 from django.core.management.base import BaseCommand
 
 
@@ -63,7 +64,8 @@ class Command(BaseCommand):
         data = {
             'version': version,
             'role': role,
-            'permissions': permissions
+            'permissions': permissions,
+            'valid_from': timezone.now()
         }
         serializer = RolesWriteSerializer(data=data, context={'method': 'POST', 'function': 'new'})
         if serializer.is_valid():
