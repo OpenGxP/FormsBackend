@@ -108,6 +108,9 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         if self.context['method'] == 'PATCH':
             if 'function' in self.context.keys():
                 if self.context['function'] == 'status_change':
+                    #####################
+                    # Start circulation #
+                    #####################
                     if self.instance.status.id == Status.objects.draft:
                         if self.context['status'] != 'circulation':
                             raise serializers.ValidationError('Circulation can only be started from status draft.')
@@ -117,10 +120,26 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                         validation_unique = model.objects.validate_unique(self.instance)
                         if validation_unique:
                             raise serializers.ValidationError(validation_unique)
+
+                        # validate for "valid from" of new version shall not be before old version
+                        # only for circulations of version 2 and higher
+                        if self.instance.version > 1:
+                            last_version = self.instance.version - 1
+                            query = model.objects.filter(lifecycle_id=self.instance.lifecycle_id).\
+                                filter(version=last_version).get()
+                            if self.instance.valid_from < query.valid_from:
+                                raise serializers.ValidationError('Valid from can not be before valid from '
+                                                                  'of previous version')
+                    ##################
+                    # Set productive #
+                    ##################
                     elif self.instance.status.id == Status.objects.circulation:
                         if self.context['status'] not in ['productive', 'draft']:
                             raise serializers.ValidationError('From circulation only reject to draft and set '
                                                               'productive are allowed.')
+                    ##########
+                    # Others #
+                    ##########
                     elif self.instance.status.id == Status.objects.productive:
                         if self.context['status'] not in ['blocked', 'inactive', 'archived']:
                             raise serializers.ValidationError('From productive only block, archive and inactivate are '

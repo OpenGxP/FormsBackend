@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # django imports
 from django.urls import reverse
 from django.core.management import call_command
+from django.utils import timezone
 
 # rest framework imports
 from rest_framework import status
@@ -780,21 +781,27 @@ class PatchRolesLifecycleIdVersionStatus(APITestCase):
 
 
 # patch
-class RolesFullLifecycle(APITestCase):
+class RolesMiscellaneous(APITestCase):
     """Test module for get all permissions"""
     def __init__(self, *args, **kwargs):
-        super(RolesFullLifecycle, self).__init__(*args, **kwargs)
+        super(RolesMiscellaneous, self).__init__(*args, **kwargs)
         self.base_path = reverse('roles-list')
         self.prerequisites = Prerequisites(base_path=self.base_path)
         self.valid_payload = {
-            'role': 'test'
+            'role': 'test',
+            'valid_from': timezone.now()
+        }
+
+        self.invalid_payload = {
+            'role': 'test',
+            'valid_from': timezone.datetime(year=2018, month=1, day=1)
         }
 
     def setUp(self):
         self.client = APIClient(enforce_csrf_checks=True)
         self.prerequisites.role_superuser()
 
-    def test_OK(self):
+    def test_life_cycle(self):
         # authenticate
         self.prerequisites.auth(self.client)
         # get csrf
@@ -893,3 +900,152 @@ class RolesFullLifecycle(APITestCase):
         serializer = RolesReadSerializer(query)
         self.assertEqual(response_second_circ.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(serializer.data['status'], 'draft')
+
+    def test_multiple_version_OK(self):
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get API response
+        # create first record in status draft and version 1
+        path = self.base_path
+        response = self.client.post(path, data=self.valid_payload, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['version'], 1)
+        self.assertEqual(response.data['status'], 'draft')
+
+        # start circulation
+        _status = 'circulation'
+        path = '{}{}/{}/{}'.format(self.base_path, response.data['lifecycle_id'], 1, _status)
+        response_circ = self.client.patch(path, data=self.valid_payload, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+        query = Roles.objects.filter(lifecycle_id=response.data['lifecycle_id'], version=1).get()
+        serializer = RolesReadSerializer(query)
+        self.assertEqual(response_circ.status_code, status.HTTP_200_OK)
+        self.assertEqual(response_circ.data, serializer.data)
+        self.assertEqual(response_circ.data['status'], _status)
+
+        # push to productive
+        _status = 'productive'
+        path = '{}{}/{}/{}'.format(self.base_path, response.data['lifecycle_id'], 1, _status)
+        response_prod = self.client.patch(path, data=self.valid_payload, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+        query = Roles.objects.filter(lifecycle_id=response.data['lifecycle_id'], version=1).get()
+        serializer = RolesReadSerializer(query)
+        self.assertEqual(response_prod.status_code, status.HTTP_200_OK)
+        self.assertEqual(response_prod.data, serializer.data)
+        self.assertEqual(response_prod.data['status'], _status)
+
+        # create new version 2
+        path = '{}{}/{}'.format(self.base_path, response.data['lifecycle_id'], 1)
+        response_two = self.client.post(path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response_two.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response_two.data['version'], 2)
+        self.assertEqual(response_two.data['lifecycle_id'], str(response.data['lifecycle_id']))
+        self.assertEqual(response_two.data['status'], 'draft')
+
+        # start circulation of version 2
+        _status = 'circulation'
+        path = '{}{}/{}/{}'.format(self.base_path, response.data['lifecycle_id'], 2, _status)
+        response_circ = self.client.patch(path, data=self.valid_payload, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+        query = Roles.objects.filter(lifecycle_id=response.data['lifecycle_id'], version=2).get()
+        serializer = RolesReadSerializer(query)
+        self.assertEqual(response_circ.status_code, status.HTTP_200_OK)
+        self.assertEqual(response_circ.data, serializer.data)
+        self.assertEqual(response_circ.data['status'], _status)
+
+        # push to productive of version 2
+        _status = 'productive'
+        path = '{}{}/{}/{}'.format(self.base_path, response.data['lifecycle_id'], 2, _status)
+        response_prod = self.client.patch(path, data=self.valid_payload, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+        query = Roles.objects.filter(lifecycle_id=response.data['lifecycle_id'], version=2).get()
+        serializer = RolesReadSerializer(query)
+        self.assertEqual(response_prod.status_code, status.HTTP_200_OK)
+        self.assertEqual(response_prod.data, serializer.data)
+        self.assertEqual(response_prod.data['status'], _status)
+
+    def test_multiple_version_false_valid_from(self):
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get API response
+        # create first record in status draft and version 1
+        path = self.base_path
+        response = self.client.post(path, data=self.valid_payload, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['version'], 1)
+        self.assertEqual(response.data['status'], 'draft')
+
+        # start circulation
+        _status = 'circulation'
+        path = '{}{}/{}/{}'.format(self.base_path, response.data['lifecycle_id'], 1, _status)
+        response_circ = self.client.patch(path, data=self.valid_payload, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+        query = Roles.objects.filter(lifecycle_id=response.data['lifecycle_id'], version=1).get()
+        serializer = RolesReadSerializer(query)
+        self.assertEqual(response_circ.status_code, status.HTTP_200_OK)
+        self.assertEqual(response_circ.data, serializer.data)
+        self.assertEqual(response_circ.data['status'], _status)
+
+        # push to productive
+        _status = 'productive'
+        path = '{}{}/{}/{}'.format(self.base_path, response.data['lifecycle_id'], 1, _status)
+        response_prod = self.client.patch(path, data=self.valid_payload, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+        query = Roles.objects.filter(lifecycle_id=response.data['lifecycle_id'], version=1).get()
+        serializer = RolesReadSerializer(query)
+        self.assertEqual(response_prod.status_code, status.HTTP_200_OK)
+        self.assertEqual(response_prod.data, serializer.data)
+        self.assertEqual(response_prod.data['status'], _status)
+
+        # create new version 2
+        path = '{}{}/{}'.format(self.base_path, response.data['lifecycle_id'], 1)
+        response_two = self.client.post(path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response_two.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response_two.data['version'], 2)
+        self.assertEqual(response_two.data['lifecycle_id'], str(response.data['lifecycle_id']))
+        self.assertEqual(response_two.data['status'], 'draft')
+
+        # change the valid from to a date before valid from of last version
+        path = '{}{}/{}'.format(self.base_path, response.data['lifecycle_id'], 2)
+        response = self.client.patch(path, data=self.invalid_payload, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+        query = Roles.objects.filter(lifecycle_id=response.data['lifecycle_id'], version=2).get()
+        serializer = RolesReadSerializer(query)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, serializer.data)
+
+        # start circulation of version 2
+        _status = 'circulation'
+        path = '{}{}/{}/{}'.format(self.base_path, response.data['lifecycle_id'], 2, _status)
+        response_circ = self.client.patch(path, data=self.valid_payload, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+        query = Roles.objects.filter(lifecycle_id=response.data['lifecycle_id'], version=2).get()
+        serializer_before = RolesReadSerializer(query)
+        # check if response if a bad request
+        self.assertEqual(response_circ.status_code, status.HTTP_400_BAD_REQUEST)
+        # verify that data remains un-altered
+        self.assertEqual(serializer.data, serializer_before.data)
+
+        # update version 2 again to a valid "valid from" after "valid from" of previous version 1
+        path = '{}{}/{}'.format(self.base_path, response.data['lifecycle_id'], 2)
+        response = self.client.patch(path, data=self.valid_payload, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+        query = Roles.objects.filter(lifecycle_id=response.data['lifecycle_id'], version=2).get()
+        serializer = RolesReadSerializer(query)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, serializer.data)
+
+        # start circulation of version 2
+        _status = 'circulation'
+        path = '{}{}/{}/{}'.format(self.base_path, response.data['lifecycle_id'], 2, _status)
+        response_circ = self.client.patch(path, data=self.valid_payload, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+        query = Roles.objects.filter(lifecycle_id=response.data['lifecycle_id'], version=2).get()
+        serializer = RolesReadSerializer(query)
+        self.assertEqual(response_circ.status_code, status.HTTP_200_OK)
+        self.assertEqual(response_circ.data, serializer.data)
+        self.assertEqual(response_circ.data['status'], _status)
+
+        # push to productive of version 2
+        _status = 'productive'
+        path = '{}{}/{}/{}'.format(self.base_path, response.data['lifecycle_id'], 2, _status)
+        response_prod = self.client.patch(path, data=self.valid_payload, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+        query = Roles.objects.filter(lifecycle_id=response.data['lifecycle_id'], version=2).get()
+        serializer = RolesReadSerializer(query)
+        self.assertEqual(response_prod.status_code, status.HTTP_200_OK)
+        self.assertEqual(response_prod.data, serializer.data)
+        self.assertEqual(response_prod.data['status'], _status)
