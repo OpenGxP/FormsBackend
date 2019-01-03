@@ -44,6 +44,8 @@ class Command(BaseCommand):
         parser.add_argument('--name', dest='name', help='Define a role name.', default=None)
         parser.add_argument('--permissions', dest='perm', help='Comma separated list of permissions. '
                                                                'None = all permissions.', default=None)
+        parser.add_argument('--valid_from', dest='valid_from', help='Set a valid from date in '
+                                                                    'format "%d-%m-%Y %H:%M:%S".', default=None)
 
     def handle(self, *args, **options):
         role = options['name']
@@ -60,12 +62,21 @@ class Command(BaseCommand):
         else:
             permissions = self.clean_input(self.permissions_field, permissions)
 
+        valid_from = options['valid_from']
+        if not valid_from:
+            valid_from = timezone.now()
+        else:
+            try:
+                valid_from = timezone.datetime.strptime(valid_from, '%d-%m-%Y %H:%M:%S')
+            except ValueError:
+                self.stderr.write('Error: Cannot convert valid from date, please use format "%d-%m-%Y %H:%M:%S".')
+                sys.exit(1)
         version = 1
         data = {
             'version': version,
             'role': role,
             'permissions': permissions,
-            'valid_from': timezone.now()
+            'valid_from': valid_from
         }
         serializer = RolesWriteSerializer(data=data, context={'method': 'POST', 'function': 'new'})
         if serializer.is_valid():

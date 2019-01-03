@@ -92,7 +92,7 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 if self.context['status'] == 'productive' and self.instance.version > 1 and not self_call:
                     model = getattr(getattr(self, 'Meta', None), 'model', None)
                     prev_instance = model.objects.get_previous_version(instance)
-                    data = {'valid_to': prev_instance.valid_from}
+                    data = {'valid_to': self.instance.valid_from}
                     self.update(instance=prev_instance, validated_data=data, self_call=True)
 
         hash_sequence = instance.HASH_SEQUENCE

@@ -35,6 +35,10 @@ class Prerequisites(object):
         self.username = 'superuser'
         self.password = 'test1234'
         self.base_path = base_path
+        # user for tests without permissions
+        self.username_no_perm = 'usernoperms'
+        # user for valid from tests
+        self.username_valid_from = 'uservalidfrom'
 
     def role_superuser(self):
         call_command('initialize-status')
@@ -43,8 +47,30 @@ class Prerequisites(object):
         call_command('create-role', name=role)
         Users.objects.create_superuser(username=self.username, password=self.password, role=role)
 
+    def role_no_permissions(self):
+        role = 'no_perms'
+        call_command('create-role', name=role, permissions='false,false')
+        Users.objects.create_superuser(username=self.username_no_perm, password=self.password, role=role)
+
+    def role_past_valid_from(self):
+        role = 'past_valid_from'
+        call_command('create-role', name=role, valid_from='01-01-2016 00:00:00')
+        Users.objects.create_superuser(username=self.username_valid_from, password=self.password, role=role)
+
     def auth(self, ext_client):
         data = {'username': self.username, 'password': self.password}
+        client = APIClient()
+        response = client.post(path=reverse('token_obtain_pair'), data=data, format='json')
+        ext_client.credentials(HTTP_AUTHORIZATION='Bearer ' + response.data['access'])
+
+    def auth_no_perms(self, ext_client):
+        data = {'username': self.username_no_perm, 'password': self.password}
+        client = APIClient()
+        response = client.post(path=reverse('token_obtain_pair'), data=data, format='json')
+        ext_client.credentials(HTTP_AUTHORIZATION='Bearer ' + response.data['access'])
+
+    def auth_not_valid_roles(self, ext_client):
+        data = {'username': self.username_valid_from, 'password': self.password}
         client = APIClient()
         response = client.post(path=reverse('token_obtain_pair'), data=data, format='json')
         ext_client.credentials(HTTP_AUTHORIZATION='Bearer ' + response.data['access'])
@@ -81,6 +107,49 @@ class Authenticate(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
 
+class Miscellaneous(APITestCase):
+    def __init__(self, *args, **kwargs):
+        super(Miscellaneous, self).__init__(*args, **kwargs)
+        self.path = reverse('roles-list')
+        self.prerequisites = Prerequisites(base_path=self.path)
+        self.valid_payload = {
+            'role': 'past_valid_from',
+            'valid_from': timezone.datetime.strptime('01-01-2017 00:00:00', '%d-%m-%Y %H:%M:%S'),
+            'valid_to': timezone.datetime.strptime('01-01-2018 00:00:00', '%d-%m-%Y %H:%M:%S')
+        }
+
+    def setUp(self):
+        self.client = APIClient(enforce_csrf_checks=True)
+        self.prerequisites.role_superuser()
+        self.prerequisites.role_past_valid_from()
+
+    def test_403_invalid_range(self):
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get data from db
+        role = Roles.objects.filter(role='past_valid_from').get()
+        # create new version
+        path = '{}{}/{}'.format(self.path, role.lifecycle_id, role.version)
+        self.client.post(path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+        # update draft version 2
+        path = '{}{}/{}'.format(self.path, role.lifecycle_id, role.version + 1)
+        self.client.patch(path, data=self.valid_payload, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+        # start circulation
+        path = '{}{}/{}/{}'.format(self.path, role.lifecycle_id, role.version + 1, 'circulation')
+        self.client.patch(path, data={}, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+        # set productive
+        path = '{}{}/{}/{}'.format(self.path, role.lifecycle_id, role.version + 1, 'productive')
+        self.client.patch(path, data={}, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+        # authenticate with user who has invalid roles
+        self.prerequisites.auth_not_valid_roles(self.client)
+        # get API response
+        path = reverse('status-list')
+        response = self.client.get(path, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
 ############
 # /status/ #
 ############
@@ -94,11 +163,19 @@ class GetStatus(APITestCase):
 
     def setUp(self):
         self.prerequisites.role_superuser()
+        self.prerequisites.role_no_permissions()
 
     def test_401(self):
         # get API response
         response = self.client.get(self.path, format='json')
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_403(self):
+        # authenticate
+        self.prerequisites.auth_no_perms(self.client)
+        # get API response
+        response = self.client.get(self.path, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_200(self):
         # authenticate
@@ -125,11 +202,19 @@ class GetPermissions(APITestCase):
 
     def setUp(self):
         self.prerequisites.role_superuser()
+        self.prerequisites.role_no_permissions()
 
     def test_401(self):
         # get API response
         response = self.client.get(self.path, format='json')
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_403(self):
+        # authenticate
+        self.prerequisites.auth_no_perms(self.client)
+        # get API response
+        response = self.client.get(self.path, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_200(self):
         # authenticate

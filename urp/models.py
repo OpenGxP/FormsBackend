@@ -23,6 +23,7 @@ import string
 # django imports
 from django.db import models
 from django.utils import timezone
+from django.db.models import Q
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.utils.translation import gettext_lazy as _
 
@@ -87,7 +88,17 @@ class Permissions(GlobalModel):
 
 # manager
 class RolesManager(GlobalManager):
-    pass
+    def find_permission_in_roles(self, roles, permission):
+        for role in roles.split(','):
+            # query all versions of each role that is in status "productive" or "inactive"
+            query = self.filter(role=role).filter(Q(status=Status.objects.productive) |
+                                                  Q(status=Status.objects.inactive)).all()
+            for obj in query:
+                # get the valid role (only one version of all returned versions can be valid!)
+                if obj.verify_validity_range:
+                    # check each role for the requested permission
+                    if permission in obj.permissions.split(','):
+                        return True
 
 
 # table
@@ -213,6 +224,9 @@ class Users(AbstractBaseUser, GlobalModel):
     @property
     def get_status(self):
         return self.status.status
+
+    def permission(self, value):
+        return Roles.objects.find_permission_in_roles(roles=self.roles, permission=value)
 
     # references
     EMAIL_FIELD = 'email'

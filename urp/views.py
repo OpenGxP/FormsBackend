@@ -27,7 +27,7 @@ from rest_framework.reverse import reverse
 from .models import Status, Roles, Permissions, Users
 from .serializers import StatusReadWriteSerializer, PermissionsReadWriteSerializer, RolesReadSerializer, \
     RolesWriteSerializer, UsersReadSerializer, RolesDeleteStatusSerializer, RolesNewVersionSerializer
-from .decorators import auth_required
+from .decorators import auth_required, perm_required
 
 # django imports
 from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
@@ -56,6 +56,7 @@ def api_root(request, format=None):
 # GET list
 @api_view(['GET'])
 @auth_required()
+@perm_required('st.rea')
 def status_list(request, format=None):
     """
     List all status.
@@ -68,7 +69,7 @@ def status_list(request, format=None):
 # GET detail
 @api_view(['GET'])
 @auth_required()
-# @perm_required(['tbd'])
+@perm_required('st.rea')
 def status_detail(request, pk, format=None):
     """
     Retrieve status.
@@ -89,6 +90,7 @@ def status_detail(request, pk, format=None):
 # GET list
 @api_view(['GET'])
 @auth_required()
+@perm_required('pe.rea')
 def permissions_list(request, format=None):
     """
     List all permissions.
@@ -101,6 +103,7 @@ def permissions_list(request, format=None):
 # GET detail
 @api_view(['GET'])
 @auth_required()
+@perm_required('pe.rea')
 def permissions_detail(request, pk, format=None):
     """
     Retrieve permissions.
