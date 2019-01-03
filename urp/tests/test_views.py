@@ -193,7 +193,8 @@ class PostRoles(APITestCase):
         self.client = APIClient(enforce_csrf_checks=True)
         self.prerequisites.role_superuser()
         self.valid_payload = {
-            'role': 'test'
+            'role': 'test',
+            'valid_from': timezone.now()
         }
         self.invalid_payload = {
             'role': ''
@@ -354,6 +355,11 @@ class PostRolesLifecycleIdVersion(APITestCase):
         self.assertEqual(response.data['version'], 2)
         self.assertEqual(response.data['lifecycle_id'], str(self.role_lifecycle))
         self.assertEqual(response.data['status'], 'draft')
+        # add check that valid_from and role are the same
+        query = Roles.objects.filter(lifecycle_id=self.role_lifecycle, version=1).get()
+        serializer = RolesReadSerializer(query)
+        self.assertEqual(response.data['role'], serializer.data['role'])
+        self.assertEqual(response.data['valid_from'], serializer.data['valid_from'])
 
     def test_400_second(self):
         # first add a new version
@@ -488,7 +494,8 @@ class PatchRolesLifecycleIdVersion(APITestCase):
         self.base_path = reverse('roles-list')
         self.prerequisites = Prerequisites(base_path=self.base_path)
         self.valid_payload = {
-            'role': 'new_role'
+            'role': 'new_role',
+            'valid_from': timezone.now()
         }
         self.invalid_payload = {
             'role': ''
@@ -657,6 +664,16 @@ class PatchRolesLifecycleIdVersionStatus(APITestCase):
         path = '{}{}/{}/blocked'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f', self.role_version)
         response = self.client.patch(path, data=self.valid_payload, format='json', HTTP_X_CSRFTOKEN=csrf_token)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_400_false_status(self):
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get API response
+        path = '{}{}/{}/false_status'.format(self.base_path, self.role_draft.lifecycle_id, self.role_version)
+        response = self.client.patch(path, data=self.valid_payload, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_400_draft(self):
         """
@@ -961,6 +978,10 @@ class RolesMiscellaneous(APITestCase):
         self.assertEqual(response_prod.status_code, status.HTTP_200_OK)
         self.assertEqual(response_prod.data, serializer.data)
         self.assertEqual(response_prod.data['status'], _status)
+        # new check to verify that version 1 "valid_to" is now "valid_from" of version 2
+        query = Roles.objects.filter(lifecycle_id=response.data['lifecycle_id'], version=1).get()
+        serializer = RolesReadSerializer(query)
+        self.assertEqual(response_prod.data['valid_from'], serializer.data['valid_to'])
 
     def test_multiple_version_false_valid_from(self):
         # authenticate
@@ -1049,3 +1070,7 @@ class RolesMiscellaneous(APITestCase):
         self.assertEqual(response_prod.status_code, status.HTTP_200_OK)
         self.assertEqual(response_prod.data, serializer.data)
         self.assertEqual(response_prod.data['status'], _status)
+        # new check to verify that version 1 "valid_to" is now "valid_from" of version 2
+        query = Roles.objects.filter(lifecycle_id=response.data['lifecycle_id'], version=1).get()
+        serializer = RolesReadSerializer(query)
+        self.assertEqual(response_prod.data['valid_from'], serializer.data['valid_to'])

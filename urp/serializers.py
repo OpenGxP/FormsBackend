@@ -22,6 +22,7 @@ from rest_framework import serializers
 # custom imports
 from .models import Status, Permissions, Users, Roles
 from basics.custom import generate_checksum, generate_to_hash
+from basics.models import AVAILABLE_STATUS
 
 # django imports
 from django.db import IntegrityError
@@ -81,10 +82,19 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
             return obj
 
     # update
-    def update(self, instance, validated_data):
+    def update(self, instance, validated_data, self_call=None):
         if 'function' in self.context.keys():
             if self.context['function'] == 'status_change':
                 validated_data['status_id'] = Status.objects.status_by_text(self.context['status'])
+
+                # change "valid_to" of previous version to "valid from" of new version
+                # only for set productive step
+                if self.context['status'] == 'productive' and self.instance.version > 1 and not self_call:
+                    model = getattr(getattr(self, 'Meta', None), 'model', None)
+                    prev_instance = model.objects.get_previous_version(instance)
+                    data = {'valid_to': prev_instance.valid_from}
+                    self.update(instance=prev_instance, validated_data=data, self_call=True)
+
         hash_sequence = instance.HASH_SEQUENCE
         fields = dict()
         for attr in hash_sequence:
@@ -108,6 +118,10 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         if self.context['method'] == 'PATCH':
             if 'function' in self.context.keys():
                 if self.context['function'] == 'status_change':
+                    # verify if valid status
+                    if self.context['status'] not in AVAILABLE_STATUS:
+                        raise serializers.ValidationError('Target status not valid. Only "{}" are allowed.'
+                                                          .format(AVAILABLE_STATUS))
                     #####################
                     # Start circulation #
                     #####################
@@ -214,14 +228,26 @@ class RolesWriteSerializer(GlobalReadWriteSerializer):
         extra_kwargs = {'version': {'required': False}}
 
 
-class RolesNewVersionDeleteSerializer(GlobalReadWriteSerializer):
+class RolesDeleteStatusSerializer(GlobalReadWriteSerializer):
     status = serializers.CharField(source='get_status', read_only=True)
 
     class Meta:
         model = Roles
         exclude = ('id', 'checksum', )
         extra_kwargs = {'version': {'required': False},
-                        'role': {'required': False}}
+                        'role': {'required': False},
+                        'valid_from': {'required': False}}
+
+
+class RolesNewVersionSerializer(GlobalReadWriteSerializer):
+    status = serializers.CharField(source='get_status', read_only=True)
+
+    class Meta:
+        model = Roles
+        exclude = ('id', 'checksum', )
+        extra_kwargs = {'version': {'required': False},
+                        'role': {'required': False},
+                        'valid_from': {'required': False}}
 
 
 #########

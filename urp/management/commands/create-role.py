@@ -21,7 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import sys
 
 # app imports
-from urp.serializers import RolesWriteSerializer, RolesNewVersionDeleteSerializer
+from urp.serializers import RolesWriteSerializer, RolesDeleteStatusSerializer
 from urp.models import Roles, Permissions
 
 # django imports
@@ -74,20 +74,18 @@ class Command(BaseCommand):
 
             # change status to in circulation
             role = Roles.objects.get(lifecycle_id=serializer.data['lifecycle_id'], version=version)
-            serializer_circulation = RolesNewVersionDeleteSerializer(role, data={},
-                                                                     context={'method': 'PATCH',
-                                                                              'function': 'status_change',
-                                                                              'status': 'circulation'})
+            serializer_circulation = RolesDeleteStatusSerializer(role, data={}, context={'method': 'PATCH',
+                                                                                         'function': 'status_change',
+                                                                                         'status': 'circulation'})
             if serializer_circulation.is_valid():
                 serializer_circulation.save()
                 self.stdout.write(self.style.SUCCESS('Role "{}" successfully changed to status "circulation".'
                                                      .format(role.role)))
 
                 # change status to in productive
-                serializer_productive = RolesNewVersionDeleteSerializer(role, data={},
-                                                                        context={'method': 'PATCH',
-                                                                                 'function': 'status_change',
-                                                                                 'status': 'productive'})
+                serializer_productive = RolesDeleteStatusSerializer(role, data={}, context={'method': 'PATCH',
+                                                                                            'function': 'status_change',
+                                                                                            'status': 'productive'})
                 if serializer_productive.is_valid():
                     serializer_productive.save()
                     self.stdout.write(self.style.SUCCESS('Role "{}" successfully changed to status "productive".'

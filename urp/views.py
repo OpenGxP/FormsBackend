@@ -26,7 +26,7 @@ from rest_framework.reverse import reverse
 # custom imports
 from .models import Status, Roles, Permissions, Users
 from .serializers import StatusReadWriteSerializer, PermissionsReadWriteSerializer, RolesReadSerializer, \
-    RolesWriteSerializer, UsersReadSerializer, RolesNewVersionDeleteSerializer
+    RolesWriteSerializer, UsersReadSerializer, RolesDeleteStatusSerializer, RolesNewVersionSerializer
 from .decorators import auth_required
 
 # django imports
@@ -164,8 +164,8 @@ def roles_detail(request, lifecycle_id, version, format=None):
 
     @csrf_protect
     def post(_request):
-        _serializer = RolesNewVersionDeleteSerializer(role, data=_request.data, context={'method': 'POST',
-                                                                                         'function': 'new_version'})
+        _serializer = RolesNewVersionSerializer(role, data=_request.data, context={'method': 'POST',
+                                                                                   'function': 'new_version'})
         if _serializer.is_valid():
             _serializer.create(validated_data=_serializer.validated_data)
             return Response(_serializer.data, status=http_status.HTTP_201_CREATED)
@@ -173,7 +173,7 @@ def roles_detail(request, lifecycle_id, version, format=None):
 
     @csrf_protect
     def delete(_request):
-        _serializer = RolesNewVersionDeleteSerializer(role, data={}, context={'method': 'DELETE'})
+        _serializer = RolesDeleteStatusSerializer(role, data={}, context={'method': 'DELETE'})
         if _serializer.is_valid():
             _serializer.delete()
             return Response(status=http_status.HTTP_204_NO_CONTENT)
@@ -205,9 +205,9 @@ def roles_detail(request, lifecycle_id, version, format=None):
 def roles_status(request, lifecycle_id, version, status, format=None):
     @csrf_protect
     def patch(_request):
-        _serializer = RolesNewVersionDeleteSerializer(role, data={}, context={'method': 'PATCH',
-                                                                              'function': 'status_change',
-                                                                              'status': status})
+        _serializer = RolesDeleteStatusSerializer(role, data={}, context={'method': 'PATCH',
+                                                                          'function': 'status_change',
+                                                                          'status': status})
         if _serializer.is_valid():
             _serializer.save()
             return Response(_serializer.data)

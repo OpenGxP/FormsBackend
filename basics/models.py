@@ -42,6 +42,8 @@ CHAR_MAX = 255
 # default fields
 FIELD_VERSION = models.PositiveIntegerField()
 
+AVAILABLE_STATUS = ['draft', 'circulation', 'productive', 'blocked', 'inactive', 'archived']
+
 
 class GlobalManager(models.Manager):
     # flags
@@ -61,13 +63,20 @@ class GlobalManager(models.Manager):
         except self.model.DoesNotExist:
             return None
 
+    def get_previous_version(self, instance):
+        try:
+            version = instance.version - 1
+            return self.filter(lifecycle_id=instance.lifecycle_id, version=version).get()
+        except self.model.DoesNotExist:
+            return None
+
 
 class GlobalModel(models.Model):
     # id
     id = models.UUIDField(primary_key=True, default=python_uuid.uuid4)
     lifecycle_id = models.UUIDField(default=python_uuid.uuid4)
     checksum = models.CharField(_('checksum'), max_length=CHAR_MAX)
-    valid_from = models.DateTimeField(blank=True, null=True)
+    valid_from = models.DateTimeField()
     valid_to = models.DateTimeField(blank=True, null=True)
 
     class Meta:

@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # app imports
 from urp.serializers import StatusReadWriteSerializer
+from basics.models import AVAILABLE_STATUS
 
 # django imports
 from django.core.management.base import BaseCommand
@@ -28,8 +29,7 @@ class Command(BaseCommand):
     help = 'Initialize required status.'
 
     def handle(self, *args, **options):
-        status = ['draft', 'circulation', 'productive', 'blocked', 'inactive', 'archived']
-        for item in status:
+        for item in AVAILABLE_STATUS:
             data = {'status': item}
             serializer = StatusReadWriteSerializer(data=data, context={'method': 'POST', 'function': 'new'})
             if serializer.is_valid():
