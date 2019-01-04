@@ -392,9 +392,11 @@ class PostRolesLifecycleIdVersion(APITestCase):
 
         # role in draft for 400 new version
         self.role_draft_lifecycle = Roles.objects.create(role='draft', version=self.role_version,
+                                                         valid_from=timezone.now(),
                                                          status_id=Status.objects.draft).lifecycle_id
         # role in circulation for 400 new version
         self.role_circulation_lifecycle = Roles.objects.create(role='circulation', version=self.role_version,
+                                                               valid_from=timezone.now(),
                                                                status_id=Status.objects.circulation).lifecycle_id
 
     def test_401(self):
@@ -496,19 +498,24 @@ class DeleteRolesLifecycleIdVersion(APITestCase):
         # role in draft for 400 delete
         self.role_400_status = []
         self.role_draft_lifecycle = Roles.objects.create(role='draft', version=self.role_version,
+                                                         valid_from=timezone.now(),
                                                          status_id=Status.objects.draft).lifecycle_id
         self.role_400_status.append(self.role_lifecycle)
         # role in circulation for 400 delete
         self.role_400_status.append(Roles.objects.create(role='circulation', version=self.role_version,
+                                                         valid_from=timezone.now(),
                                                          status_id=Status.objects.circulation).lifecycle_id)
         # role in blocked for 400 delete
         self.role_400_status.append(Roles.objects.create(role='blocked', version=self.role_version,
+                                                         valid_from=timezone.now(),
                                                          status_id=Status.objects.blocked).lifecycle_id)
         # role in inactive for 400 delete
         self.role_400_status.append(Roles.objects.create(role='inactive', version=self.role_version,
+                                                         valid_from=timezone.now(),
                                                          status_id=Status.objects.inactive).lifecycle_id)
         # role in archived for 400 delete
         self.role_400_status.append(Roles.objects.create(role='archived', version=self.role_version,
+                                                         valid_from=timezone.now(),
                                                          status_id=Status.objects.archived).lifecycle_id)
 
     def test_401(self):
@@ -596,19 +603,24 @@ class PatchRolesLifecycleIdVersion(APITestCase):
         # role in draft for 400 delete
         self.role_400_status = []
         self.role_draft_lifecycle = Roles.objects.create(role='draft', version=self.role_version,
+                                                         valid_from=timezone.now(),
                                                          status_id=Status.objects.draft).lifecycle_id
         self.role_400_status.append(self.role_lifecycle)
         # role in circulation for 400 delete
         self.role_400_status.append(Roles.objects.create(role='circulation', version=self.role_version,
+                                                         valid_from=timezone.now(),
                                                          status_id=Status.objects.circulation).lifecycle_id)
         # role in blocked for 400 delete
         self.role_400_status.append(Roles.objects.create(role='blocked', version=self.role_version,
+                                                         valid_from=timezone.now(),
                                                          status_id=Status.objects.blocked).lifecycle_id)
         # role in inactive for 400 delete
         self.role_400_status.append(Roles.objects.create(role='inactive', version=self.role_version,
+                                                         valid_from=timezone.now(),
                                                          status_id=Status.objects.inactive).lifecycle_id)
         # role in archived for 400 delete
         self.role_400_status.append(Roles.objects.create(role='archived', version=self.role_version,
+                                                         valid_from=timezone.now(),
                                                          status_id=Status.objects.archived).lifecycle_id)
 
     def test_401(self):
@@ -708,15 +720,16 @@ class PatchRolesLifecycleIdVersionStatus(APITestCase):
         self.role_status = 'productive'
         self.path = '{}{}/{}/{}'.format(self.base_path, self.role_lifecycle, self.role_version, self.role_status)
 
-        self.role_draft = Roles.objects.create(role='draft', version=self.role_version, status_id=Status.objects.draft)
+        self.role_draft = Roles.objects.create(role='draft', version=self.role_version, status_id=Status.objects.draft,
+                                               valid_from=timezone.now(), )
         self.role_circulation = Roles.objects.create(role='circulation', version=self.role_version,
-                                                     status_id=Status.objects.circulation)
+                                                     valid_from=timezone.now(), status_id=Status.objects.circulation)
         self.role_blocked = Roles.objects.create(role='blocked', version=self.role_version,
-                                                 status_id=Status.objects.blocked)
+                                                 valid_from=timezone.now(), status_id=Status.objects.blocked)
         self.role_archived = Roles.objects.create(role='archived', version=self.role_version,
-                                                  status_id=Status.objects.archived)
+                                                  valid_from=timezone.now(), status_id=Status.objects.archived)
         self.role_inactive = Roles.objects.create(role='inactive', version=self.role_version,
-                                                  status_id=Status.objects.inactive)
+                                                  valid_from=timezone.now(), status_id=Status.objects.inactive)
 
     def test_401(self):
         # get API response
