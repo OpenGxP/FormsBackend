@@ -87,8 +87,7 @@ require_NEW_VERSION = require_function('new_version')
 require_NONE = require_function('')
 
 
-def require_status(status_id):
-    """Decorator."""
+"""def require_status(status_id):
     def decorator(func):
         @wraps(func)
         def wrapper(self, *args, **kwargs):
@@ -103,4 +102,4 @@ require_status_CIRCULATION = require_status(Status.objects.circulation)
 require_status_PRODUCTIVE = require_status(Status.objects.productive)
 require_status_BLOCKED = require_status(Status.objects.blocked)
 require_status_INACTIVE = require_status(Status.objects.inactive)
-require_status_ARCHIVED = require_status(Status.objects.archived)
+require_status_ARCHIVED = require_status(Status.objects.archived)"""
