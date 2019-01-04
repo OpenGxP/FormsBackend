@@ -24,6 +24,9 @@ from functools import wraps
 from rest_framework.response import Response
 from rest_framework import status
 
+# app imports
+from .models import Status
+
 
 def auth_required():
     """Authentication decorator to validate user authentication credentials."""
@@ -48,3 +51,56 @@ def perm_required(permission):
             return Response(status=status.HTTP_403_FORBIDDEN)
         return wrapper
     return decorator
+
+
+def require_http_method(http_method):
+    """Decorator to check http_method of validate method in serializer class."""
+    def decorator(func):
+        @wraps(func)
+        def wrapper(validate_method, *args, **kwargs):
+            if validate_method.context['method'] == http_method:
+                return func(validate_method, *args, **kwargs)
+        return wrapper
+    return decorator
+
+
+require_GET = require_http_method('GET')
+require_PATCH = require_http_method('PATCH')
+require_POST = require_http_method('POST')
+require_DELETE = require_http_method('DELETE')
+require_PUT = require_http_method('PUT')
+
+
+def require_function(required_function):
+    """Decorator."""
+    def decorator(func):
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            if self.function == required_function:
+                return func(self, *args, **kwargs)
+        return wrapper
+    return decorator
+
+
+require_STATUS_CHANGE = require_function('status_change')
+require_NEW_VERSION = require_function('new_version')
+require_NONE = require_function('')
+
+
+def require_status(status_id):
+    """Decorator."""
+    def decorator(func):
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            if self.instance.status.id == status_id:
+                return func(self, *args, **kwargs)
+        return wrapper
+    return decorator
+
+
+require_status_DRAFT = require_status(Status.objects.draft)
+require_status_CIRCULATION = require_status(Status.objects.circulation)
+require_status_PRODUCTIVE = require_status(Status.objects.productive)
+require_status_BLOCKED = require_status(Status.objects.blocked)
+require_status_INACTIVE = require_status(Status.objects.inactive)
+require_status_ARCHIVED = require_status(Status.objects.archived)

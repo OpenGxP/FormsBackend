@@ -159,7 +159,8 @@ def roles_detail(request, lifecycle_id, version, format=None):
 
     @csrf_protect
     def patch(_request):
-        _serializer = RolesWriteSerializer(role, data=_request.data, context={'method': 'PATCH'})
+        _serializer = RolesWriteSerializer(role, data=_request.data, context={'method': 'PATCH',
+                                                                              'function': ''})
         if _serializer.is_valid():
             _serializer.save()
             return Response(_serializer.data)
@@ -176,7 +177,8 @@ def roles_detail(request, lifecycle_id, version, format=None):
 
     @csrf_protect
     def delete(_request):
-        _serializer = RolesDeleteStatusSerializer(role, data={}, context={'method': 'DELETE'})
+        _serializer = RolesDeleteStatusSerializer(role, data={}, context={'method': 'DELETE',
+                                                                          'function': ''})
         if _serializer.is_valid():
             _serializer.delete()
             return Response(status=http_status.HTTP_204_NO_CONTENT)

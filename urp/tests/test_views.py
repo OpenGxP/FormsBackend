@@ -632,7 +632,7 @@ class PatchRolesLifecycleIdVersion(APITestCase):
         # authenticate
         self.prerequisites.auth(self.client)
         # get API response
-        response = self.client.delete(self.path, data=self.valid_payload, format='json')
+        response = self.client.patch(self.path, data=self.valid_payload, format='json')
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_404_version(self):
