@@ -77,7 +77,6 @@ components:
           readOnly: true
         valid_from:
           type: string
-          nullable: true
           format: date-time
           example: "2018-11-21T19:38:06.894442Z"
         valid_to:
@@ -93,6 +92,7 @@ components:
           example: "ro.re,ro.wr,ro.de"
       required:
         - role
+        - valid_from
 
     users:
       description: model for users
@@ -116,7 +116,6 @@ components:
           readOnly: true
         valid_from:
           type: string
-          nullable: true
           format: date-time
           example: "2018-11-21T19:38:06.894442Z"
         valid_to:
@@ -148,6 +147,7 @@ components:
         - first_name
         - last_name
         - roles
+        - valid_from
 
   parameters:
     csrftoken:
