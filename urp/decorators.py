@@ -25,7 +25,7 @@ from rest_framework.response import Response
 from rest_framework import status
 
 # app imports
-from .models import Status
+from .models import Roles
 
 
 def auth_required():
@@ -87,19 +87,26 @@ require_NEW_VERSION = require_function('new_version')
 require_NONE = require_function('')
 
 
-"""def require_status(status_id):
+def require_model(model):
+    """Decorator."""
     def decorator(func):
         @wraps(func)
         def wrapper(self, *args, **kwargs):
-            if self.instance.status.id == status_id:
+            if self.model == model:
                 return func(self, *args, **kwargs)
         return wrapper
     return decorator
 
 
-require_status_DRAFT = require_status(Status.objects.draft)
-require_status_CIRCULATION = require_status(Status.objects.circulation)
-require_status_PRODUCTIVE = require_status(Status.objects.productive)
-require_status_BLOCKED = require_status(Status.objects.blocked)
-require_status_INACTIVE = require_status(Status.objects.inactive)
-require_status_ARCHIVED = require_status(Status.objects.archived)"""
+require_ROLES = require_model(Roles)
+
+
+def require_status(_status):
+    """Decorator."""
+    def decorator(func):
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            if self.instance.status.id == _status:
+                return func(self, *args, **kwargs)
+        return wrapper
+    return decorator

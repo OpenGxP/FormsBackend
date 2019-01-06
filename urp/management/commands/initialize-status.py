@@ -31,7 +31,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         for item in AVAILABLE_STATUS:
             data = {'status': item}
-            serializer = StatusReadWriteSerializer(data=data, context={'method': 'POST', 'function': 'new'})
+            serializer = StatusReadWriteSerializer(data=data, context={'method': 'POST', 'function': 'init'})
             if serializer.is_valid():
                 serializer.save()
                 self.stdout.write(self.style.SUCCESS('Successfully added status "{}".'.format(item)))

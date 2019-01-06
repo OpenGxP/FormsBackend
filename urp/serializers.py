@@ -24,7 +24,7 @@ from .models import Status, Permissions, Users, Roles
 from basics.custom import generate_checksum, generate_to_hash
 from basics.models import AVAILABLE_STATUS
 from .decorators import require_STATUS_CHANGE, require_POST, require_DELETE, require_PATCH, require_NONE, \
-    require_NEW_VERSION
+    require_NEW_VERSION, require_ROLES, require_status
 
 # django imports
 from django.db import IntegrityError
@@ -116,6 +116,17 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         self.instance.delete()
 
     def validate(self, data):
+        if self.context['function'] == 'init':
+            return data
+
+        # decorators for status catch
+        require_draft = require_status(Status.objects.draft)
+        require_circulation = require_status(Status.objects.circulation)
+        require_productive = require_status(Status.objects.productive)
+        require_blocked = require_status(Status.objects.blocked)
+        require_inactive = require_status(Status.objects.inactive)
+        require_archived = require_status(Status.objects.archived)
+
         class Validate:
             def __init__(self, validate_method):
                 self.model = getattr(getattr(validate_method, 'Meta', None), 'model', None)
@@ -140,52 +151,66 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                                                       .format(AVAILABLE_STATUS))
 
             @require_STATUS_CHANGE
-            def validate_start_circulation(self):
-                if self.instance.status.id == Status.objects.draft:
-                    if self.context['status'] != 'circulation':
-                        raise serializers.ValidationError('Circulation can only be started from status draft.')
+            @require_draft
+            def validate_draft(self):
+                if self.context['status'] != 'circulation':
+                    raise serializers.ValidationError('Circulation can only be started from status draft.')
 
-                    # validation for unique characteristic on start circulation
-                    validation_unique = self.model.objects.validate_unique(self.instance)
-                    if validation_unique:
-                        raise serializers.ValidationError(validation_unique)
+                # validation for unique characteristic on start circulation
+                validation_unique = self.model.objects.validate_unique(self.instance)
+                if validation_unique:
+                    raise serializers.ValidationError(validation_unique)
 
-                    # validate for "valid from" of new version shall not be before old version
-                    # only for circulations of version 2 and higher
-                    if self.instance.version > 1:
-                        last_version = self.instance.version - 1
-                        query = self.model.objects.filter(lifecycle_id=self.instance.lifecycle_id). \
-                            filter(version=last_version).get()
-                        if self.instance.valid_from < query.valid_from:
-                            raise serializers.ValidationError('Valid from can not be before valid from '
-                                                              'of previous version')
-
-            @require_STATUS_CHANGE
-            def validate_set_productive(self):
-                if self.instance.status.id == Status.objects.circulation:
-                    if self.context['status'] not in ['productive', 'draft']:
-                        raise serializers.ValidationError('From circulation only reject to draft and set '
-                                                          'productive are allowed.')
+                # validate for "valid from" of new version shall not be before old version
+                # only for circulations of version 2 and higher
+                if self.instance.version > 1:
+                    last_version = self.instance.version - 1
+                    query = self.model.objects.filter(lifecycle_id=self.instance.lifecycle_id). \
+                        filter(version=last_version).get()
+                    if self.instance.valid_from < query.valid_from:
+                        raise serializers.ValidationError('Valid from can not be before valid from '
+                                                          'of previous version')
 
             @require_STATUS_CHANGE
-            def validate_others(self):
-                if self.instance.status.id == Status.objects.productive:
-                    if self.context['status'] not in ['blocked', 'inactive', 'archived']:
-                        raise serializers.ValidationError('From productive only block, archive and inactivate are '
-                                                          'allowed.')
-                if self.instance.status.id == Status.objects.blocked:
-                    if self.context['status'] != 'productive':
-                        raise serializers.ValidationError('From blocked only back to productive is allowed')
-                if self.instance.status.id == Status.objects.archived:
-                    raise serializers.ValidationError('No status change is allowed from archived.')
-                if self.instance.status.id == Status.objects.inactive:
-                    if self.context['status'] != 'blocked':
-                        raise serializers.ValidationError('From inactive only blocked is allowed')
+            @require_circulation
+            def validate_circulation(self):
+                if self.context['status'] not in ['productive', 'draft']:
+                    raise serializers.ValidationError('From circulation only reject to draft and set '
+                                                      'productive are allowed.')
+
+            @require_STATUS_CHANGE
+            @require_productive
+            def validate_productive(self):
+                if self.context['status'] not in ['blocked', 'inactive', 'archived']:
+                    raise serializers.ValidationError('From productive only block, archive and inactivate are '
+                                                      'allowed.')
+
+            @require_STATUS_CHANGE
+            @require_blocked
+            def validate_blocked(self):
+                if self.context['status'] != 'productive':
+                    raise serializers.ValidationError('From blocked only back to productive is allowed')
+
+            @require_STATUS_CHANGE
+            @require_inactive
+            def validate_inactive(self):
+                if self.context['status'] != 'blocked':
+                    raise serializers.ValidationError('From inactive only blocked is allowed')
+
+            @require_STATUS_CHANGE
+            @require_archived
+            def validate_archived(self):
+                raise serializers.ValidationError('No status change is allowed from archived.')
 
             @require_NONE
             def validate_updates_only_in_draft(self):
                 if self.instance.status.id != Status.objects.draft:
                     raise serializers.ValidationError('Updates are only permitted in status draft.')
+
+            # model specific rules
+            @require_ROLES
+            def validate_tbd(self):
+                pass
 
         @require_POST
         class Post(Validate):

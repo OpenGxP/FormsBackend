@@ -36,7 +36,7 @@ class Command(BaseCommand):
                 data = {'model': model,
                         'permission': perm,
                         'key': '{}.{}'.format(model[:2], perm[:3])}
-                serializer = PermissionsReadWriteSerializer(data=data, context={'method': 'POST', 'function': 'new'})
+                serializer = PermissionsReadWriteSerializer(data=data, context={'method': 'POST', 'function': 'init'})
                 if serializer.is_valid():
                     serializer.save()
                 else:
