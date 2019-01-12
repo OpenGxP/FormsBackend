@@ -95,7 +95,14 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                     model = getattr(getattr(self, 'Meta', None), 'model', None)
                     prev_instance = model.objects.get_previous_version(instance)
                     data = {'valid_to': self.instance.valid_from}
-                    self.update(instance=prev_instance, validated_data=data, self_call=True)
+                    # if no valid_to, always set
+                    valid_to_prev_version = getattr(prev_instance, 'valid_to')
+                    if not valid_to_prev_version:
+                        self.update(instance=prev_instance, validated_data=data, self_call=True)
+                    else:
+                        # only overlapping validity ranges
+                        if getattr(instance, 'valid_from') < valid_to_prev_version:
+                            self.update(instance=prev_instance, validated_data=data, self_call=True)
 
         hash_sequence = instance.HASH_SEQUENCE
         fields = dict()
