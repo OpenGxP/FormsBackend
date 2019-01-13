@@ -124,7 +124,6 @@ def permissions_detail(request, pk, format=None):
 # GET list
 @api_view(['GET', 'POST'])
 @auth_required()
-@ensure_csrf_cookie
 def roles_list(request, format=None):
     """
     List all roles.
@@ -140,10 +139,15 @@ def roles_list(request, format=None):
             return Response(_serializer.data, status=http_status.HTTP_201_CREATED)
         return Response(_serializer.errors, status=http_status.HTTP_400_BAD_REQUEST)
 
-    if request.method == 'GET':
+    @perm_required('ro.rea')
+    @ensure_csrf_cookie
+    def get(_request):
         roles = Roles.objects.all()
         serializer = RolesReadSerializer(roles, many=True)
         return Response(serializer.data)
+
+    if request.method == 'GET':
+        return get(request)
     if request.method == 'POST':
         return post(request)
 
@@ -151,7 +155,6 @@ def roles_list(request, format=None):
 # GET detail
 @api_view(['GET', 'PATCH', 'POST', 'DELETE'])
 @auth_required()
-@ensure_csrf_cookie
 def roles_detail(request, lifecycle_id, version, format=None):
     """
     Retrieve roles.
@@ -184,6 +187,12 @@ def roles_detail(request, lifecycle_id, version, format=None):
             return Response(status=http_status.HTTP_204_NO_CONTENT)
         return Response(_serializer.errors, status=http_status.HTTP_400_BAD_REQUEST)
 
+    @perm_required('ro.rea')
+    @ensure_csrf_cookie
+    def get(_request):
+        serializer = RolesReadSerializer(role)
+        return Response(serializer.data)
+
     try:
         role = Roles.objects.get(lifecycle_id=lifecycle_id, version=version)
     except Roles.DoesNotExist:
@@ -192,8 +201,7 @@ def roles_detail(request, lifecycle_id, version, format=None):
         return Response(status=http_status.HTTP_400_BAD_REQUEST)
 
     if request.method == 'GET':
-        serializer = RolesReadSerializer(role)
-        return Response(serializer.data)
+        return get(request)
 
     elif request.method == 'PATCH':
         return patch(request)
@@ -240,22 +248,36 @@ def users_list(request, format=None):
     """
     List all users.
     """
-    users = Users.objects.all()
-    serializer = UsersReadSerializer(users, many=True)
-    return Response(serializer.data)
+
+    @perm_required('us.rea')
+    @ensure_csrf_cookie
+    def get(_request):
+        users = Users.objects.all()
+        serializer = UsersReadSerializer(users, many=True)
+        return Response(serializer.data)
+
+    if request.method == 'GET':
+        return get(request)
 
 
 # GET detail
 @api_view(['GET'])
 @auth_required()
-def users_detail(request, pk, format=None):
+def users_detail(request, lifecycle_id, version, format=None):
     """
     Retrieve users.
     """
+
+    @perm_required('us.rea')
+    @ensure_csrf_cookie
+    def get(_request):
+        serializer = UsersReadSerializer(user)
+        return Response(serializer.data)
+
     try:
-        stat = Users.objects.get(pk=pk)
+        user = Users.objects.get(lifecycle_id=lifecycle_id, version=version)
     except Users.DoesNotExist:
         return Response(status=http_status.HTTP_404_NOT_FOUND)
 
-    serializer = UsersReadSerializer(stat)
-    return Response(serializer.data)
+    if request.method == 'GET':
+        return get(request)
