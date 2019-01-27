@@ -122,6 +122,8 @@ def roles_list(request, format=None):
     """
     List all roles.
     """
+
+    @perm_required('ro.edi')
     @csrf_protect
     def post(_request):
         # add version for new objects because of combined unique constraint

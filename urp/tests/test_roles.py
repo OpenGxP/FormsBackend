@@ -58,6 +58,7 @@ class PostRoles(PostNew):
     def setUp(self):
         self.client = APIClient(enforce_csrf_checks=True)
         self.prerequisites.role_superuser()
+        self.prerequisites.role_no_write_permissions()
         self.valid_payload = {'role': 'test',
                               'valid_from': timezone.now()}
         self.invalid_payloads = [dict(),

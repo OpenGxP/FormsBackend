@@ -38,6 +38,8 @@ class Prerequisites(object):
         self.username_no_perm = 'usernoperms'
         # user for valid from tests
         self.username_valid_from = 'uservalidfrom'
+        # user for read only permissions
+        self.username_no_write_perm = 'usernowriteperms'
 
     @staticmethod
     def create_record(serializer, data):
@@ -60,6 +62,11 @@ class Prerequisites(object):
         call_command('create-role', name=role, permissions='false,false')
         Users.objects.create_superuser(username=self.username_no_perm, password=self.password, role=role)
 
+    def role_no_write_permissions(self):
+        role = 'no_write_perms'
+        call_command('create-role', name=role, permissions='pe.rea,ro.rea,us.rea,st.rea')
+        Users.objects.create_superuser(username=self.username_no_write_perm, password=self.password, role=role)
+
     def role_past_valid_from(self):
         role = 'past_valid_from'
         call_command('create-role', name=role, valid_from='01-01-2016 00:00:00')
@@ -79,6 +86,12 @@ class Prerequisites(object):
 
     def auth_not_valid_roles(self, ext_client):
         data = {'username': self.username_valid_from, 'password': self.password}
+        client = APIClient()
+        response = client.post(path=reverse('token_obtain_pair'), data=data, format='json')
+        ext_client.credentials(HTTP_AUTHORIZATION='Bearer ' + response.data['access'])
+
+    def auth_no_write_perms(self, ext_client):
+        data = {'username': self.username_no_write_perm, 'password': self.password}
         client = APIClient()
         response = client.post(path=reverse('token_obtain_pair'), data=data, format='json')
         ext_client.credentials(HTTP_AUTHORIZATION='Bearer ' + response.data['access'])
@@ -242,6 +255,7 @@ class PostNew(APITestCase):
         if self.execute:
             self.client = APIClient(enforce_csrf_checks=True)
             self.prerequisites.role_superuser()
+            self.prerequisites.role_no_write_permissions()
 
             # placeholders
             self.valid_payload = None
@@ -259,6 +273,16 @@ class PostNew(APITestCase):
             self.prerequisites.auth(self.client)
             # get API response
             response = self.client.post(self.path, data=self.valid_payload, format='json')
+            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_403_permission(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth_no_write_perms(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            # get API response
+            response = self.client.post(self.path, data=self.valid_payload, format='json', HTTP_X_CSRFTOKEN=csrf_token)
             self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_400(self):

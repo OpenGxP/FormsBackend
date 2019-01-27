@@ -42,7 +42,7 @@ class GetUsers(GetAll):
 
 
 ####################################
-# /roles/{lifecycle_id}/{version}/ #
+# /users/{lifecycle_id}/{version}/ #
 ####################################
 
 # get
