@@ -24,7 +24,7 @@ from ..models import Status
 from ..serializers import StatusReadWriteSerializer
 
 # test imports
-from . import Get
+from . import GetAll
 
 
 ############
@@ -32,7 +32,7 @@ from . import Get
 ############
 
 # get
-class GetStatus(Get):
+class GetStatus(GetAll):
     def __init__(self, *args, **kwargs):
         super(GetStatus, self).__init__(*args, **kwargs)
         self.path = reverse('status-list')

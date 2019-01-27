@@ -18,17 +18,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # django imports
 from django.urls import reverse
-from django.utils import timezone
-
-# rest framework imports
-from rest_framework.test import APIClient
 
 # app imports
 from ..models import Users
 from ..serializers import UsersReadSerializer
 
 # test imports
-from . import Prerequisites, Get, Post
+from . import GetAll, GetOne
 
 
 ###########
@@ -36,7 +32,7 @@ from . import Prerequisites, Get, Post
 ###########
 
 # get
-class GetUsers(Get):
+class GetUsers(GetAll):
     def __init__(self, *args, **kwargs):
         super(GetUsers, self).__init__(*args, **kwargs)
         self.path = reverse('users-list')
@@ -45,8 +41,25 @@ class GetUsers(Get):
         self.execute = True
 
 
+####################################
+# /roles/{lifecycle_id}/{version}/ #
+####################################
+
+# get
+class GetOneUser(GetOne):
+    def __init__(self, *args, **kwargs):
+        super(GetOneUser, self).__init__(*args, **kwargs)
+        self.path = reverse('users-list')
+        self.model = Users
+        self.serializer = UsersReadSerializer
+
+    def setUp(self):
+        self.path = ''.format(self.path, )
+
+
 # post
-class PostUsers(Post):
+"""
+class PostUsers(PostNew):
     def __init__(self, *args, **kwargs):
         super(PostUsers, self).__init__(*args, **kwargs)
         self.path = reverse('roles-list')
@@ -73,4 +86,4 @@ class PostUsers(Post):
                                   'roles': 'all'},
                                  {'last_name': 'mustermann',
                                   'valid_from': timezone.now(),
-                                  'roles': 'all'}]
+                                  'roles': 'all'}]"""

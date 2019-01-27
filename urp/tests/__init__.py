@@ -39,6 +39,15 @@ class Prerequisites(object):
         # user for valid from tests
         self.username_valid_from = 'uservalidfrom'
 
+    @staticmethod
+    def create_record(serializer, data):
+        data['version'] = 1
+        _serializer = serializer(data=data, context={'method': 'POST', 'function': 'new'})
+        if _serializer.is_valid():
+            _serializer.save()
+        else:
+            raise AssertionError('Can not create prerequisite record.')
+
     def role_superuser(self):
         call_command('initialize-status')
         call_command('collect-permissions')
@@ -84,9 +93,9 @@ class Prerequisites(object):
         return response.cookies['csrftoken'].value
 
 
-class Get(APITestCase):
+class GetAll(APITestCase):
     def __init__(self, *args, **kwargs):
-        super(Get, self).__init__(*args, **kwargs)
+        super(GetAll, self).__init__(*args, **kwargs)
         self.prerequisites = Prerequisites()
 
         # placeholders
@@ -138,10 +147,87 @@ class Get(APITestCase):
             self.assertEqual(response.status_code, status.HTTP_200_OK)
 
 
-# post
-class Post(APITestCase):
+class GetOne(APITestCase):
     def __init__(self, *args, **kwargs):
-        super(Post, self).__init__(*args, **kwargs)
+        super(GetOne, self).__init__(*args, **kwargs)
+        self.prerequisites = Prerequisites()
+
+        # placeholders
+        self.path = None
+        self.model = None
+        self.serializer = None
+        # self.write_serializer = None
+        self.query = None
+        self.false_path_version = None
+        self.false_path_uuid = None
+        self.false_path_both = None
+
+        # flag for execution
+        self.execute = False
+
+    def test_401(self):
+        if self.execute:
+            # get API response
+            response = self.client.get(self.path, format='json')
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_403(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth_no_perms(self.client)
+            # get API response
+            response = self.client.get(self.path, format='json')
+            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_200_csrf(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get API response
+            response = self.client.get(self.path, format='json')
+            self.assertIsNotNone(self.prerequisites.verify_csrf(response))
+
+    def test_200(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get API response
+            response = self.client.get(self.path, format='json')
+            # get data from db
+            query = self.model.objects.get(self.query)
+            serializer = self.serializer(query)
+            self.assertEqual(response.data, serializer.data)
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_404_both(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get API response
+            response = self.client.get(self.false_path_both, format='json')
+            self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_404_version(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get API response
+            response = self.client.get(self.false_path_version, format='json')
+            self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_404_uuid(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get API response
+            response = self.client.get(self.false_path_uuid, format='json')
+            self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
+# post
+class PostNew(APITestCase):
+    def __init__(self, *args, **kwargs):
+        super(PostNew, self).__init__(*args, **kwargs)
 
         # placeholders
         self.path = None

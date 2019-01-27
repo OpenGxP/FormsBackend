@@ -26,10 +26,10 @@ from rest_framework.test import APITestCase, APIClient
 
 # app imports
 from ..models import Status, Roles
-from ..serializers import RolesReadSerializer
+from ..serializers import RolesReadSerializer, RolesWriteSerializer
 
 # test imports
-from . import Prerequisites, Get, Post
+from . import Prerequisites, GetAll, PostNew, GetOne
 
 
 ############
@@ -37,7 +37,7 @@ from . import Prerequisites, Get, Post
 ############
 
 # get
-class GetRoles(Get):
+class GetRoles(GetAll):
     def __init__(self, *args, **kwargs):
         super(GetRoles, self).__init__(*args, **kwargs)
         self.path = reverse('roles-list')
@@ -47,7 +47,7 @@ class GetRoles(Get):
 
 
 # post
-class PostRoles(Post):
+class PostRoles(PostNew):
     def __init__(self, *args, **kwargs):
         super(PostRoles, self).__init__(*args, **kwargs)
         self.path = reverse('roles-list')
@@ -68,6 +68,18 @@ class PostRoles(Post):
 ####################################
 # /roles/{lifecycle_id}/{version}/ #
 ####################################
+
+# get
+class GetOneRole(GetOne):
+    def __init__(self, *args, **kwargs):
+        super(GetOneRole, self).__init__(*args, **kwargs)
+        self.path = reverse('roles-list')
+        self.model = Roles
+        self.serializer = RolesReadSerializer
+
+    def setUp(self):
+        self.path = ''.format(self.path, )
+
 
 # get
 class GetRolesLifecycleIdVersion(APITestCase):

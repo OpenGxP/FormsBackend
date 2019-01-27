@@ -24,7 +24,7 @@ from ..models import Permissions
 from ..serializers import PermissionsReadWriteSerializer
 
 # test imports
-from . import Get
+from . import GetAll
 
 
 #################
@@ -32,7 +32,7 @@ from . import Get
 #################
 
 # get
-class GetPermissions(Get):
+class GetPermissions(GetAll):
     def __init__(self, *args, **kwargs):
         super(GetPermissions, self).__init__(*args, **kwargs)
         self.path = reverse('permissions-list')

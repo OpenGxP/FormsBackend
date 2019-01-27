@@ -67,20 +67,17 @@ def status_list(request, format=None):
 
 
 # GET detail
-@api_view(['GET'])
+"""@api_view(['GET'])
 @auth_required()
 @perm_required('st.rea')
 def status_detail(request, pk, format=None):
-    """
-    Retrieve status.
-    """
     try:
         stat = Status.objects.get(pk=pk)
     except Status.DoesNotExist:
         return Response(status=http_status.HTTP_404_NOT_FOUND)
 
     serializer = StatusReadWriteSerializer(stat)
-    return Response(serializer.data)
+    return Response(serializer.data)"""
 
 
 ###############
@@ -101,20 +98,17 @@ def permissions_list(request, format=None):
 
 
 # GET detail
-@api_view(['GET'])
+"""@api_view(['GET'])
 @auth_required()
 @perm_required('pe.rea')
 def permissions_detail(request, pk, format=None):
-    """
-    Retrieve permissions.
-    """
     try:
         perm = Permissions.objects.get(pk=pk)
     except Permissions.DoesNotExist:
         return Response(status=http_status.HTTP_404_NOT_FOUND)
 
     serializer = PermissionsReadWriteSerializer(perm)
-    return Response(serializer.data)
+    return Response(serializer.data)"""
 
 
 #########

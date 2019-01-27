@@ -25,24 +25,24 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from django.urls import path
 
 # app imports
-from .views import permissions_list, permissions_detail, status_list, status_detail, roles_list, roles_detail, \
+from .views import permissions_list, status_list, roles_list, roles_detail, \
     roles_status, users_list, users_detail, api_root
 
 
 urlpatterns = [
     # status
     path('status/', status_list, name='status-list'),
-    path('status/<int:pk>/', status_detail),
+    # path('status/<int:pk>/', status_detail),
     # permissions
     path('permissions/', permissions_list, name='permissions-list'),
-    path('permissions/<int:pk>/', permissions_detail),
+    # path('permissions/<int:pk>/', permissions_detail),
     # roles
     path('roles/', roles_list, name='roles-list'),
     path('roles/<str:lifecycle_id>/<int:version>', roles_detail),
     path('roles/<str:lifecycle_id>/<int:version>/<str:status>', roles_status, name='roles-status'),
     # users
     path('users/', users_list, name='users-list'),
-    path('users/<int:pk>/', users_detail),
+    path('users/<str:lifecycle_id>/<int:version>', users_detail),
     # root
     path('', api_root),
     # authentication JWT
