@@ -165,6 +165,7 @@ def roles_detail(request, lifecycle_id, version, format=None):
             return Response(_serializer.data)
         return Response(_serializer.errors, status=http_status.HTTP_400_BAD_REQUEST)
 
+    @perm_required('ro.ver')
     @csrf_protect
     def post(_request):
         _serializer = RolesNewVersionSerializer(role, data=_request.data, context={'method': 'POST',

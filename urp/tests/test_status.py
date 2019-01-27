@@ -35,7 +35,7 @@ from . import GetAll
 class GetStatus(GetAll):
     def __init__(self, *args, **kwargs):
         super(GetStatus, self).__init__(*args, **kwargs)
-        self.path = reverse('status-list')
+        self.base_path = reverse('status-list')
         self.model = Status
         self.serializer = StatusReadWriteSerializer
         self.execute = True

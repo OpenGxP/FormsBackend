@@ -26,7 +26,7 @@ from rest_framework.test import APIClient, APITestCase
 
 
 # app imports
-from ..models import Users
+from ..models import Users, Status
 
 
 class Prerequisites(object):
@@ -47,8 +47,26 @@ class Prerequisites(object):
         _serializer = serializer(data=data, context={'method': 'POST', 'function': 'new'})
         if _serializer.is_valid():
             _serializer.save()
+            return _serializer.data
         else:
             raise AssertionError('Can not create prerequisite record.')
+
+    @staticmethod
+    def create_record_raw(model, data):
+        if data['status'] == 'draft':
+            data['status_id'] = Status.objects.draft
+        if data['status'] == 'circulation':
+            data['status_id'] = Status.objects.circulation
+        if data['status'] == 'productive':
+            data['status_id'] = Status.objects.productive
+        if data['status'] == 'blocked':
+            data['status_id'] = Status.objects.blocked
+        if data['status'] == 'inactive':
+            data['status_id'] = Status.objects.inactive
+        if data['status'] == 'archived':
+            data['status_id'] = Status.objects.archived
+        del data['status']
+        return model.objects.create(**data)
 
     def role_superuser(self):
         call_command('initialize-status')
@@ -112,7 +130,7 @@ class GetAll(APITestCase):
         self.prerequisites = Prerequisites()
 
         # placeholders
-        self.path = None
+        self.base_path = None
         self.model = None
         self.serializer = None
 
@@ -123,11 +141,12 @@ class GetAll(APITestCase):
         if self.execute:
             self.prerequisites.role_superuser()
             self.prerequisites.role_no_permissions()
+            self.ok_path = self.base_path
 
     def test_401(self):
         if self.execute:
             # get API response
-            response = self.client.get(self.path, format='json')
+            response = self.client.get(self.ok_path, format='json')
             self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_403(self):
@@ -135,7 +154,7 @@ class GetAll(APITestCase):
             # authenticate
             self.prerequisites.auth_no_perms(self.client)
             # get API response
-            response = self.client.get(self.path, format='json')
+            response = self.client.get(self.ok_path, format='json')
             self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     # test to verify that response includes csrf token
@@ -144,7 +163,7 @@ class GetAll(APITestCase):
             # authenticate
             self.prerequisites.auth(self.client)
             # get API response
-            response = self.client.get(self.path, format='json')
+            response = self.client.get(self.ok_path, format='json')
             self.assertIsNotNone(self.prerequisites.verify_csrf(response))
 
     def test_200(self):
@@ -152,7 +171,7 @@ class GetAll(APITestCase):
             # authenticate
             self.prerequisites.auth(self.client)
             # get API response
-            response = self.client.get(self.path, format='json')
+            response = self.client.get(self.ok_path, format='json')
             # get data from db
             query = self.model.objects.all()
             serializer = self.serializer(query, many=True)
@@ -166,22 +185,33 @@ class GetOne(APITestCase):
         self.prerequisites = Prerequisites()
 
         # placeholders
-        self.path = None
+        self.base_path = None
         self.model = None
         self.serializer = None
-        # self.write_serializer = None
-        self.query = None
-        self.false_path_version = None
-        self.false_path_uuid = None
-        self.false_path_both = None
+        self.ok_object_data = None
 
         # flag for execution
         self.execute = False
 
+    def setUp(self):
+        if self.execute:
+            self.prerequisites.role_superuser()
+            self.prerequisites.role_no_permissions()
+            # create ok object
+            self.ok_object = self.prerequisites.create_record_raw(self.model, self.ok_object_data)
+            # create ok path
+            self.ok_path = '{}{}/{}'.format(self.base_path, self.ok_object.lifecycle_id, self.ok_object.version)
+            self.query = {'lifecycle_id': self.ok_object.lifecycle_id,
+                          'version': self.ok_object.version}
+            self.false_path_version = '{}{}/{}'.format(self.base_path, self.ok_object.lifecycle_id, 2)
+            self.false_path_uuid = '{}{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f',
+                                                    self.ok_object.version)
+            self.false_path_both = '{}{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f', 2)
+
     def test_401(self):
         if self.execute:
             # get API response
-            response = self.client.get(self.path, format='json')
+            response = self.client.get(self.ok_path, format='json')
             self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_403(self):
@@ -189,7 +219,7 @@ class GetOne(APITestCase):
             # authenticate
             self.prerequisites.auth_no_perms(self.client)
             # get API response
-            response = self.client.get(self.path, format='json')
+            response = self.client.get(self.ok_path, format='json')
             self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_200_csrf(self):
@@ -197,7 +227,7 @@ class GetOne(APITestCase):
             # authenticate
             self.prerequisites.auth(self.client)
             # get API response
-            response = self.client.get(self.path, format='json')
+            response = self.client.get(self.ok_path, format='json')
             self.assertIsNotNone(self.prerequisites.verify_csrf(response))
 
     def test_200(self):
@@ -205,9 +235,9 @@ class GetOne(APITestCase):
             # authenticate
             self.prerequisites.auth(self.client)
             # get API response
-            response = self.client.get(self.path, format='json')
+            response = self.client.get(self.ok_path, format='json')
             # get data from db
-            query = self.model.objects.get(self.query)
+            query = self.model.objects.get(**self.query)
             serializer = self.serializer(query)
             self.assertEqual(response.data, serializer.data)
             self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -241,12 +271,12 @@ class GetOne(APITestCase):
 class PostNew(APITestCase):
     def __init__(self, *args, **kwargs):
         super(PostNew, self).__init__(*args, **kwargs)
-
         # placeholders
-        self.path = None
+        self.base_path = None
         self.model = None
-        self.serializer = None
         self.prerequisites = None
+        self.valid_payload = None
+        self.invalid_payloads = None
 
         # flag for execution
         self.execute = False
@@ -256,15 +286,12 @@ class PostNew(APITestCase):
             self.client = APIClient(enforce_csrf_checks=True)
             self.prerequisites.role_superuser()
             self.prerequisites.role_no_write_permissions()
-
-            # placeholders
-            self.valid_payload = None
-            self.invalid_payloads = None
+            self.ok_path = self.base_path
 
     def test_401(self):
         if self.execute:
             # get API response
-            response = self.client.post(self.path, data=self.valid_payload, format='json')
+            response = self.client.post(self.ok_path, data=self.valid_payload, format='json')
             self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_403_csrf(self):
@@ -272,7 +299,7 @@ class PostNew(APITestCase):
             # authenticate
             self.prerequisites.auth(self.client)
             # get API response
-            response = self.client.post(self.path, data=self.valid_payload, format='json')
+            response = self.client.post(self.ok_path, data=self.valid_payload, format='json')
             self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_403_permission(self):
@@ -282,7 +309,8 @@ class PostNew(APITestCase):
             # get csrf
             csrf_token = self.prerequisites.get_csrf(self.client)
             # get API response
-            response = self.client.post(self.path, data=self.valid_payload, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            response = self.client.post(self.ok_path, data=self.valid_payload, format='json',
+                                        HTTP_X_CSRFTOKEN=csrf_token)
             self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_400(self):
@@ -293,7 +321,7 @@ class PostNew(APITestCase):
             csrf_token = self.prerequisites.get_csrf(self.client)
             # get API response
             for payload in self.invalid_payloads:
-                response = self.client.post(self.path, data=payload, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+                response = self.client.post(self.ok_path, data=payload, format='json', HTTP_X_CSRFTOKEN=csrf_token)
                 self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_201(self):
@@ -303,7 +331,150 @@ class PostNew(APITestCase):
             # get csrf
             csrf_token = self.prerequisites.get_csrf(self.client)
             # get API response
-            response = self.client.post(self.path, data=self.valid_payload, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            response = self.client.post(self.ok_path, data=self.valid_payload, format='json',
+                                        HTTP_X_CSRFTOKEN=csrf_token)
             self.assertEqual(response.status_code, status.HTTP_201_CREATED)
             self.assertEqual(response.data['version'], 1)
             self.assertEqual(response.data['status'], 'draft')
+
+
+# post
+class PostNewVersion(APITestCase):
+    def __init__(self, *args, **kwargs):
+        super(PostNewVersion, self).__init__(*args, **kwargs)
+
+        # placeholders
+        self.base_path = None
+        self.model = None
+        self.read_serializer = None
+        self.write_serializer = None
+        self.ok_object_data = None
+        self.fail_object_draft_data = None
+        self.fail_object_circulation_data = None
+        self.prerequisites = None
+
+        # flag for execution
+        self.execute = False
+
+    def setUp(self):
+        if self.execute:
+            self.client = APIClient(enforce_csrf_checks=True)
+            self.prerequisites.role_superuser()
+            self.prerequisites.role_no_write_permissions()
+            # create ok object
+            self.ok_object = self.prerequisites.create_record_raw(self.model, self.ok_object_data)
+            # create ok path
+            self.ok_path = '{}{}/{}'.format(self.base_path, self.ok_object.lifecycle_id, self.ok_object.version)
+            self.query = {'lifecycle_id': self.ok_object.lifecycle_id,
+                          'version': self.ok_object.version}
+            self.false_path_version = '{}{}/{}'.format(self.base_path, self.ok_object.lifecycle_id, 2)
+            self.false_path_uuid = '{}{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f',
+                                                    self.ok_object.version)
+            self.false_path_both = '{}{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f', 2)
+
+            # placeholders
+            self.fail_object_draft = self.prerequisites.create_record_raw(self.model, self.fail_object_draft_data)
+            self.fail_object_circulation = self.prerequisites.create_record_raw(self.model,
+                                                                                self.fail_object_circulation_data)
+            self.fail_path_draft = '{}{}/{}'.format(self.base_path, self.fail_object_draft.lifecycle_id,
+                                                    self.fail_object_draft.version)
+            self.fail_path_circulation = '{}{}/{}'.format(self.base_path, self.fail_object_circulation.lifecycle_id,
+                                                          self.fail_object_circulation.version)
+
+    def test_401(self):
+        if self.execute:
+            # get API response
+            response = self.client.post(self.ok_path, format='json')
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_403_csrf(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get API response
+            response = self.client.post(self.ok_path, format='json')
+            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_403_permission(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth_no_write_perms(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            # get API response
+            response = self.client.post(self.ok_path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_404_both(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get API response
+            response = self.client.post(self.false_path_both, format='json')
+            self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_404_version(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get API response
+            response = self.client.post(self.false_path_version, format='json')
+            self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_404_uuid(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get API response
+            response = self.client.post(self.false_path_uuid, format='json')
+            self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_201(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            # get API response
+            response = self.client.post(self.ok_path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+            self.assertEqual(response.data['version'], 2)
+            self.assertEqual(response.data['lifecycle_id'], str(self.ok_object.lifecycle_id))
+            self.assertEqual(response.data['status'], 'draft')
+            # add check that data is the same, except status and version
+            query = self.model.objects.get(**self.query)
+            serializer = self.read_serializer(query)
+            self.assertEqual(response.data[self.model.UNIQUE], serializer.data[self.model.UNIQUE])
+            self.assertEqual(response.data['valid_from'], serializer.data['valid_from'])
+
+    def test_400_second(self):
+        if self.execute:
+            # first add a new version
+            self.test_201()
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            # second call for check that not a second version can be created
+            response = self.client.post(self.ok_path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_400_draft(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            # get API response
+            response = self.client.post(self.fail_path_draft, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_400_circulation(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            # get API response
+            response = self.client.post(self.fail_path_circulation, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

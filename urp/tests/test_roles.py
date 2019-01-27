@@ -29,7 +29,7 @@ from ..models import Status, Roles
 from ..serializers import RolesReadSerializer, RolesWriteSerializer
 
 # test imports
-from . import Prerequisites, GetAll, PostNew, GetOne
+from . import Prerequisites, GetAll, PostNew, GetOne, PostNewVersion
 
 
 ############
@@ -37,33 +37,28 @@ from . import Prerequisites, GetAll, PostNew, GetOne
 ############
 
 # get
-class GetRoles(GetAll):
+class GetAllRoles(GetAll):
     def __init__(self, *args, **kwargs):
-        super(GetRoles, self).__init__(*args, **kwargs)
-        self.path = reverse('roles-list')
+        super(GetAllRoles, self).__init__(*args, **kwargs)
+        self.base_path = reverse('roles-list')
         self.model = Roles
         self.serializer = RolesReadSerializer
         self.execute = True
 
 
 # post
-class PostRoles(PostNew):
+class PostNewRoles(PostNew):
     def __init__(self, *args, **kwargs):
-        super(PostRoles, self).__init__(*args, **kwargs)
-        self.path = reverse('roles-list')
+        super(PostNewRoles, self).__init__(*args, **kwargs)
+        self.base_path = reverse('roles-list')
         self.model = Roles
-        self.prerequisites = Prerequisites(base_path=self.path)
-        self.execute = True
-
-    def setUp(self):
-        self.client = APIClient(enforce_csrf_checks=True)
-        self.prerequisites.role_superuser()
-        self.prerequisites.role_no_write_permissions()
+        self.prerequisites = Prerequisites(base_path=self.base_path)
         self.valid_payload = {'role': 'test',
                               'valid_from': timezone.now()}
         self.invalid_payloads = [dict(),
                                  {'role': ''},
                                  {'role': 'test'}]
+        self.execute = True
 
 
 ####################################
@@ -74,170 +69,38 @@ class PostRoles(PostNew):
 class GetOneRole(GetOne):
     def __init__(self, *args, **kwargs):
         super(GetOneRole, self).__init__(*args, **kwargs)
-        self.path = reverse('roles-list')
+        self.base_path = reverse('roles-list')
         self.model = Roles
         self.serializer = RolesReadSerializer
-
-    def setUp(self):
-        self.path = ''.format(self.path, )
-
-
-# get
-class GetRolesLifecycleIdVersion(APITestCase):
-    def __init__(self, *args, **kwargs):
-        super(GetRolesLifecycleIdVersion, self).__init__(*args, **kwargs)
-        self.base_path = reverse('roles-list')
-        self.prerequisites = Prerequisites()
-
-    def setUp(self):
-        self.prerequisites.role_superuser()
-        self.role_lifecycle = Roles.objects.filter(role='all').get().lifecycle_id
-        self.role_version = 1
-        self.path = '{}{}/{}'.format(self.base_path, self.role_lifecycle, self.role_version)
-
-    def test_401(self):
-        # get API response
-        response = self.client.get(self.path, format='json')
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-
-    def test_200_csrf(self):
-        # authenticate
-        self.prerequisites.auth(self.client)
-        # get API response
-        response = self.client.get(self.path, format='json')
-        self.assertIsNotNone(self.prerequisites.verify_csrf(response))
-
-    def test_200(self):
-        # authenticate
-        self.prerequisites.auth(self.client)
-        # get API response
-        response = self.client.get(self.path, format='json')
-        # get data from db
-        query = Roles.objects.get(lifecycle_id=self.role_lifecycle, version=self.role_version)
-        serializer = RolesReadSerializer(query)
-        self.assertEqual(response.data, serializer.data)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-    def test_404_version(self):
-        # authenticate
-        self.prerequisites.auth(self.client)
-        # get API response
-        path = '{}{}/{}'.format(self.base_path, self.role_lifecycle, 2)
-        response = self.client.get(path, format='json')
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-
-    def test_404_lifecycle(self):
-        # authenticate
-        self.prerequisites.auth(self.client)
-        # get API response
-        path = '{}{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f', self.role_version)
-        response = self.client.get(path, format='json')
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.ok_object_data = {'role': 'test',
+                               'version': 1,
+                               'status': 'draft',
+                               'valid_from': timezone.now()}
+        self.execute = True
 
 
 # post
-class PostRolesLifecycleIdVersion(APITestCase):
-    """Test module for get all permissions"""
+class PostNewVersionRole(PostNewVersion):
     def __init__(self, *args, **kwargs):
-        super(PostRolesLifecycleIdVersion, self).__init__(*args, **kwargs)
+        super(PostNewVersionRole, self).__init__(*args, **kwargs)
         self.base_path = reverse('roles-list')
+        self.model = Roles
         self.prerequisites = Prerequisites(base_path=self.base_path)
-
-    def setUp(self):
-        self.client = APIClient(enforce_csrf_checks=True)
-        self.prerequisites.role_superuser()
-        self.role_lifecycle = Roles.objects.filter(role='all').get().lifecycle_id
-        self.role_version = 1
-        self.path = '{}{}/{}'.format(self.base_path, self.role_lifecycle, self.role_version)
-
-        # role in draft for 400 new version
-        self.role_draft_lifecycle = Roles.objects.create(role='draft', version=self.role_version,
-                                                         valid_from=timezone.now(),
-                                                         status_id=Status.objects.draft).lifecycle_id
-        # role in circulation for 400 new version
-        self.role_circulation_lifecycle = Roles.objects.create(role='circulation', version=self.role_version,
-                                                               valid_from=timezone.now(),
-                                                               status_id=Status.objects.circulation).lifecycle_id
-
-    def test_401(self):
-        # get API response
-        response = self.client.post(self.path, format='json')
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-
-    def test_403_csrf(self):
-        # authenticate
-        self.prerequisites.auth(self.client)
-        # get API response
-        response = self.client.post(self.path, format='json')
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-
-    def test_404_version(self):
-        # authenticate
-        self.prerequisites.auth(self.client)
-        # get csrf
-        csrf_token = self.prerequisites.get_csrf(self.client)
-        # get API response
-        path = '{}{}/{}'.format(self.base_path, self.role_lifecycle, 2)
-        response = self.client.post(path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-
-    def test_404_lifecycle(self):
-        # authenticate
-        self.prerequisites.auth(self.client)
-        # get csrf
-        csrf_token = self.prerequisites.get_csrf(self.client)
-        # get API response
-        path = '{}{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f', self.role_version)
-        response = self.client.post(path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-
-    def test_201(self):
-        # authenticate
-        self.prerequisites.auth(self.client)
-        # get csrf
-        csrf_token = self.prerequisites.get_csrf(self.client)
-        # get API response
-        response = self.client.post(self.path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data['version'], 2)
-        self.assertEqual(response.data['lifecycle_id'], str(self.role_lifecycle))
-        self.assertEqual(response.data['status'], 'draft')
-        # add check that valid_from and role are the same
-        query = Roles.objects.filter(lifecycle_id=self.role_lifecycle, version=1).get()
-        serializer = RolesReadSerializer(query)
-        self.assertEqual(response.data['role'], serializer.data['role'])
-        self.assertEqual(response.data['valid_from'], serializer.data['valid_from'])
-
-    def test_400_second(self):
-        # first add a new version
-        self.test_201()
-        # authenticate
-        self.prerequisites.auth(self.client)
-        # get csrf
-        csrf_token = self.prerequisites.get_csrf(self.client)
-        # second call for check that not a second version can be created
-        response = self.client.post(self.path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-    def test_400_draft(self):
-        # authenticate
-        self.prerequisites.auth(self.client)
-        # get csrf
-        csrf_token = self.prerequisites.get_csrf(self.client)
-        # get API response
-        path = '{}{}/{}'.format(self.base_path, self.role_draft_lifecycle, self.role_version)
-        response = self.client.post(path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-    def test_400_circulation(self):
-        # authenticate
-        self.prerequisites.auth(self.client)
-        # get csrf
-        csrf_token = self.prerequisites.get_csrf(self.client)
-        # get API response
-        path = '{}{}/{}'.format(self.base_path, self.role_circulation_lifecycle, self.role_version)
-        response = self.client.post(path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.read_serializer = RolesReadSerializer
+        self.write_serializer = RolesWriteSerializer
+        self.ok_object_data = {'role': 'test',
+                               'version': 1,
+                               'status': 'productive',
+                               'valid_from': timezone.now()}
+        self.fail_object_draft_data = {'role': 'test_draft',
+                                       'version': 1,
+                                       'status': 'draft',
+                                       'valid_from': timezone.now()}
+        self.fail_object_circulation_data = {'role': 'test_circ',
+                                             'version': 1,
+                                             'status': 'circulation',
+                                             'valid_from': timezone.now()}
+        self.execute = True
 
 
 # delete

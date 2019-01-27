@@ -35,7 +35,7 @@ from . import GetAll
 class GetPermissions(GetAll):
     def __init__(self, *args, **kwargs):
         super(GetPermissions, self).__init__(*args, **kwargs)
-        self.path = reverse('permissions-list')
+        self.base_path = reverse('permissions-list')
         self.model = Permissions
         self.serializer = PermissionsReadWriteSerializer
         self.execute = True

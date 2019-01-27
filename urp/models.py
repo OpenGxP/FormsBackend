@@ -136,7 +136,8 @@ class Roles(GlobalModel):
     HASH_SEQUENCE = ['role', 'status_id', 'version', 'valid_from', 'valid_to', 'permissions']
 
     # permissions
-    perms = ['read', 'add', 'edit', 'delete', 'circulation', 'reject', 'productive', 'block', 'archive', 'inactivate']
+    perms = ['read', 'add', 'edit', 'delete', 'circulation', 'reject', 'productive', 'block', 'archive', 'inactivate',
+             'version']
 
     # unique field
     UNIQUE = 'role'
@@ -242,7 +243,8 @@ class Users(AbstractBaseUser, GlobalModel):
                      'status_id', 'version', 'valid_from', 'valid_to', 'roles']
 
     # permissions
-    perms = ['read', 'add', 'edit', 'delete', 'circulation', 'reject', 'productive', 'block', 'archive', 'inactivate']
+    perms = ['read', 'add', 'edit', 'delete', 'circulation', 'reject', 'productive', 'block', 'archive', 'inactivate',
+             'version']
 
     def get_full_name(self):
         return _('{} - {} {}').format(self.username, self.first_name, self.last_name)

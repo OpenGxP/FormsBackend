@@ -32,10 +32,10 @@ from . import GetAll, GetOne
 ###########
 
 # get
-class GetUsers(GetAll):
+class GetAllUsers(GetAll):
     def __init__(self, *args, **kwargs):
-        super(GetUsers, self).__init__(*args, **kwargs)
-        self.path = reverse('users-list')
+        super(GetAllUsers, self).__init__(*args, **kwargs)
+        self.base_path = reverse('users-list')
         self.model = Users
         self.serializer = UsersReadSerializer
         self.execute = True
@@ -44,18 +44,6 @@ class GetUsers(GetAll):
 ####################################
 # /users/{lifecycle_id}/{version}/ #
 ####################################
-
-# get
-class GetOneUser(GetOne):
-    def __init__(self, *args, **kwargs):
-        super(GetOneUser, self).__init__(*args, **kwargs)
-        self.path = reverse('users-list')
-        self.model = Users
-        self.serializer = UsersReadSerializer
-
-    def setUp(self):
-        self.path = ''.format(self.path, )
-
 
 # post
 """
