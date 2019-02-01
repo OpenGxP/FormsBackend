@@ -71,10 +71,10 @@ class GetOneRole(GetOne):
         super(GetOneRole, self).__init__(*args, **kwargs)
         self.base_path = reverse('roles-list')
         self.model = Roles
-        self.serializer = RolesReadSerializer
+        self.prerequisites = Prerequisites(base_path=self.base_path)
+        self.read_serializer = RolesReadSerializer
+        self.write_serializer = RolesWriteSerializer
         self.ok_object_data = {'role': 'test',
-                               'version': 1,
-                               'status': 'draft',
                                'valid_from': timezone.now()}
         self.execute = True
 
@@ -89,16 +89,10 @@ class PostNewVersionRole(PostNewVersion):
         self.read_serializer = RolesReadSerializer
         self.write_serializer = RolesWriteSerializer
         self.ok_object_data = {'role': 'test',
-                               'version': 1,
-                               'status': 'productive',
                                'valid_from': timezone.now()}
         self.fail_object_draft_data = {'role': 'test_draft',
-                                       'version': 1,
-                                       'status': 'draft',
                                        'valid_from': timezone.now()}
         self.fail_object_circulation_data = {'role': 'test_circ',
-                                             'version': 1,
-                                             'status': 'circulation',
                                              'valid_from': timezone.now()}
         self.execute = True
 

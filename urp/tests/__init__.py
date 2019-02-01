@@ -41,32 +41,18 @@ class Prerequisites(object):
         # user for read only permissions
         self.username_no_write_perm = 'usernowriteperms'
 
-    @staticmethod
-    def create_record(serializer, data):
-        data['version'] = 1
-        _serializer = serializer(data=data, context={'method': 'POST', 'function': 'new'})
-        if _serializer.is_valid():
-            _serializer.save()
-            return _serializer.data
+    def create_record(self, ext_client, data):
+        # authenticate
+        self.auth(ext_client)
+        # get csrf
+        csrf_token = self.get_csrf(ext_client)
+        # get API response
+        response = ext_client.post(self.base_path, data=data, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+        if response.status_code == status.HTTP_201_CREATED:
+            return response.data
         else:
-            raise AssertionError('Can not create prerequisite record.')
-
-    @staticmethod
-    def create_record_raw(model, data):
-        if data['status'] == 'draft':
-            data['status_id'] = Status.objects.draft
-        if data['status'] == 'circulation':
-            data['status_id'] = Status.objects.circulation
-        if data['status'] == 'productive':
-            data['status_id'] = Status.objects.productive
-        if data['status'] == 'blocked':
-            data['status_id'] = Status.objects.blocked
-        if data['status'] == 'inactive':
-            data['status_id'] = Status.objects.inactive
-        if data['status'] == 'archived':
-            data['status_id'] = Status.objects.archived
-        del data['status']
-        return model.objects.create(**data)
+            raise AssertionError('Error Code: {}, Can not create prerequisite record.'
+                                 .format(response.status_code))
 
     def role_superuser(self):
         call_command('initialize-status')
@@ -145,6 +131,8 @@ class GetAll(APITestCase):
 
     def test_401(self):
         if self.execute:
+            # reset auth header
+            self.client.credentials()
             # get API response
             response = self.client.get(self.ok_path, format='json')
             self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
@@ -182,12 +170,12 @@ class GetAll(APITestCase):
 class GetOne(APITestCase):
     def __init__(self, *args, **kwargs):
         super(GetOne, self).__init__(*args, **kwargs)
-        self.prerequisites = Prerequisites()
-
         # placeholders
         self.base_path = None
         self.model = None
-        self.serializer = None
+        self.prerequisites = None
+        self.read_serializer = None
+        self.write_serializer = None
         self.ok_object_data = None
 
         # flag for execution
@@ -198,18 +186,20 @@ class GetOne(APITestCase):
             self.prerequisites.role_superuser()
             self.prerequisites.role_no_permissions()
             # create ok object
-            self.ok_object = self.prerequisites.create_record_raw(self.model, self.ok_object_data)
+            self.ok_object = self.prerequisites.create_record(self.client, self.ok_object_data)
             # create ok path
-            self.ok_path = '{}{}/{}'.format(self.base_path, self.ok_object.lifecycle_id, self.ok_object.version)
-            self.query = {'lifecycle_id': self.ok_object.lifecycle_id,
-                          'version': self.ok_object.version}
-            self.false_path_version = '{}{}/{}'.format(self.base_path, self.ok_object.lifecycle_id, 2)
+            self.ok_path = '{}{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], self.ok_object['version'])
+            self.query = {'lifecycle_id': self.ok_object['lifecycle_id'],
+                          'version': self.ok_object['version']}
+            self.false_path_version = '{}{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], 2)
             self.false_path_uuid = '{}{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f',
-                                                    self.ok_object.version)
+                                                    self.ok_object['version'])
             self.false_path_both = '{}{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f', 2)
 
     def test_401(self):
         if self.execute:
+            # reset auth header
+            self.client.credentials()
             # get API response
             response = self.client.get(self.ok_path, format='json')
             self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
@@ -238,7 +228,7 @@ class GetOne(APITestCase):
             response = self.client.get(self.ok_path, format='json')
             # get data from db
             query = self.model.objects.get(**self.query)
-            serializer = self.serializer(query)
+            serializer = self.read_serializer(query)
             self.assertEqual(response.data, serializer.data)
             self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -290,6 +280,8 @@ class PostNew(APITestCase):
 
     def test_401(self):
         if self.execute:
+            # reset auth header
+            self.client.credentials()
             # get API response
             response = self.client.post(self.ok_path, data=self.valid_payload, format='json')
             self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
@@ -361,28 +353,47 @@ class PostNewVersion(APITestCase):
             self.client = APIClient(enforce_csrf_checks=True)
             self.prerequisites.role_superuser()
             self.prerequisites.role_no_write_permissions()
-            # create ok object
-            self.ok_object = self.prerequisites.create_record_raw(self.model, self.ok_object_data)
+            # create ok object in status draft
+            self.ok_object = self.prerequisites.create_record(self.client, self.ok_object_data)
+            # push ok object to ok status
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            path = '{}{}/{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], self.ok_object['version'],
+                                       'circulation')
+            self.client.patch(path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            path = '{}{}/{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], self.ok_object['version'],
+                                       'productive')
+            self.client.patch(path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
             # create ok path
-            self.ok_path = '{}{}/{}'.format(self.base_path, self.ok_object.lifecycle_id, self.ok_object.version)
-            self.query = {'lifecycle_id': self.ok_object.lifecycle_id,
-                          'version': self.ok_object.version}
-            self.false_path_version = '{}{}/{}'.format(self.base_path, self.ok_object.lifecycle_id, 2)
+            self.ok_path = '{}{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], self.ok_object['version'])
+            self.query = {'lifecycle_id': self.ok_object['lifecycle_id'],
+                          'version': self.ok_object['version']}
+            # create not ok paths
+            self.false_path_version = '{}{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], 2)
             self.false_path_uuid = '{}{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f',
-                                                    self.ok_object.version)
+                                                    self.ok_object['version'])
             self.false_path_both = '{}{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f', 2)
 
-            # placeholders
-            self.fail_object_draft = self.prerequisites.create_record_raw(self.model, self.fail_object_draft_data)
-            self.fail_object_circulation = self.prerequisites.create_record_raw(self.model,
-                                                                                self.fail_object_circulation_data)
-            self.fail_path_draft = '{}{}/{}'.format(self.base_path, self.fail_object_draft.lifecycle_id,
-                                                    self.fail_object_draft.version)
-            self.fail_path_circulation = '{}{}/{}'.format(self.base_path, self.fail_object_circulation.lifecycle_id,
-                                                          self.fail_object_circulation.version)
+            # create fail object draft
+            self.fail_object_draft = self.prerequisites.create_record(self.client, self.fail_object_draft_data)
+            self.fail_path_draft = '{}{}/{}'.format(self.base_path, self.fail_object_draft['lifecycle_id'],
+                                                    self.fail_object_draft['version'])
+
+            # create fail object circulation
+            self.fail_object_circulation = self.prerequisites.create_record(self.client,
+                                                                            self.fail_object_circulation_data)
+            path = '{}{}/{}/{}'.format(self.base_path, self.fail_object_circulation['lifecycle_id'],
+                                       self.fail_object_circulation['version'], 'circulation')
+            self.client.patch(path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            self.fail_path_circulation = '{}{}/{}'.format(self.base_path, self.fail_object_circulation['lifecycle_id'],
+                                                          self.fail_object_circulation['version'])
 
     def test_401(self):
         if self.execute:
+            # reset auth header
+            self.client.credentials()
             # get API response
             response = self.client.post(self.ok_path, format='json')
             self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
@@ -439,7 +450,7 @@ class PostNewVersion(APITestCase):
             response = self.client.post(self.ok_path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
             self.assertEqual(response.status_code, status.HTTP_201_CREATED)
             self.assertEqual(response.data['version'], 2)
-            self.assertEqual(response.data['lifecycle_id'], str(self.ok_object.lifecycle_id))
+            self.assertEqual(response.data['lifecycle_id'], str(self.ok_object['lifecycle_id']))
             self.assertEqual(response.data['status'], 'draft')
             # add check that data is the same, except status and version
             query = self.model.objects.get(**self.query)
