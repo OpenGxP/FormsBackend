@@ -123,7 +123,7 @@ def roles_list(request, format=None):
     List all roles.
     """
 
-    @perm_required('ro.edi')
+    @perm_required('ro.add')
     @csrf_protect
     def post(_request):
         # add version for new objects because of combined unique constraint
@@ -156,6 +156,7 @@ def roles_detail(request, lifecycle_id, version, format=None):
     Retrieve roles.
     """
 
+    @perm_required('ro.edi')
     @csrf_protect
     def patch(_request):
         _serializer = RolesWriteSerializer(role, data=_request.data, context={'method': 'PATCH',
@@ -175,6 +176,7 @@ def roles_detail(request, lifecycle_id, version, format=None):
             return Response(_serializer.data, status=http_status.HTTP_201_CREATED)
         return Response(_serializer.errors, status=http_status.HTTP_400_BAD_REQUEST)
 
+    @perm_required('ro.del')
     @csrf_protect
     def delete(_request):
         _serializer = RolesDeleteStatusSerializer(role, data={}, context={'method': 'DELETE',
@@ -215,6 +217,25 @@ def roles_detail(request, lifecycle_id, version, format=None):
 def roles_status(request, lifecycle_id, version, status, format=None):
     @csrf_protect
     def patch(_request):
+        if status == 'circulation':
+            if not request.user.permission('ro.cir'):
+                return Response(status=http_status.HTTP_403_FORBIDDEN)
+        if status == 'draft':
+            if not request.user.permission('ro.rej'):
+                return Response(status=http_status.HTTP_403_FORBIDDEN)
+        if status == 'productive':
+            if not request.user.permission('ro.pro'):
+                return Response(status=http_status.HTTP_403_FORBIDDEN)
+        if status == 'blocked':
+            if not request.user.permission('ro.blo'):
+                return Response(status=http_status.HTTP_403_FORBIDDEN)
+        if status == 'inactive':
+            if not request.user.permission('ro.ina'):
+                return Response(status=http_status.HTTP_403_FORBIDDEN)
+        if status == 'archived':
+            if not request.user.permission('ro.arc'):
+                return Response(status=http_status.HTTP_403_FORBIDDEN)
+
         _serializer = RolesDeleteStatusSerializer(role, data={}, context={'method': 'PATCH',
                                                                           'function': 'status_change',
                                                                           'status': status})
