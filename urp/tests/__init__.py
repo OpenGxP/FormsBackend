@@ -26,7 +26,7 @@ from rest_framework.test import APIClient, APITestCase
 
 
 # app imports
-from ..models import Users, Status
+from ..models import Users
 
 
 class Prerequisites(object):
@@ -174,8 +174,7 @@ class GetOne(APITestCase):
         self.base_path = None
         self.model = None
         self.prerequisites = None
-        self.read_serializer = None
-        self.write_serializer = None
+        self.serializer = None
         self.ok_object_data = None
 
         # flag for execution
@@ -228,7 +227,7 @@ class GetOne(APITestCase):
             response = self.client.get(self.ok_path, format='json')
             # get data from db
             query = self.model.objects.get(**self.query)
-            serializer = self.read_serializer(query)
+            serializer = self.serializer(query)
             self.assertEqual(response.data, serializer.data)
             self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -338,8 +337,7 @@ class PostNewVersion(APITestCase):
         # placeholders
         self.base_path = None
         self.model = None
-        self.read_serializer = None
-        self.write_serializer = None
+        self.serializer = None
         self.ok_object_data = None
         self.fail_object_draft_data = None
         self.fail_object_circulation_data = None
@@ -454,7 +452,7 @@ class PostNewVersion(APITestCase):
             self.assertEqual(response.data['status'], 'draft')
             # add check that data is the same, except status and version
             query = self.model.objects.get(**self.query)
-            serializer = self.read_serializer(query)
+            serializer = self.serializer(query)
             self.assertEqual(response.data[self.model.UNIQUE], serializer.data[self.model.UNIQUE])
             self.assertEqual(response.data['valid_from'], serializer.data['valid_from'])
 
@@ -489,3 +487,602 @@ class PostNewVersion(APITestCase):
             # get API response
             response = self.client.post(self.fail_path_circulation, format='json', HTTP_X_CSRFTOKEN=csrf_token)
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+# delete
+class DeleteOne(APITestCase):
+    def __init__(self, *args, **kwargs):
+        super(DeleteOne, self).__init__(*args, **kwargs)
+
+        # placeholders
+        self.base_path = None
+        self.model = None
+        self.serializer = None
+        self.ok_object_data = None
+        self.prerequisites = None
+
+        # flag for execution
+        self.execute = False
+
+    def setUp(self):
+        if self.execute:
+            self.client = APIClient(enforce_csrf_checks=True)
+            self.prerequisites.role_superuser()
+            self.prerequisites.role_no_write_permissions()
+            # create ok object in status draft
+            self.ok_object = self.prerequisites.create_record(self.client, self.ok_object_data)
+            # create ok path
+            self.ok_path = '{}{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], self.ok_object['version'])
+            self.query = {'lifecycle_id': self.ok_object['lifecycle_id'],
+                          'version': self.ok_object['version']}
+
+            self.false_path_version = '{}{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], 2)
+            self.false_path_uuid = '{}{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f',
+                                                    self.ok_object['version'])
+            self.false_path_both = '{}{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f', 2)
+
+    def test_401(self):
+        if self.execute:
+            # reset auth header
+            self.client.credentials()
+            # get API response
+            response = self.client.delete(self.ok_path, format='json')
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_403_csrf(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get API response
+            response = self.client.delete(self.ok_path, format='json')
+            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_403_permission(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth_no_write_perms(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            # get API response
+            response = self.client.delete(self.ok_path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_404_both(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get API response
+            response = self.client.delete(self.false_path_both, format='json')
+            self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_404_version(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get API response
+            response = self.client.delete(self.false_path_version, format='json')
+            self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_404_uuid(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get API response
+            response = self.client.delete(self.false_path_uuid, format='json')
+            self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_204(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            # get API response
+            response = self.client.delete(self.ok_path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+            # verify that role is deleted
+            try:
+                self.model.objects.get(**self.query)
+                raise AssertionError('Object not deleted.')
+            except self.model.DoesNotExist:
+                pass
+
+    def test_400_circulation(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            # try in status circulation
+            response = self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json',
+                                         HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.data['status'], 'circulation')
+            # get API response
+            response = self.client.delete(self.ok_path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_400_productive(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            # try in status productive
+            response = self.client.patch('{}/{}'.format(self.ok_path, 'productive'), format='json',
+                                         HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.data['status'], 'productive')
+            # get API response
+            response = self.client.delete(self.ok_path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_400_blocked(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            self.client.patch('{}/{}'.format(self.ok_path, 'productive'), format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            # try in status blocked
+            response = self.client.patch('{}/{}'.format(self.ok_path, 'blocked'), format='json',
+                                         HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.data['status'], 'blocked')
+            # get API response
+            response = self.client.delete(self.ok_path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_400_inactive(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            self.client.patch('{}/{}'.format(self.ok_path, 'productive'), format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            # try in status blocked
+            response = self.client.patch('{}/{}'.format(self.ok_path, 'inactive'), format='json',
+                                         HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.data['status'], 'inactive')
+            # get API response
+            response = self.client.delete(self.ok_path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_400_archived(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            self.client.patch('{}/{}'.format(self.ok_path, 'productive'), format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            # try in status blocked
+            response = self.client.patch('{}/{}'.format(self.ok_path, 'archived'), format='json',
+                                         HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.data['status'], 'archived')
+            # get API response
+            response = self.client.delete(self.ok_path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+# patch
+class PatchOne(APITestCase):
+    def __init__(self, *args, **kwargs):
+        super(PatchOne, self).__init__(*args, **kwargs)
+
+        # placeholders
+        self.base_path = None
+        self.model = None
+        self.serializer = None
+        self.ok_object_data = None
+        self.prerequisites = None
+        self.valid_payload = None
+        self.invalid_payload = None
+
+        # flag for execution
+        self.execute = False
+
+    def setUp(self):
+        if self.execute:
+            self.client = APIClient(enforce_csrf_checks=True)
+            self.prerequisites.role_superuser()
+            self.prerequisites.role_no_write_permissions()
+            # create ok object in status draft
+            self.ok_object = self.prerequisites.create_record(self.client, self.ok_object_data)
+            # create ok path
+            self.ok_path = '{}{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], self.ok_object['version'])
+            self.query = {'lifecycle_id': self.ok_object['lifecycle_id'],
+                          'version': self.ok_object['version']}
+
+            self.false_path_version = '{}{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], 2)
+            self.false_path_uuid = '{}{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f',
+                                                    self.ok_object['version'])
+            self.false_path_both = '{}{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f', 2)
+
+    def test_401(self):
+        if self.execute:
+            # reset auth header
+            self.client.credentials()
+            # get API response
+            response = self.client.patch(self.ok_path, format='json')
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_403_csrf(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get API response
+            response = self.client.patch(self.ok_path, format='json')
+            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_403_permission(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth_no_write_perms(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            # get API response
+            response = self.client.patch(self.ok_path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_404_both(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get API response
+            response = self.client.patch(self.false_path_both, format='json')
+            self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_404_version(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get API response
+            response = self.client.patch(self.false_path_version, format='json')
+            self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_404_uuid(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get API response
+            response = self.client.patch(self.false_path_uuid, format='json')
+            self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_400_circulation(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            # try in status circulation
+            response = self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json',
+                                         HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.data['status'], 'circulation')
+            # get API response
+            response = self.client.patch(self.ok_path, data=self.valid_payload, format='json',
+                                         HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_400_productive(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            # try in status productive
+            response = self.client.patch('{}/{}'.format(self.ok_path, 'productive'), format='json',
+                                         HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.data['status'], 'productive')
+            # get API response
+            response = self.client.patch(self.ok_path, data=self.valid_payload, format='json',
+                                         HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_400_blocked(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            self.client.patch('{}/{}'.format(self.ok_path, 'productive'), format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            # try in status blocked
+            response = self.client.patch('{}/{}'.format(self.ok_path, 'blocked'), format='json',
+                                         HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.data['status'], 'blocked')
+            # get API response
+            response = self.client.patch(self.ok_path, data=self.valid_payload, format='json',
+                                         HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_400_inactive(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            self.client.patch('{}/{}'.format(self.ok_path, 'productive'), format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            # try in status blocked
+            response = self.client.patch('{}/{}'.format(self.ok_path, 'inactive'), format='json',
+                                         HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.data['status'], 'inactive')
+            # get API response
+            response = self.client.patch(self.ok_path, data=self.valid_payload, format='json',
+                                         HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_400_archived(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            self.client.patch('{}/{}'.format(self.ok_path, 'productive'), format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            # try in status blocked
+            response = self.client.patch('{}/{}'.format(self.ok_path, 'archived'), format='json',
+                                         HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.data['status'], 'archived')
+            # get API response
+            response = self.client.patch(self.ok_path, data=self.valid_payload, format='json',
+                                         HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_400_data(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            # get API response
+            response = self.client.patch(self.ok_path, data=self.invalid_payload, format='json',
+                                         HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_200(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            # get API response
+            response = self.client.patch(self.ok_path, data=self.valid_payload, format='json',
+                                         HTTP_X_CSRFTOKEN=csrf_token)
+            query = self.model.objects.get(**self.query)
+            serializer = self.serializer(query)
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.assertEqual(response.data, serializer.data)
+
+
+# patch status
+class PatchOneStatus(APITestCase):
+    def __init__(self, *args, **kwargs):
+        super(PatchOneStatus, self).__init__(*args, **kwargs)
+
+        # placeholders
+        self.base_path = None
+        self.model = None
+        self.serializer = None
+        self.ok_object_data = None
+        self.prerequisites = None
+
+        # flag for execution
+        self.execute = False
+
+    def status_life_cycle(self, csrf_token, _status):
+        response = self.client.patch('{}/{}'.format(self.ok_path, _status), format='json', HTTP_X_CSRFTOKEN=csrf_token)
+        query = self.model.objects.get(**self.query)
+        serializer = self.serializer(query)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, serializer.data)
+        self.assertEqual(response.data['status'], _status)
+
+    def setUp(self):
+        if self.execute:
+            self.client = APIClient(enforce_csrf_checks=True)
+            self.prerequisites.role_superuser()
+            self.prerequisites.role_no_write_permissions()
+            # create ok object in status draft
+            self.ok_object = self.prerequisites.create_record(self.client, self.ok_object_data)
+            # create ok path
+            self.ok_path = '{}{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], self.ok_object['version'])
+            self.query = {'lifecycle_id': self.ok_object['lifecycle_id'],
+                          'version': self.ok_object['version']}
+
+            self.false_path_version = '{}{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], 2)
+            self.false_path_uuid = '{}{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f',
+                                                    self.ok_object['version'])
+            self.false_path_both = '{}{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f', 2)
+
+    def test_401(self):
+        if self.execute:
+            # reset auth header
+            self.client.credentials()
+            # get API response
+            response = self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json')
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_403_csrf(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get API response
+            response = self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json')
+            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_403_permission(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth_no_write_perms(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            # get API response
+            response = self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json',
+                                         HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_404_both(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get API response
+            response = self.client.patch('{}/{}'.format(self.false_path_both, 'circulation'), format='json')
+            self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_404_version(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get API response
+            response = self.client.patch('{}/{}'.format(self.false_path_version, 'circulation'), format='json')
+            self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_404_uuid(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get API response
+            response = self.client.patch('{}/{}'.format(self.false_path_uuid, 'circulation'), format='json')
+            self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_400_false_status(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            # get API response
+            response = self.client.patch('{}/{}'.format(self.ok_path, 'false_status'), format='json',
+                                         HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_400_draft(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            # get API response
+            not_allowed_status = ['draft', 'productive', 'blocked', 'inactive', 'archived']
+            for _status in not_allowed_status:
+                response = self.client.patch('{}/{}'.format(self.ok_path, _status), format='json',
+                                             HTTP_X_CSRFTOKEN=csrf_token)
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_400_circulation(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            # get API response
+            response = self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json',
+                                         HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.data['status'], 'circulation')
+            not_allowed_status = ['circulation', 'blocked', 'inactive', 'archived']
+            for _status in not_allowed_status:
+                response = self.client.patch('{}/{}'.format(self.ok_path, _status), format='json',
+                                             HTTP_X_CSRFTOKEN=csrf_token)
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_400_productive(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            # get API response
+            self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            response = self.client.patch('{}/{}'.format(self.ok_path, 'productive'), format='json',
+                                         HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.data['status'], 'productive')
+            not_allowed_status = ['draft', 'circulation', 'productive']
+            for _status in not_allowed_status:
+                response = self.client.patch('{}/{}'.format(self.ok_path, _status), format='json',
+                                             HTTP_X_CSRFTOKEN=csrf_token)
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_400_blocked(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            # get API response
+            self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            self.client.patch('{}/{}'.format(self.ok_path, 'productive'), format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            response = self.client.patch('{}/{}'.format(self.ok_path, 'blocked'), format='json',
+                                         HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.data['status'], 'blocked')
+            not_allowed_status = ['draft', 'circulation', 'archived', 'inactive', 'blocked']
+            for _status in not_allowed_status:
+                response = self.client.patch('{}/{}'.format(self.ok_path, _status), format='json',
+                                             HTTP_X_CSRFTOKEN=csrf_token)
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_400_archived(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            # get API response
+            self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            self.client.patch('{}/{}'.format(self.ok_path, 'productive'), format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            response = self.client.patch('{}/{}'.format(self.ok_path, 'archived'), format='json',
+                                         HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.data['status'], 'archived')
+            not_allowed_status = ['draft', 'circulation', 'productive', 'archived', 'inactive', 'blocked']
+            for _status in not_allowed_status:
+                response = self.client.patch('{}/{}'.format(self.ok_path, _status), format='json',
+                                             HTTP_X_CSRFTOKEN=csrf_token)
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_400_inactive(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            # get API response
+            self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            self.client.patch('{}/{}'.format(self.ok_path, 'productive'), format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            response = self.client.patch('{}/{}'.format(self.ok_path, 'inactive'), format='json',
+                                         HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.data['status'], 'inactive')
+            not_allowed_status = ['draft', 'circulation', 'productive', 'archived', 'inactive']
+            for _status in not_allowed_status:
+                response = self.client.patch('{}/{}'.format(self.ok_path, _status), format='json',
+                                             HTTP_X_CSRFTOKEN=csrf_token)
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_200(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            # get API response
+            # draft to circulation
+            self.status_life_cycle(csrf_token, 'circulation')
+            # circulation back to draft
+            self.status_life_cycle(csrf_token, 'draft')
+            # start circulation again
+            self.status_life_cycle(csrf_token, 'circulation')
+            # set productive
+            self.status_life_cycle(csrf_token, 'productive')
+            # block
+            self.status_life_cycle(csrf_token, 'blocked')
+            # back to productive
+            self.status_life_cycle(csrf_token, 'productive')
+            # set inactive
+            self.status_life_cycle(csrf_token, 'inactive')
+            # block from inactive
+            self.status_life_cycle(csrf_token, 'blocked')
+            # again back to productive
+            self.status_life_cycle(csrf_token, 'productive')
+            # finally to archive
+            self.status_life_cycle(csrf_token, 'archived')
