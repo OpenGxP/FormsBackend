@@ -32,10 +32,10 @@ class Command(BaseCommand):
         models = apps.all_models['urp']
         models.update(apps.all_models['basics'])
         for model in models:
-            for perm in models[model].perms:
+            for key, value in models[model].perms.items():
                 data = {'model': model,
-                        'permission': perm,
-                        'key': '{}.{}'.format(model[:2], perm[:3])}
+                        'permission': value,
+                        'key': '{}.{}'.format(models[model].MODEL_ID, key)}
                 serializer = PermissionsReadWriteSerializer(data=data, context={'method': 'POST', 'function': 'init'})
                 if serializer.is_valid():
                     serializer.save()

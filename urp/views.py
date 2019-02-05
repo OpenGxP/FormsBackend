@@ -56,7 +56,7 @@ def api_root(request, format=None):
 # GET list
 @api_view(['GET'])
 @auth_required()
-@perm_required('st.rea')
+@perm_required('01.01')
 def status_list(request, format=None):
     """
     List all status.
@@ -87,7 +87,7 @@ def status_detail(request, pk, format=None):
 # GET list
 @api_view(['GET'])
 @auth_required()
-@perm_required('pe.rea')
+@perm_required('02.01')
 def permissions_list(request, format=None):
     """
     List all permissions.
@@ -123,7 +123,7 @@ def roles_list(request, format=None):
     List all roles.
     """
 
-    @perm_required('ro.add')
+    @perm_required('03.02')
     @csrf_protect
     def post(_request):
         # add version for new objects because of combined unique constraint
@@ -135,7 +135,7 @@ def roles_list(request, format=None):
             return Response(_serializer.data, status=http_status.HTTP_201_CREATED)
         return Response(_serializer.errors, status=http_status.HTTP_400_BAD_REQUEST)
 
-    @perm_required('ro.rea')
+    @perm_required('03.01')
     @ensure_csrf_cookie
     def get(_request):
         roles = Roles.objects.all()
@@ -156,7 +156,7 @@ def roles_detail(request, lifecycle_id, version, format=None):
     Retrieve roles.
     """
 
-    @perm_required('ro.edi')
+    @perm_required('03.03')
     @csrf_protect
     def patch(_request):
         _serializer = RolesWriteSerializer(role, data=_request.data, context={'method': 'PATCH',
@@ -166,7 +166,7 @@ def roles_detail(request, lifecycle_id, version, format=None):
             return Response(_serializer.data)
         return Response(_serializer.errors, status=http_status.HTTP_400_BAD_REQUEST)
 
-    @perm_required('ro.ver')
+    @perm_required('03.11')
     @csrf_protect
     def post(_request):
         _serializer = RolesNewVersionSerializer(role, data=_request.data, context={'method': 'POST',
@@ -176,7 +176,7 @@ def roles_detail(request, lifecycle_id, version, format=None):
             return Response(_serializer.data, status=http_status.HTTP_201_CREATED)
         return Response(_serializer.errors, status=http_status.HTTP_400_BAD_REQUEST)
 
-    @perm_required('ro.del')
+    @perm_required('03.04')
     @csrf_protect
     def delete(_request):
         _serializer = RolesDeleteStatusSerializer(role, data={}, context={'method': 'DELETE',
@@ -186,7 +186,7 @@ def roles_detail(request, lifecycle_id, version, format=None):
             return Response(status=http_status.HTTP_204_NO_CONTENT)
         return Response(_serializer.errors, status=http_status.HTTP_400_BAD_REQUEST)
 
-    @perm_required('ro.rea')
+    @perm_required('03.01')
     @ensure_csrf_cookie
     def get(_request):
         serializer = RolesReadSerializer(role)
@@ -218,22 +218,22 @@ def roles_status(request, lifecycle_id, version, status, format=None):
     @csrf_protect
     def patch(_request):
         if status == 'circulation':
-            if not request.user.permission('ro.cir'):
+            if not request.user.permission('03.05'):
                 return Response(status=http_status.HTTP_403_FORBIDDEN)
         if status == 'draft':
-            if not request.user.permission('ro.rej'):
+            if not request.user.permission('03.06'):
                 return Response(status=http_status.HTTP_403_FORBIDDEN)
         if status == 'productive':
-            if not request.user.permission('ro.pro'):
+            if not request.user.permission('03.07'):
                 return Response(status=http_status.HTTP_403_FORBIDDEN)
         if status == 'blocked':
-            if not request.user.permission('ro.blo'):
+            if not request.user.permission('03.08'):
                 return Response(status=http_status.HTTP_403_FORBIDDEN)
         if status == 'inactive':
-            if not request.user.permission('ro.ina'):
+            if not request.user.permission('03.10'):
                 return Response(status=http_status.HTTP_403_FORBIDDEN)
         if status == 'archived':
-            if not request.user.permission('ro.arc'):
+            if not request.user.permission('03.09'):
                 return Response(status=http_status.HTTP_403_FORBIDDEN)
 
         _serializer = RolesDeleteStatusSerializer(role, data={}, context={'method': 'PATCH',
@@ -267,7 +267,7 @@ def users_list(request, format=None):
     List all users.
     """
 
-    @perm_required('us.rea')
+    @perm_required('04.01')
     @ensure_csrf_cookie
     def get(_request):
         users = Users.objects.all()
@@ -286,7 +286,7 @@ def users_detail(request, lifecycle_id, version, format=None):
     Retrieve users.
     """
 
-    @perm_required('us.rea')
+    @perm_required('04.01')
     @ensure_csrf_cookie
     def get(_request):
         serializer = UsersReadSerializer(user)

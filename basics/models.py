@@ -104,6 +104,23 @@ class GlobalModel(models.Model):
         if self.valid_to > now > self.valid_from:
             return True
 
+    # default permissions for every status and version managed dialog
+    MODEL_ID = None
+    perms = {
+        '01': 'read',
+        '02': 'add',
+        '03': 'edit',
+        '04': 'delete',
+        '05': 'circulation',
+        '06': 'reject',
+        '07': 'productive',
+        '08': 'block',
+        '09': 'archive',
+        '10': 'inactivate',
+        '11': 'version',
+        '12': 'version_archived'
+    }
+
 
 ##########
 # STATUS #
@@ -170,4 +187,7 @@ class Status(GlobalModel):
     HASH_SEQUENCE = ['status']
 
     # permissions
-    perms = ['read']
+    MODEL_ID = '01'
+    perms = {
+        '01': 'read',
+    }

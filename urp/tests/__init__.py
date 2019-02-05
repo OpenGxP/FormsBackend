@@ -68,7 +68,7 @@ class Prerequisites(object):
 
     def role_no_write_permissions(self):
         role = 'no_write_perms'
-        call_command('create-role', name=role, permissions='pe.rea,ro.rea,us.rea,st.rea')
+        call_command('create-role', name=role, permissions='01.01,02.01,03.01,04.01')
         Users.objects.create_superuser(username=self.username_no_write_perm, password=self.password, role=role)
 
     def role_past_valid_from(self):
