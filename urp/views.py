@@ -166,6 +166,7 @@ def roles_detail(request, lifecycle_id, version, format=None):
             return Response(_serializer.data)
         return Response(_serializer.errors, status=http_status.HTTP_400_BAD_REQUEST)
 
+    @csrf_protect
     def post_base(_request):
         _serializer = RolesNewVersionSerializer(role, data=_request.data, context={'method': 'POST',
                                                                                    'function': 'new_version'})
@@ -175,12 +176,10 @@ def roles_detail(request, lifecycle_id, version, format=None):
         return Response(_serializer.errors, status=http_status.HTTP_400_BAD_REQUEST)
 
     @perm_required('03.11')
-    @csrf_protect
     def post(_request):
         return post_base(_request)
 
     @perm_required('03.12')
-    @csrf_protect
     def post_archived(_request):
         return post_base(_request)
 
@@ -226,27 +225,9 @@ def roles_detail(request, lifecycle_id, version, format=None):
 @api_view(['PATCH'])
 @auth_required()
 def roles_status(request, lifecycle_id, version, status, format=None):
-    @csrf_protect
-    def patch(_request):
-        if status == 'circulation':
-            if not request.user.permission('03.05'):
-                return Response(status=http_status.HTTP_403_FORBIDDEN)
-        if status == 'draft':
-            if not request.user.permission('03.06'):
-                return Response(status=http_status.HTTP_403_FORBIDDEN)
-        if status == 'productive':
-            if not request.user.permission('03.07'):
-                return Response(status=http_status.HTTP_403_FORBIDDEN)
-        if status == 'blocked':
-            if not request.user.permission('03.08'):
-                return Response(status=http_status.HTTP_403_FORBIDDEN)
-        if status == 'inactive':
-            if not request.user.permission('03.10'):
-                return Response(status=http_status.HTTP_403_FORBIDDEN)
-        if status == 'archived':
-            if not request.user.permission('03.09'):
-                return Response(status=http_status.HTTP_403_FORBIDDEN)
 
+    @csrf_protect
+    def patch_base(_request):
         _serializer = RolesDeleteStatusSerializer(role, data={}, context={'method': 'PATCH',
                                                                           'function': 'status_change',
                                                                           'status': status})
@@ -254,6 +235,30 @@ def roles_status(request, lifecycle_id, version, status, format=None):
             _serializer.save()
             return Response(_serializer.data)
         return Response(_serializer.errors, status=http_status.HTTP_400_BAD_REQUEST)
+
+    @perm_required('03.05')
+    def patch_circulation(_request):
+        return patch_base(_request)
+
+    @perm_required('03.06')
+    def patch_draft(_request):
+        return patch_base(_request)
+
+    @perm_required('03.07')
+    def patch_productive(_request):
+        return patch_base(_request)
+
+    @perm_required('03.08')
+    def patch_blocked(_request):
+        return patch_base(_request)
+
+    @perm_required('03.09')
+    def patch_archived(_request):
+        return patch_base(_request)
+
+    @perm_required('03.10')
+    def patch_inactive(_request):
+        return patch_base(_request)
 
     try:
         role = Roles.objects.get(lifecycle_id=lifecycle_id, version=version)
@@ -263,7 +268,19 @@ def roles_status(request, lifecycle_id, version, status, format=None):
         return Response(status=http_status.HTTP_400_BAD_REQUEST)
 
     if request.method == 'PATCH':
-        return patch(request)
+        if status == 'circulation':
+            return patch_circulation(request)
+        if status == 'draft':
+            return patch_draft(request)
+        if status == 'productive':
+            return patch_productive(request)
+        if status == 'blocked':
+            return patch_blocked(request)
+        if status == 'archived':
+            return patch_archived(request)
+        if status == 'inactive':
+            return patch_inactive(request)
+        return patch_base(request)
 
 
 #########
