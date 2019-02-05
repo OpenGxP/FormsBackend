@@ -158,6 +158,10 @@ class UsersManager(BaseUserManager, GlobalManager):
         status_effective_id = Status.objects.productive
         return self.filter(status__id=status_effective_id).get(**{self.model.USERNAME_FIELD: username})
 
+    @property
+    def existing_users(self):
+        return self.all().values_list('username', flat=True)
+
     # superuser function for createsuperuser
     def create_superuser(self, username, password, role):
         # initial status "Effective" to immediately user superuser
@@ -187,7 +191,7 @@ class UsersManager(BaseUserManager, GlobalManager):
 class Users(AbstractBaseUser, GlobalModel):
     # custom fields
     username = models.CharField(_('username'), max_length=CHAR_DEFAULT)
-    email = models.EmailField(_('email'), max_length=CHAR_MAX)
+    email = models.EmailField(_('email'), max_length=CHAR_MAX, blank=True)
     first_name = models.CharField(
         _('first name'),
         max_length=CHAR_DEFAULT,
@@ -239,6 +243,9 @@ class Users(AbstractBaseUser, GlobalModel):
 
     # unique field
     UNIQUE = 'username'
+
+    class Meta:
+        unique_together = ('lifecycle_id', 'version')
 
     # hashing
     HASH_SEQUENCE = ['username', 'email', 'first_name', 'last_name', 'is_active', 'initial_password', 'password',

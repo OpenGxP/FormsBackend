@@ -25,6 +25,7 @@ from basics.custom import generate_checksum, generate_to_hash
 from basics.models import AVAILABLE_STATUS
 from .decorators import require_STATUS_CHANGE, require_POST, require_DELETE, require_PATCH, require_NONE, \
     require_NEW_VERSION, require_ROLES, require_status
+from .custom import UserName
 
 # django imports
 from django.db import IntegrityError
@@ -62,6 +63,15 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         # add default fields for new objects
         if model.objects.HAS_STATUS:
             validated_data['status_id'] = Status.objects.draft
+
+        # for users
+        if obj.MODEL_ID == '04':
+            validated_data['is_active'] = True
+            validated_data['initial_password'] = True
+            username = UserName(first_name=validated_data['first_name'],
+                                last_name=validated_data['last_name'],
+                                existing_users=Users.objects.existing_users)
+            validated_data['username'] = username.algorithm
         # passed keys
         keys = validated_data.keys()
         # set attributes of validated data
@@ -321,3 +331,17 @@ class UsersReadSerializer(GlobalReadWriteSerializer):
     class Meta:
         model = Users
         exclude = ('id', 'checksum', 'password', 'is_active')
+
+
+# write
+class UsersWriteSerializer(GlobalReadWriteSerializer):
+    status = serializers.CharField(source='get_status', read_only=True)
+
+    class Meta:
+        model = Users
+        exclude = ('id', 'checksum', 'is_active')
+        extra_kwargs = {'version': {'required': False},
+                        'username': {'required': False},
+                        'email': {'required': False},
+                        'initial_password': {'required': False},
+                        'password': {'write_only': True}}

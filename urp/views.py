@@ -26,7 +26,8 @@ from rest_framework.reverse import reverse
 # custom imports
 from .models import Status, Roles, Permissions, Users
 from .serializers import StatusReadWriteSerializer, PermissionsReadWriteSerializer, RolesReadSerializer, \
-    RolesWriteSerializer, UsersReadSerializer, RolesDeleteStatusSerializer, RolesNewVersionSerializer
+    RolesWriteSerializer, UsersReadSerializer, RolesDeleteStatusSerializer, RolesNewVersionSerializer, \
+    UsersWriteSerializer
 from .decorators import auth_required, perm_required
 
 # django imports
@@ -288,12 +289,20 @@ def roles_status(request, lifecycle_id, version, status, format=None):
 #########
 
 # GET list
-@api_view(['GET'])
+@api_view(['GET', 'POST'])
 @auth_required()
 def users_list(request, format=None):
-    """
-    List all users.
-    """
+    @perm_required('04.02')
+    @csrf_protect
+    def post(_request):
+        # add version for new objects because of combined unique constraint
+        _request.data['version'] = 1
+        _serializer = UsersWriteSerializer(data=_request.data, context={'method': 'POST',
+                                                                        'function': 'new'})
+        if _serializer.is_valid():
+            _serializer.save()
+            return Response(_serializer.data, status=http_status.HTTP_201_CREATED)
+        return Response(_serializer.errors, status=http_status.HTTP_400_BAD_REQUEST)
 
     @perm_required('04.01')
     @ensure_csrf_cookie
@@ -304,16 +313,14 @@ def users_list(request, format=None):
 
     if request.method == 'GET':
         return get(request)
+    if request.method == 'POST':
+        return post(request)
 
 
 # GET detail
 @api_view(['GET'])
 @auth_required()
 def users_detail(request, lifecycle_id, version, format=None):
-    """
-    Retrieve users.
-    """
-
     @perm_required('04.01')
     @ensure_csrf_cookie
     def get(_request):
@@ -324,6 +331,8 @@ def users_detail(request, lifecycle_id, version, format=None):
         user = Users.objects.get(lifecycle_id=lifecycle_id, version=version)
     except Users.DoesNotExist:
         return Response(status=http_status.HTTP_404_NOT_FOUND)
+    except ValidationError:
+        return Response(status=http_status.HTTP_400_BAD_REQUEST)
 
     if request.method == 'GET':
         return get(request)
