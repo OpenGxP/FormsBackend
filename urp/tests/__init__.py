@@ -18,6 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # django imports
 from django.urls import reverse
+from django.apps import apps
 from django.core.management import call_command
 
 # rest framework imports
@@ -40,6 +41,8 @@ class Prerequisites(object):
         self.username_valid_from = 'uservalidfrom'
         # user for read only permissions
         self.username_no_write_perm = 'usernowriteperms'
+        # user for no new version_archived permission
+        self.username_no_version_archived = 'usernoversionarchived'
 
     def create_record(self, ext_client, data):
         # authenticate
@@ -63,13 +66,32 @@ class Prerequisites(object):
 
     def role_no_permissions(self):
         role = 'no_perms'
-        call_command('create-role', name=role, permissions='false,false')
+        call_command('create-role', name=role, permissions='xx.xx,xx.xx')
         Users.objects.create_superuser(username=self.username_no_perm, password=self.password, role=role)
 
     def role_no_write_permissions(self):
+        models = apps.all_models['urp']
+        models.update(apps.all_models['basics'])
+        perms = ''
+        for model in models:
+            # add read for each dialog
+            perms += '{}.01,'.format(models[model].MODEL_ID)
         role = 'no_write_perms'
-        call_command('create-role', name=role, permissions='01.01,02.01,03.01,04.01')
+        call_command('create-role', name=role, permissions=perms[:-1])
         Users.objects.create_superuser(username=self.username_no_write_perm, password=self.password, role=role)
+
+    def role_no_version_archived(self):
+        models = apps.all_models['urp']
+        models.update(apps.all_models['basics'])
+        perms = ''
+        for model in models:
+            # add read for each dialog
+            perms += '{}.01,'.format(models[model].MODEL_ID)
+            # add version for each dialog
+            perms += '{}.11,'.format(models[model].MODEL_ID)
+        role = 'no_version_archived'
+        call_command('create-role', name=role, permissions=perms[:-1])
+        Users.objects.create_superuser(username=self.username_no_version_archived, password=self.password, role=role)
 
     def role_past_valid_from(self):
         role = 'past_valid_from'
@@ -96,6 +118,12 @@ class Prerequisites(object):
 
     def auth_no_write_perms(self, ext_client):
         data = {'username': self.username_no_write_perm, 'password': self.password}
+        client = APIClient()
+        response = client.post(path=reverse('token_obtain_pair'), data=data, format='json')
+        ext_client.credentials(HTTP_AUTHORIZATION='Bearer ' + response.data['access'])
+
+    def auth_no_version_archived(self, ext_client):
+        data = {'username': self.username_no_version_archived, 'password': self.password}
         client = APIClient()
         response = client.post(path=reverse('token_obtain_pair'), data=data, format='json')
         ext_client.credentials(HTTP_AUTHORIZATION='Bearer ' + response.data['access'])
@@ -351,6 +379,7 @@ class PostNewVersion(APITestCase):
             self.client = APIClient(enforce_csrf_checks=True)
             self.prerequisites.role_superuser()
             self.prerequisites.role_no_write_permissions()
+            self.prerequisites.role_no_version_archived()
             # create ok object in status draft
             self.ok_object = self.prerequisites.create_record(self.client, self.ok_object_data)
             # push ok object to ok status
@@ -410,6 +439,24 @@ class PostNewVersion(APITestCase):
             self.prerequisites.auth_no_write_perms(self.client)
             # get csrf
             csrf_token = self.prerequisites.get_csrf(self.client)
+            # get API response
+            response = self.client.post(self.ok_path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_403_permission_archived(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            # push to status archived
+            self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            self.client.patch('{}/{}'.format(self.ok_path, 'productive'), format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            response = self.client.patch('{}/{}'.format(self.ok_path, 'archived'), format='json',
+                                         HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.data['status'], 'archived')
+            # authenticate
+            self.prerequisites.auth_no_version_archived(self.client)
             # get API response
             response = self.client.post(self.ok_path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
             self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
