@@ -166,15 +166,23 @@ def roles_detail(request, lifecycle_id, version, format=None):
             return Response(_serializer.data)
         return Response(_serializer.errors, status=http_status.HTTP_400_BAD_REQUEST)
 
-    @perm_required('03.11')
-    @csrf_protect
-    def post(_request):
+    def post_base(_request):
         _serializer = RolesNewVersionSerializer(role, data=_request.data, context={'method': 'POST',
                                                                                    'function': 'new_version'})
         if _serializer.is_valid():
             _serializer.create(validated_data=_serializer.validated_data)
             return Response(_serializer.data, status=http_status.HTTP_201_CREATED)
         return Response(_serializer.errors, status=http_status.HTTP_400_BAD_REQUEST)
+
+    @perm_required('03.11')
+    @csrf_protect
+    def post(_request):
+        return post_base(_request)
+
+    @perm_required('03.12')
+    @csrf_protect
+    def post_archived(_request):
+        return post_base(_request)
 
     @perm_required('03.04')
     @csrf_protect
@@ -206,7 +214,10 @@ def roles_detail(request, lifecycle_id, version, format=None):
         return patch(request)
 
     elif request.method == 'POST':
-        return post(request)
+        if role.status.id == Status.objects.archived:
+            return post_archived(request)
+        else:
+            return post(request)
 
     elif request.method == 'DELETE':
         return delete(request)
