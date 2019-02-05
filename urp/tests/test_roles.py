@@ -25,8 +25,8 @@ from rest_framework import status
 from rest_framework.test import APITestCase, APIClient
 
 # app imports
-from ..models import Status, Roles
-from ..serializers import RolesReadSerializer, RolesWriteSerializer
+from ..models import Roles
+from ..serializers import RolesReadSerializer
 
 # test imports
 from . import Prerequisites, GetAll, PostNew, GetOne, PostNewVersion, DeleteOne, PatchOne, PatchOneStatus

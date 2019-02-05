@@ -36,9 +36,21 @@ class Authenticate(APITestCase):
     def setUp(self):
         self.prerequisites.role_superuser()
 
-    def test_400(self):
+    def test_400_both(self):
         # get API response
         data = {'username': 'asdasdasd', 'password': 'sadasdasd'}
+        response = self.client.post(self.path, data=data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_400_username(self):
+        # get API response
+        data = {'username': 'asdasdasd', 'password': self.prerequisites.password}
+        response = self.client.post(self.path, data=data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_400_password(self):
+        # get API response
+        data = {'username': self.prerequisites.username, 'password': 'sadasdasd'}
         response = self.client.post(self.path, data=data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
