@@ -18,13 +18,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # django imports
 from django.urls import reverse
+from django.utils import timezone
 
 # app imports
 from ..models import Users
 from ..serializers import UsersReadSerializer
 
 # test imports
-from . import GetAll, GetOne
+from . import Prerequisites, GetAll, GetOne, PostNew
 
 
 ###########
@@ -41,37 +42,62 @@ class GetAllUsers(GetAll):
         self.execute = True
 
 
+# post
+class PostNewUsers(PostNew):
+    def __init__(self, *args, **kwargs):
+        super(PostNewUsers, self).__init__(*args, **kwargs)
+        self.base_path = reverse('users-list')
+        self.model = Users
+        self.prerequisites = Prerequisites(base_path=self.base_path)
+        self.valid_payload = {'first_name': 'peter',
+                              'last_name': 'pan',
+                              'password': 'test12345test',
+                              'roles': 'all',
+                              'valid_from': timezone.now()}
+        self.invalid_payloads = [dict(),
+                                 {'first_name': '',
+                                  'last_name': 'pan',
+                                  'password': 'test12345test',
+                                  'roles': 'all',
+                                  'valid_from': timezone.now()},
+                                 {'first_name': 'peter',
+                                  'last_name': '',
+                                  'password': 'test12345test',
+                                  'roles': 'all',
+                                  'valid_from': timezone.now()},
+                                 {'first_name': 'peter',
+                                  'last_name': 'pan',
+                                  'password': '',
+                                  'roles': 'all',
+                                  'valid_from': timezone.now()},
+                                 {'first_name': 'peter',
+                                  'last_name': 'pan',
+                                  'password': 'test12345test',
+                                  'roles': '',
+                                  'valid_from': timezone.now()},
+                                 {'first_name': 'peter',
+                                  'last_name': 'pan',
+                                  'password': 'test12345test',
+                                  'roles': 'all',
+                                  'valid_from': ''}]
+        self.execute = True
+
+
 ####################################
 # /users/{lifecycle_id}/{version}/ #
 ####################################
 
-# post
-"""
-class PostUsers(PostNew):
+# get
+class GetOneUser(GetOne):
     def __init__(self, *args, **kwargs):
-        super(PostUsers, self).__init__(*args, **kwargs)
-        self.path = reverse('roles-list')
+        super(GetOneUser, self).__init__(*args, **kwargs)
+        self.base_path = reverse('users-list')
         self.model = Users
-        self.prerequisites = Prerequisites(base_path=self.path)
+        self.prerequisites = Prerequisites(base_path=self.base_path)
+        self.serializer = UsersReadSerializer
+        self.ok_object_data = {'first_name': 'peter',
+                               'last_name': 'pan',
+                               'password': 'test12345test',
+                               'roles': 'all',
+                               'valid_from': timezone.now()}
         self.execute = True
-
-    def setUp(self):
-        self.client = APIClient(enforce_csrf_checks=True)
-        self.prerequisites.role_superuser()
-        self.valid_payload = {'first_name': 'max',
-                              'last_name': 'mustermann',
-                              'valid_from': timezone.now(),
-                              'roles': 'all'}
-        self.invalid_payloads = [dict(),
-                                 {'first_name': 'max',
-                                  'last_name': 'mustermann',
-                                  'valid_from': timezone.now()},
-                                 {'first_name': 'max',
-                                  'last_name': 'mustermann',
-                                  'roles': 'all'},
-                                 {'first_name': 'max',
-                                  'valid_from': timezone.now(),
-                                  'roles': 'all'},
-                                 {'last_name': 'mustermann',
-                                  'valid_from': timezone.now(),
-                                  'roles': 'all'}]"""
