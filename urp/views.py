@@ -27,7 +27,7 @@ from rest_framework.reverse import reverse
 from .models import Status, Roles, Permissions, Users
 from .serializers import StatusReadWriteSerializer, PermissionsReadWriteSerializer, RolesReadSerializer, \
     RolesWriteSerializer, UsersReadSerializer, RolesDeleteStatusSerializer, RolesNewVersionSerializer, \
-    UsersWriteSerializer
+    UsersWriteSerializer, UsersNewVersionSerializer, UsersDeleteStatusSerializer
 from .decorators import auth_required, perm_required
 
 # django imports
@@ -318,7 +318,7 @@ def users_list(request, format=None):
 
 
 # GET detail
-@api_view(['GET'])
+@api_view(['GET', 'POST'])
 @auth_required()
 def users_detail(request, lifecycle_id, version, format=None):
     @perm_required('04.01')
@@ -326,6 +326,23 @@ def users_detail(request, lifecycle_id, version, format=None):
     def get(_request):
         serializer = UsersReadSerializer(user)
         return Response(serializer.data)
+
+    @csrf_protect
+    def post_base(_request):
+        _serializer = UsersNewVersionSerializer(user, data=_request.data, context={'method': 'POST',
+                                                                                   'function': 'new_version'})
+        if _serializer.is_valid():
+            _serializer.create(validated_data=_serializer.validated_data)
+            return Response(_serializer.data, status=http_status.HTTP_201_CREATED)
+        return Response(_serializer.errors, status=http_status.HTTP_400_BAD_REQUEST)
+
+    @perm_required('04.11')
+    def post(_request):
+        return post_base(_request)
+
+    @perm_required('04.12')
+    def post_archived(_request):
+        return post_base(_request)
 
     try:
         user = Users.objects.get(lifecycle_id=lifecycle_id, version=version)
@@ -336,3 +353,69 @@ def users_detail(request, lifecycle_id, version, format=None):
 
     if request.method == 'GET':
         return get(request)
+    elif request.method == 'POST':
+        if user.status.id == Status.objects.archived:
+            return post_archived(request)
+        else:
+            return post(request)
+
+
+@api_view(['PATCH'])
+@auth_required()
+def users_status(request, lifecycle_id, version, status, format=None):
+
+    @csrf_protect
+    def patch_base(_request):
+        _serializer = UsersDeleteStatusSerializer(user, data={}, context={'method': 'PATCH',
+                                                                          'function': 'status_change',
+                                                                          'status': status})
+        if _serializer.is_valid():
+            _serializer.save()
+            return Response(_serializer.data)
+        return Response(_serializer.errors, status=http_status.HTTP_400_BAD_REQUEST)
+
+    @perm_required('04.05')
+    def patch_circulation(_request):
+        return patch_base(_request)
+
+    @perm_required('04.06')
+    def patch_draft(_request):
+        return patch_base(_request)
+
+    @perm_required('04.07')
+    def patch_productive(_request):
+        return patch_base(_request)
+
+    @perm_required('04.08')
+    def patch_blocked(_request):
+        return patch_base(_request)
+
+    @perm_required('04.09')
+    def patch_archived(_request):
+        return patch_base(_request)
+
+    @perm_required('04.10')
+    def patch_inactive(_request):
+        return patch_base(_request)
+
+    try:
+        user = Users.objects.get(lifecycle_id=lifecycle_id, version=version)
+    except Users.DoesNotExist:
+        return Response(status=http_status.HTTP_404_NOT_FOUND)
+    except ValidationError:
+        return Response(status=http_status.HTTP_400_BAD_REQUEST)
+
+    if request.method == 'PATCH':
+        if status == 'circulation':
+            return patch_circulation(request)
+        if status == 'draft':
+            return patch_draft(request)
+        if status == 'productive':
+            return patch_productive(request)
+        if status == 'blocked':
+            return patch_blocked(request)
+        if status == 'archived':
+            return patch_archived(request)
+        if status == 'inactive':
+            return patch_inactive(request)
+        return patch_base(request)

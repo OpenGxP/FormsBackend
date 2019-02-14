@@ -60,18 +60,17 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
             validated_data['version'] = self.instance.version + 1
         else:
             validated_data['version'] = 1
+            # for users
+            if obj.MODEL_ID == '04':
+                validated_data['is_active'] = True
+                validated_data['initial_password'] = True
+                username = UserName(first_name=validated_data['first_name'],
+                                    last_name=validated_data['last_name'],
+                                    existing_users=Users.objects.existing_users)
+                validated_data['username'] = username.algorithm
         # add default fields for new objects
         if model.objects.HAS_STATUS:
             validated_data['status_id'] = Status.objects.draft
-
-        # for users
-        if obj.MODEL_ID == '04':
-            validated_data['is_active'] = True
-            validated_data['initial_password'] = True
-            username = UserName(first_name=validated_data['first_name'],
-                                last_name=validated_data['last_name'],
-                                existing_users=Users.objects.existing_users)
-            validated_data['username'] = username.algorithm
         # passed keys
         keys = validated_data.keys()
         # set attributes of validated data
@@ -345,3 +344,33 @@ class UsersWriteSerializer(GlobalReadWriteSerializer):
                         'email': {'required': False},
                         'initial_password': {'required': False},
                         'password': {'write_only': True}}
+
+
+class UsersNewVersionSerializer(GlobalReadWriteSerializer):
+    status = serializers.CharField(source='get_status', read_only=True)
+
+    class Meta:
+        model = Users
+        exclude = ('id', 'checksum', 'is_active', 'password')
+        extra_kwargs = {'version': {'required': False},
+                        'username': {'required': False},
+                        'first_name': {'required': False},
+                        'last_name': {'required': False},
+                        'initial_password': {'required': False},
+                        'roles': {'required': False},
+                        'valid_from': {'required': False}}
+
+
+class UsersDeleteStatusSerializer(GlobalReadWriteSerializer):
+    status = serializers.CharField(source='get_status', read_only=True)
+
+    class Meta:
+        model = Users
+        exclude = ('id', 'checksum', 'is_active', 'password')
+        extra_kwargs = {'version': {'required': False},
+                        'username': {'required': False},
+                        'first_name': {'required': False},
+                        'last_name': {'required': False},
+                        'initial_password': {'required': False},
+                        'roles': {'required': False},
+                        'valid_from': {'required': False}}

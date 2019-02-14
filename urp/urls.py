@@ -26,7 +26,7 @@ from django.urls import path
 
 # app imports
 from .views import permissions_list, status_list, roles_list, roles_detail, \
-    roles_status, users_list, users_detail, api_root
+    roles_status, users_list, users_detail, api_root, users_status
 
 
 urlpatterns = [
@@ -43,6 +43,7 @@ urlpatterns = [
     # users
     path('users/', users_list, name='users-list'),
     path('users/<str:lifecycle_id>/<int:version>', users_detail),
+    path('users/<str:lifecycle_id>/<int:version>/<str:status>', users_status, name='users-status'),
     # root
     path('', api_root),
     # authentication JWT
