@@ -32,6 +32,9 @@ from ..serializers import RolesReadSerializer
 from . import Prerequisites, GetAll, PostNew, GetOne, PostNewVersion, DeleteOne, PatchOne, PatchOneStatus
 
 
+BASE_PATH = reverse('roles-list')
+
+
 ############
 # /roles/ #
 ############
@@ -40,7 +43,7 @@ from . import Prerequisites, GetAll, PostNew, GetOne, PostNewVersion, DeleteOne,
 class GetAllRoles(GetAll):
     def __init__(self, *args, **kwargs):
         super(GetAllRoles, self).__init__(*args, **kwargs)
-        self.base_path = reverse('roles-list')
+        self.base_path = BASE_PATH
         self.model = Roles
         self.serializer = RolesReadSerializer
         self.execute = True
@@ -50,7 +53,7 @@ class GetAllRoles(GetAll):
 class PostNewRoles(PostNew):
     def __init__(self, *args, **kwargs):
         super(PostNewRoles, self).__init__(*args, **kwargs)
-        self.base_path = reverse('roles-list')
+        self.base_path = BASE_PATH
         self.model = Roles
         self.prerequisites = Prerequisites(base_path=self.base_path)
         self.valid_payload = {'role': 'test',
@@ -69,7 +72,7 @@ class PostNewRoles(PostNew):
 class GetOneRole(GetOne):
     def __init__(self, *args, **kwargs):
         super(GetOneRole, self).__init__(*args, **kwargs)
-        self.base_path = reverse('roles-list')
+        self.base_path = BASE_PATH
         self.model = Roles
         self.prerequisites = Prerequisites(base_path=self.base_path)
         self.serializer = RolesReadSerializer
@@ -82,7 +85,7 @@ class GetOneRole(GetOne):
 class PostNewVersionRole(PostNewVersion):
     def __init__(self, *args, **kwargs):
         super(PostNewVersionRole, self).__init__(*args, **kwargs)
-        self.base_path = reverse('roles-list')
+        self.base_path = BASE_PATH
         self.model = Roles
         self.prerequisites = Prerequisites(base_path=self.base_path)
         self.serializer = RolesReadSerializer
@@ -99,7 +102,7 @@ class PostNewVersionRole(PostNewVersion):
 class DeleteOneRole(DeleteOne):
     def __init__(self, *args, **kwargs):
         super(DeleteOneRole, self).__init__(*args, **kwargs)
-        self.base_path = reverse('roles-list')
+        self.base_path = BASE_PATH
         self.model = Roles
         self.prerequisites = Prerequisites(base_path=self.base_path)
         self.serializer = RolesReadSerializer
@@ -112,7 +115,7 @@ class DeleteOneRole(DeleteOne):
 class PatchOneRole(PatchOne):
     def __init__(self, *args, **kwargs):
         super(PatchOneRole, self).__init__(*args, **kwargs)
-        self.base_path = reverse('roles-list')
+        self.base_path = BASE_PATH
         self.model = Roles
         self.prerequisites = Prerequisites(base_path=self.base_path)
         self.serializer = RolesReadSerializer
@@ -136,7 +139,7 @@ class PatchOneRole(PatchOne):
 class PatchOneStatusRole(PatchOneStatus):
     def __init__(self, *args, **kwargs):
         super(PatchOneStatusRole, self).__init__(*args, **kwargs)
-        self.base_path = reverse('roles-list')
+        self.base_path = BASE_PATH
         self.model = Roles
         self.prerequisites = Prerequisites(base_path=self.base_path)
         self.serializer = RolesReadSerializer
@@ -150,7 +153,7 @@ class RolesMiscellaneous(APITestCase):
     """Test module for get all permissions"""
     def __init__(self, *args, **kwargs):
         super(RolesMiscellaneous, self).__init__(*args, **kwargs)
-        self.base_path = reverse('roles-list')
+        self.base_path = BASE_PATH
         self.prerequisites = Prerequisites(base_path=self.base_path)
         now = timezone.now()
         later = now + timezone.timedelta(days=15)

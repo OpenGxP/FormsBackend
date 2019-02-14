@@ -25,7 +25,10 @@ from ..models import Users
 from ..serializers import UsersReadSerializer
 
 # test imports
-from . import Prerequisites, GetAll, GetOne, PostNew
+from . import Prerequisites, GetAll, GetOne, PostNew, PostNewVersion, PatchOneStatus
+
+
+BASE_PATH = reverse('users-list')
 
 
 ###########
@@ -36,7 +39,7 @@ from . import Prerequisites, GetAll, GetOne, PostNew
 class GetAllUsers(GetAll):
     def __init__(self, *args, **kwargs):
         super(GetAllUsers, self).__init__(*args, **kwargs)
-        self.base_path = reverse('users-list')
+        self.base_path = BASE_PATH
         self.model = Users
         self.serializer = UsersReadSerializer
         self.execute = True
@@ -46,7 +49,7 @@ class GetAllUsers(GetAll):
 class PostNewUsers(PostNew):
     def __init__(self, *args, **kwargs):
         super(PostNewUsers, self).__init__(*args, **kwargs)
-        self.base_path = reverse('users-list')
+        self.base_path = BASE_PATH
         self.model = Users
         self.prerequisites = Prerequisites(base_path=self.base_path)
         self.valid_payload = {'first_name': 'peter',
@@ -91,7 +94,53 @@ class PostNewUsers(PostNew):
 class GetOneUser(GetOne):
     def __init__(self, *args, **kwargs):
         super(GetOneUser, self).__init__(*args, **kwargs)
-        self.base_path = reverse('users-list')
+        self.base_path = BASE_PATH
+        self.model = Users
+        self.prerequisites = Prerequisites(base_path=self.base_path)
+        self.serializer = UsersReadSerializer
+        self.ok_object_data = {'first_name': 'peter',
+                               'last_name': 'pan',
+                               'password': 'test12345test',
+                               'roles': 'all',
+                               'valid_from': timezone.now()}
+        self.execute = True
+
+
+# post
+class PostNewVersionUser(PostNewVersion):
+    def __init__(self, *args, **kwargs):
+        super(PostNewVersionUser, self).__init__(*args, **kwargs)
+        self.base_path = BASE_PATH
+        self.model = Users
+        self.prerequisites = Prerequisites(base_path=self.base_path)
+        self.serializer = UsersReadSerializer
+        self.ok_object_data = {'first_name': 'peter',
+                               'last_name': 'pan',
+                               'password': 'test12345test',
+                               'roles': 'all',
+                               'valid_from': timezone.now()}
+        self.fail_object_draft_data = {'first_name': 'peter',
+                                       'last_name': 'pandraft',
+                                       'password': 'test12345test',
+                                       'roles': 'all',
+                                       'valid_from': timezone.now()}
+        self.fail_object_circulation_data = {'first_name': 'peter',
+                                             'last_name': 'pancirc',
+                                             'password': 'test12345test',
+                                             'roles': 'all',
+                                             'valid_from': timezone.now()}
+        self.execute = True
+
+
+############################################
+# /roles/{lifecycle_id}/{version}/{status} #
+############################################
+
+# patch
+class PatchOneStatusUser(PatchOneStatus):
+    def __init__(self, *args, **kwargs):
+        super(PatchOneStatusUser, self).__init__(*args, **kwargs)
+        self.base_path = BASE_PATH
         self.model = Users
         self.prerequisites = Prerequisites(base_path=self.base_path)
         self.serializer = UsersReadSerializer
