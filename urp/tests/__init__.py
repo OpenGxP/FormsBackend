@@ -47,10 +47,8 @@ class Prerequisites(object):
     def create_record(self, ext_client, data):
         # authenticate
         self.auth(ext_client)
-        # get csrf
-        csrf_token = self.get_csrf(ext_client)
         # get API response
-        response = ext_client.post(self.base_path, data=data, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+        response = ext_client.post(self.base_path, data=data, format='json')
         if response.status_code == status.HTTP_201_CREATED:
             return response.data
         else:
@@ -128,15 +126,6 @@ class Prerequisites(object):
         response = client.post(path=reverse('token_obtain_pair'), data=data, format='json')
         ext_client.credentials(HTTP_AUTHORIZATION='Bearer ' + response.data['access'])
 
-    @staticmethod
-    def verify_csrf(response):
-        return response.cookies['csrftoken']
-
-    def get_csrf(self, ext_client):
-        response = ext_client.get(self.base_path, format='json')
-        assert response.status_code == status.HTTP_200_OK
-        return response.cookies['csrftoken'].value
-
 
 class GetAll(APITestCase):
     def __init__(self, *args, **kwargs):
@@ -173,15 +162,6 @@ class GetAll(APITestCase):
             response = self.client.get(self.ok_path, format='json')
             self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    # test to verify that response includes csrf token
-    def test_200_csrf(self):
-        if self.execute:
-            # authenticate
-            self.prerequisites.auth(self.client)
-            # get API response
-            response = self.client.get(self.ok_path, format='json')
-            self.assertIsNotNone(self.prerequisites.verify_csrf(response))
-
     def test_200(self):
         if self.execute:
             # authenticate
@@ -215,13 +195,13 @@ class GetOne(APITestCase):
             # create ok object
             self.ok_object = self.prerequisites.create_record(self.client, self.ok_object_data)
             # create ok path
-            self.ok_path = '{}{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], self.ok_object['version'])
+            self.ok_path = '{}/{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], self.ok_object['version'])
             self.query = {'lifecycle_id': self.ok_object['lifecycle_id'],
                           'version': self.ok_object['version']}
-            self.false_path_version = '{}{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], 2)
-            self.false_path_uuid = '{}{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f',
-                                                    self.ok_object['version'])
-            self.false_path_both = '{}{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f', 2)
+            self.false_path_version = '{}/{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], 2)
+            self.false_path_uuid = '{}/{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f',
+                                                     self.ok_object['version'])
+            self.false_path_both = '{}/{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f', 2)
 
     def test_401(self):
         if self.execute:
@@ -238,14 +218,6 @@ class GetOne(APITestCase):
             # get API response
             response = self.client.get(self.ok_path, format='json')
             self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-
-    def test_200_csrf(self):
-        if self.execute:
-            # authenticate
-            self.prerequisites.auth(self.client)
-            # get API response
-            response = self.client.get(self.ok_path, format='json')
-            self.assertIsNotNone(self.prerequisites.verify_csrf(response))
 
     def test_200(self):
         if self.execute:
@@ -300,7 +272,6 @@ class PostNew(APITestCase):
 
     def setUp(self):
         if self.execute:
-            self.client = APIClient(enforce_csrf_checks=True)
             self.prerequisites.role_superuser()
             self.prerequisites.role_no_write_permissions()
             self.ok_path = self.base_path
@@ -313,45 +284,29 @@ class PostNew(APITestCase):
             response = self.client.post(self.ok_path, data=self.valid_payload, format='json')
             self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
-    def test_403_csrf(self):
-        if self.execute:
-            # authenticate
-            self.prerequisites.auth(self.client)
-            # get API response
-            response = self.client.post(self.ok_path, data=self.valid_payload, format='json')
-            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-
-    def test_403_permission(self):
+    def test_403(self):
         if self.execute:
             # authenticate
             self.prerequisites.auth_no_write_perms(self.client)
-            # get csrf
-            csrf_token = self.prerequisites.get_csrf(self.client)
             # get API response
-            response = self.client.post(self.ok_path, data=self.valid_payload, format='json',
-                                        HTTP_X_CSRFTOKEN=csrf_token)
+            response = self.client.post(self.ok_path, data=self.valid_payload, format='json')
             self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_400(self):
         if self.execute:
             # authenticate
             self.prerequisites.auth(self.client)
-            # get csrf
-            csrf_token = self.prerequisites.get_csrf(self.client)
             # get API response
             for payload in self.invalid_payloads:
-                response = self.client.post(self.ok_path, data=payload, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+                response = self.client.post(self.ok_path, data=payload, format='json')
                 self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_201(self):
         if self.execute:
             # authenticate
             self.prerequisites.auth(self.client)
-            # get csrf
-            csrf_token = self.prerequisites.get_csrf(self.client)
             # get API response
-            response = self.client.post(self.ok_path, data=self.valid_payload, format='json',
-                                        HTTP_X_CSRFTOKEN=csrf_token)
+            response = self.client.post(self.ok_path, data=self.valid_payload, format='json')
             self.assertEqual(response.status_code, status.HTTP_201_CREATED)
             self.assertEqual(response.data['version'], 1)
             self.assertEqual(response.data['status'], 'draft')
@@ -376,7 +331,6 @@ class PostNewVersion(APITestCase):
 
     def setUp(self):
         if self.execute:
-            self.client = APIClient(enforce_csrf_checks=True)
             self.prerequisites.role_superuser()
             self.prerequisites.role_no_write_permissions()
             self.prerequisites.role_no_version_archived()
@@ -385,37 +339,35 @@ class PostNewVersion(APITestCase):
             # push ok object to ok status
             # authenticate
             self.prerequisites.auth(self.client)
-            # get csrf
-            csrf_token = self.prerequisites.get_csrf(self.client)
-            path = '{}{}/{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], self.ok_object['version'],
-                                       'circulation')
-            self.client.patch(path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
-            path = '{}{}/{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], self.ok_object['version'],
-                                       'productive')
-            self.client.patch(path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            path = '{}/{}/{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], 
+                                        self.ok_object['version'], 'circulation')
+            self.client.patch(path, format='json')
+            path = '{}/{}/{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], 
+                                        self.ok_object['version'], 'productive')
+            self.client.patch(path, format='json')
             # create ok path
-            self.ok_path = '{}{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], self.ok_object['version'])
+            self.ok_path = '{}/{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], self.ok_object['version'])
             self.query = {'lifecycle_id': self.ok_object['lifecycle_id'],
                           'version': self.ok_object['version']}
             # create not ok paths
-            self.false_path_version = '{}{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], 2)
-            self.false_path_uuid = '{}{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f',
-                                                    self.ok_object['version'])
-            self.false_path_both = '{}{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f', 2)
+            self.false_path_version = '{}/{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], 2)
+            self.false_path_uuid = '{}/{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f',
+                                                     self.ok_object['version'])
+            self.false_path_both = '{}/{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f', 2)
 
             # create fail object draft
             self.fail_object_draft = self.prerequisites.create_record(self.client, self.fail_object_draft_data)
-            self.fail_path_draft = '{}{}/{}'.format(self.base_path, self.fail_object_draft['lifecycle_id'],
-                                                    self.fail_object_draft['version'])
+            self.fail_path_draft = '{}/{}/{}'.format(self.base_path, self.fail_object_draft['lifecycle_id'],
+                                                     self.fail_object_draft['version'])
 
             # create fail object circulation
             self.fail_object_circulation = self.prerequisites.create_record(self.client,
                                                                             self.fail_object_circulation_data)
-            path = '{}{}/{}/{}'.format(self.base_path, self.fail_object_circulation['lifecycle_id'],
-                                       self.fail_object_circulation['version'], 'circulation')
-            self.client.patch(path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
-            self.fail_path_circulation = '{}{}/{}'.format(self.base_path, self.fail_object_circulation['lifecycle_id'],
-                                                          self.fail_object_circulation['version'])
+            path = '{}/{}/{}/{}'.format(self.base_path, self.fail_object_circulation['lifecycle_id'],
+                                        self.fail_object_circulation['version'], 'circulation')
+            self.client.patch(path, format='json')
+            self.fail_path_circulation = '{}/{}/{}'.format(self.base_path, self.fail_object_circulation['lifecycle_id'],
+                                                           self.fail_object_circulation['version'])
 
     def test_401(self):
         if self.execute:
@@ -425,40 +377,27 @@ class PostNewVersion(APITestCase):
             response = self.client.post(self.ok_path, format='json')
             self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
-    def test_403_csrf(self):
+    def test_403(self):
         if self.execute:
             # authenticate
-            self.prerequisites.auth(self.client)
+            self.prerequisites.auth_no_write_perms(self.client)
             # get API response
             response = self.client.post(self.ok_path, format='json')
             self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_403_permission(self):
-        if self.execute:
-            # authenticate
-            self.prerequisites.auth_no_write_perms(self.client)
-            # get csrf
-            csrf_token = self.prerequisites.get_csrf(self.client)
-            # get API response
-            response = self.client.post(self.ok_path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
-            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-
-    def test_403_permission_archived(self):
+    def test_403_archived(self):
         if self.execute:
             # authenticate
             self.prerequisites.auth(self.client)
-            # get csrf
-            csrf_token = self.prerequisites.get_csrf(self.client)
             # push to status archived
-            self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json', HTTP_X_CSRFTOKEN=csrf_token)
-            self.client.patch('{}/{}'.format(self.ok_path, 'productive'), format='json', HTTP_X_CSRFTOKEN=csrf_token)
-            response = self.client.patch('{}/{}'.format(self.ok_path, 'archived'), format='json',
-                                         HTTP_X_CSRFTOKEN=csrf_token)
+            self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json')
+            self.client.patch('{}/{}'.format(self.ok_path, 'productive'), format='json')
+            response = self.client.patch('{}/{}'.format(self.ok_path, 'archived'), format='json')
             self.assertEqual(response.data['status'], 'archived')
             # authenticate
             self.prerequisites.auth_no_version_archived(self.client)
             # get API response
-            response = self.client.post(self.ok_path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            response = self.client.post(self.ok_path, format='json')
             self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_404_both(self):
@@ -489,10 +428,8 @@ class PostNewVersion(APITestCase):
         if self.execute:
             # authenticate
             self.prerequisites.auth(self.client)
-            # get csrf
-            csrf_token = self.prerequisites.get_csrf(self.client)
             # get API response
-            response = self.client.post(self.ok_path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            response = self.client.post(self.ok_path, format='json')
             self.assertEqual(response.status_code, status.HTTP_201_CREATED)
             self.assertEqual(response.data['version'], 2)
             self.assertEqual(response.data['lifecycle_id'], str(self.ok_object['lifecycle_id']))
@@ -509,30 +446,24 @@ class PostNewVersion(APITestCase):
             self.test_201()
             # authenticate
             self.prerequisites.auth(self.client)
-            # get csrf
-            csrf_token = self.prerequisites.get_csrf(self.client)
             # second call for check that not a second version can be created
-            response = self.client.post(self.ok_path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            response = self.client.post(self.ok_path, format='json')
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_400_draft(self):
         if self.execute:
             # authenticate
             self.prerequisites.auth(self.client)
-            # get csrf
-            csrf_token = self.prerequisites.get_csrf(self.client)
             # get API response
-            response = self.client.post(self.fail_path_draft, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            response = self.client.post(self.fail_path_draft, format='json')
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_400_circulation(self):
         if self.execute:
             # authenticate
             self.prerequisites.auth(self.client)
-            # get csrf
-            csrf_token = self.prerequisites.get_csrf(self.client)
             # get API response
-            response = self.client.post(self.fail_path_circulation, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            response = self.client.post(self.fail_path_circulation, format='json')
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
 
@@ -553,20 +484,19 @@ class DeleteOne(APITestCase):
 
     def setUp(self):
         if self.execute:
-            self.client = APIClient(enforce_csrf_checks=True)
             self.prerequisites.role_superuser()
             self.prerequisites.role_no_write_permissions()
             # create ok object in status draft
             self.ok_object = self.prerequisites.create_record(self.client, self.ok_object_data)
             # create ok path
-            self.ok_path = '{}{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], self.ok_object['version'])
+            self.ok_path = '{}/{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], self.ok_object['version'])
             self.query = {'lifecycle_id': self.ok_object['lifecycle_id'],
                           'version': self.ok_object['version']}
 
-            self.false_path_version = '{}{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], 2)
-            self.false_path_uuid = '{}{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f',
-                                                    self.ok_object['version'])
-            self.false_path_both = '{}{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f', 2)
+            self.false_path_version = '{}/{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], 2)
+            self.false_path_uuid = '{}/{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f',
+                                                     self.ok_object['version'])
+            self.false_path_both = '{}/{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f', 2)
 
     def test_401(self):
         if self.execute:
@@ -576,22 +506,12 @@ class DeleteOne(APITestCase):
             response = self.client.delete(self.ok_path, format='json')
             self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
-    def test_403_csrf(self):
-        if self.execute:
-            # authenticate
-            self.prerequisites.auth(self.client)
-            # get API response
-            response = self.client.delete(self.ok_path, format='json')
-            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-
-    def test_403_permission(self):
+    def test_403(self):
         if self.execute:
             # authenticate
             self.prerequisites.auth_no_write_perms(self.client)
-            # get csrf
-            csrf_token = self.prerequisites.get_csrf(self.client)
             # get API response
-            response = self.client.delete(self.ok_path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            response = self.client.delete(self.ok_path, format='json')
             self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_404_both(self):
@@ -622,10 +542,8 @@ class DeleteOne(APITestCase):
         if self.execute:
             # authenticate
             self.prerequisites.auth(self.client)
-            # get csrf
-            csrf_token = self.prerequisites.get_csrf(self.client)
             # get API response
-            response = self.client.delete(self.ok_path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            response = self.client.delete(self.ok_path, format='json')
             self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
             # verify that role is deleted
             try:
@@ -638,77 +556,62 @@ class DeleteOne(APITestCase):
         if self.execute:
             # authenticate
             self.prerequisites.auth(self.client)
-            # get csrf
-            csrf_token = self.prerequisites.get_csrf(self.client)
             # try in status circulation
-            response = self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json',
-                                         HTTP_X_CSRFTOKEN=csrf_token)
+            response = self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json')
             self.assertEqual(response.data['status'], 'circulation')
             # get API response
-            response = self.client.delete(self.ok_path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            response = self.client.delete(self.ok_path, format='json')
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_400_productive(self):
         if self.execute:
             # authenticate
             self.prerequisites.auth(self.client)
-            # get csrf
-            csrf_token = self.prerequisites.get_csrf(self.client)
-            self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json')
             # try in status productive
-            response = self.client.patch('{}/{}'.format(self.ok_path, 'productive'), format='json',
-                                         HTTP_X_CSRFTOKEN=csrf_token)
+            response = self.client.patch('{}/{}'.format(self.ok_path, 'productive'), format='json')
             self.assertEqual(response.data['status'], 'productive')
             # get API response
-            response = self.client.delete(self.ok_path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            response = self.client.delete(self.ok_path, format='json')
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_400_blocked(self):
         if self.execute:
             # authenticate
             self.prerequisites.auth(self.client)
-            # get csrf
-            csrf_token = self.prerequisites.get_csrf(self.client)
-            self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json', HTTP_X_CSRFTOKEN=csrf_token)
-            self.client.patch('{}/{}'.format(self.ok_path, 'productive'), format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json')
+            self.client.patch('{}/{}'.format(self.ok_path, 'productive'), format='json')
             # try in status blocked
-            response = self.client.patch('{}/{}'.format(self.ok_path, 'blocked'), format='json',
-                                         HTTP_X_CSRFTOKEN=csrf_token)
+            response = self.client.patch('{}/{}'.format(self.ok_path, 'blocked'), format='json')
             self.assertEqual(response.data['status'], 'blocked')
             # get API response
-            response = self.client.delete(self.ok_path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            response = self.client.delete(self.ok_path, format='json')
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_400_inactive(self):
         if self.execute:
             # authenticate
             self.prerequisites.auth(self.client)
-            # get csrf
-            csrf_token = self.prerequisites.get_csrf(self.client)
-            self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json', HTTP_X_CSRFTOKEN=csrf_token)
-            self.client.patch('{}/{}'.format(self.ok_path, 'productive'), format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json')
+            self.client.patch('{}/{}'.format(self.ok_path, 'productive'), format='json')
             # try in status blocked
-            response = self.client.patch('{}/{}'.format(self.ok_path, 'inactive'), format='json',
-                                         HTTP_X_CSRFTOKEN=csrf_token)
+            response = self.client.patch('{}/{}'.format(self.ok_path, 'inactive'), format='json')
             self.assertEqual(response.data['status'], 'inactive')
             # get API response
-            response = self.client.delete(self.ok_path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            response = self.client.delete(self.ok_path, format='json')
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_400_archived(self):
         if self.execute:
             # authenticate
             self.prerequisites.auth(self.client)
-            # get csrf
-            csrf_token = self.prerequisites.get_csrf(self.client)
-            self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json', HTTP_X_CSRFTOKEN=csrf_token)
-            self.client.patch('{}/{}'.format(self.ok_path, 'productive'), format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json')
+            self.client.patch('{}/{}'.format(self.ok_path, 'productive'), format='json')
             # try in status blocked
-            response = self.client.patch('{}/{}'.format(self.ok_path, 'archived'), format='json',
-                                         HTTP_X_CSRFTOKEN=csrf_token)
+            response = self.client.patch('{}/{}'.format(self.ok_path, 'archived'), format='json')
             self.assertEqual(response.data['status'], 'archived')
             # get API response
-            response = self.client.delete(self.ok_path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            response = self.client.delete(self.ok_path, format='json')
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
 
@@ -731,20 +634,19 @@ class PatchOne(APITestCase):
 
     def setUp(self):
         if self.execute:
-            self.client = APIClient(enforce_csrf_checks=True)
             self.prerequisites.role_superuser()
             self.prerequisites.role_no_write_permissions()
             # create ok object in status draft
             self.ok_object = self.prerequisites.create_record(self.client, self.ok_object_data)
             # create ok path
-            self.ok_path = '{}{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], self.ok_object['version'])
+            self.ok_path = '{}/{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], self.ok_object['version'])
             self.query = {'lifecycle_id': self.ok_object['lifecycle_id'],
                           'version': self.ok_object['version']}
 
-            self.false_path_version = '{}{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], 2)
-            self.false_path_uuid = '{}{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f',
-                                                    self.ok_object['version'])
-            self.false_path_both = '{}{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f', 2)
+            self.false_path_version = '{}/{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], 2)
+            self.false_path_uuid = '{}/{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f',
+                                                     self.ok_object['version'])
+            self.false_path_both = '{}/{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f', 2)
 
     def test_401(self):
         if self.execute:
@@ -754,22 +656,12 @@ class PatchOne(APITestCase):
             response = self.client.patch(self.ok_path, format='json')
             self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
-    def test_403_csrf(self):
-        if self.execute:
-            # authenticate
-            self.prerequisites.auth(self.client)
-            # get API response
-            response = self.client.patch(self.ok_path, format='json')
-            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-
-    def test_403_permission(self):
+    def test_403(self):
         if self.execute:
             # authenticate
             self.prerequisites.auth_no_write_perms(self.client)
-            # get csrf
-            csrf_token = self.prerequisites.get_csrf(self.client)
             # get API response
-            response = self.client.patch(self.ok_path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            response = self.client.patch(self.ok_path, format='json')
             self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_404_both(self):
@@ -800,104 +692,78 @@ class PatchOne(APITestCase):
         if self.execute:
             # authenticate
             self.prerequisites.auth(self.client)
-            # get csrf
-            csrf_token = self.prerequisites.get_csrf(self.client)
             # try in status circulation
-            response = self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json',
-                                         HTTP_X_CSRFTOKEN=csrf_token)
+            response = self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json')
             self.assertEqual(response.data['status'], 'circulation')
             # get API response
-            response = self.client.patch(self.ok_path, data=self.valid_payload, format='json',
-                                         HTTP_X_CSRFTOKEN=csrf_token)
+            response = self.client.patch(self.ok_path, data=self.valid_payload, format='json')
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_400_productive(self):
         if self.execute:
             # authenticate
             self.prerequisites.auth(self.client)
-            # get csrf
-            csrf_token = self.prerequisites.get_csrf(self.client)
-            self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json')
             # try in status productive
-            response = self.client.patch('{}/{}'.format(self.ok_path, 'productive'), format='json',
-                                         HTTP_X_CSRFTOKEN=csrf_token)
+            response = self.client.patch('{}/{}'.format(self.ok_path, 'productive'), format='json')
             self.assertEqual(response.data['status'], 'productive')
             # get API response
-            response = self.client.patch(self.ok_path, data=self.valid_payload, format='json',
-                                         HTTP_X_CSRFTOKEN=csrf_token)
+            response = self.client.patch(self.ok_path, data=self.valid_payload, format='json')
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_400_blocked(self):
         if self.execute:
             # authenticate
             self.prerequisites.auth(self.client)
-            # get csrf
-            csrf_token = self.prerequisites.get_csrf(self.client)
-            self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json', HTTP_X_CSRFTOKEN=csrf_token)
-            self.client.patch('{}/{}'.format(self.ok_path, 'productive'), format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json')
+            self.client.patch('{}/{}'.format(self.ok_path, 'productive'), format='json')
             # try in status blocked
-            response = self.client.patch('{}/{}'.format(self.ok_path, 'blocked'), format='json',
-                                         HTTP_X_CSRFTOKEN=csrf_token)
+            response = self.client.patch('{}/{}'.format(self.ok_path, 'blocked'), format='json')
             self.assertEqual(response.data['status'], 'blocked')
             # get API response
-            response = self.client.patch(self.ok_path, data=self.valid_payload, format='json',
-                                         HTTP_X_CSRFTOKEN=csrf_token)
+            response = self.client.patch(self.ok_path, data=self.valid_payload, format='json')
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_400_inactive(self):
         if self.execute:
             # authenticate
             self.prerequisites.auth(self.client)
-            # get csrf
-            csrf_token = self.prerequisites.get_csrf(self.client)
-            self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json', HTTP_X_CSRFTOKEN=csrf_token)
-            self.client.patch('{}/{}'.format(self.ok_path, 'productive'), format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json')
+            self.client.patch('{}/{}'.format(self.ok_path, 'productive'), format='json')
             # try in status blocked
-            response = self.client.patch('{}/{}'.format(self.ok_path, 'inactive'), format='json',
-                                         HTTP_X_CSRFTOKEN=csrf_token)
+            response = self.client.patch('{}/{}'.format(self.ok_path, 'inactive'), format='json')
             self.assertEqual(response.data['status'], 'inactive')
             # get API response
-            response = self.client.patch(self.ok_path, data=self.valid_payload, format='json',
-                                         HTTP_X_CSRFTOKEN=csrf_token)
+            response = self.client.patch(self.ok_path, data=self.valid_payload, format='json')
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_400_archived(self):
         if self.execute:
             # authenticate
             self.prerequisites.auth(self.client)
-            # get csrf
-            csrf_token = self.prerequisites.get_csrf(self.client)
-            self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json', HTTP_X_CSRFTOKEN=csrf_token)
-            self.client.patch('{}/{}'.format(self.ok_path, 'productive'), format='json', HTTP_X_CSRFTOKEN=csrf_token)
+            self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json')
+            self.client.patch('{}/{}'.format(self.ok_path, 'productive'), format='json')
             # try in status blocked
-            response = self.client.patch('{}/{}'.format(self.ok_path, 'archived'), format='json',
-                                         HTTP_X_CSRFTOKEN=csrf_token)
+            response = self.client.patch('{}/{}'.format(self.ok_path, 'archived'), format='json')
             self.assertEqual(response.data['status'], 'archived')
             # get API response
-            response = self.client.patch(self.ok_path, data=self.valid_payload, format='json',
-                                         HTTP_X_CSRFTOKEN=csrf_token)
+            response = self.client.patch(self.ok_path, data=self.valid_payload, format='json')
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_400_data(self):
         if self.execute:
             # authenticate
             self.prerequisites.auth(self.client)
-            # get csrf
-            csrf_token = self.prerequisites.get_csrf(self.client)
             # get API response
-            response = self.client.patch(self.ok_path, data=self.invalid_payload, format='json',
-                                         HTTP_X_CSRFTOKEN=csrf_token)
+            response = self.client.patch(self.ok_path, data=self.invalid_payload, format='json')
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_200(self):
         if self.execute:
             # authenticate
             self.prerequisites.auth(self.client)
-            # get csrf
-            csrf_token = self.prerequisites.get_csrf(self.client)
             # get API response
-            response = self.client.patch(self.ok_path, data=self.valid_payload, format='json',
-                                         HTTP_X_CSRFTOKEN=csrf_token)
+            response = self.client.patch(self.ok_path, data=self.valid_payload, format='json')
             query = self.model.objects.get(**self.query)
             serializer = self.serializer(query)
             self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -919,8 +785,8 @@ class PatchOneStatus(APITestCase):
         # flag for execution
         self.execute = False
 
-    def status_life_cycle(self, csrf_token, _status):
-        response = self.client.patch('{}/{}'.format(self.ok_path, _status), format='json', HTTP_X_CSRFTOKEN=csrf_token)
+    def status_life_cycle(self, _status):
+        response = self.client.patch('{}/{}'.format(self.ok_path, _status), format='json')
         query = self.model.objects.get(**self.query)
         serializer = self.serializer(query)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -929,20 +795,19 @@ class PatchOneStatus(APITestCase):
 
     def setUp(self):
         if self.execute:
-            self.client = APIClient(enforce_csrf_checks=True)
             self.prerequisites.role_superuser()
             self.prerequisites.role_no_write_permissions()
             # create ok object in status draft
             self.ok_object = self.prerequisites.create_record(self.client, self.ok_object_data)
             # create ok path
-            self.ok_path = '{}{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], self.ok_object['version'])
+            self.ok_path = '{}/{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], self.ok_object['version'])
             self.query = {'lifecycle_id': self.ok_object['lifecycle_id'],
                           'version': self.ok_object['version']}
 
-            self.false_path_version = '{}{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], 2)
-            self.false_path_uuid = '{}{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f',
-                                                    self.ok_object['version'])
-            self.false_path_both = '{}{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f', 2)
+            self.false_path_version = '{}/{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], 2)
+            self.false_path_uuid = '{}/{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f',
+                                                     self.ok_object['version'])
+            self.false_path_both = '{}/{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f', 2)
 
     def test_401(self):
         if self.execute:
@@ -952,23 +817,12 @@ class PatchOneStatus(APITestCase):
             response = self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json')
             self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
-    def test_403_csrf(self):
-        if self.execute:
-            # authenticate
-            self.prerequisites.auth(self.client)
-            # get API response
-            response = self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json')
-            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-
-    def test_403_permission(self):
+    def test_403(self):
         if self.execute:
             # authenticate
             self.prerequisites.auth_no_write_perms(self.client)
-            # get csrf
-            csrf_token = self.prerequisites.get_csrf(self.client)
             # get API response
-            response = self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json',
-                                         HTTP_X_CSRFTOKEN=csrf_token)
+            response = self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json')
             self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_404_both(self):
@@ -999,137 +853,109 @@ class PatchOneStatus(APITestCase):
         if self.execute:
             # authenticate
             self.prerequisites.auth(self.client)
-            # get csrf
-            csrf_token = self.prerequisites.get_csrf(self.client)
             # get API response
-            response = self.client.patch('{}/{}'.format(self.ok_path, 'false_status'), format='json',
-                                         HTTP_X_CSRFTOKEN=csrf_token)
+            response = self.client.patch('{}/{}'.format(self.ok_path, 'false_status'), format='json')
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_400_draft(self):
         if self.execute:
             # authenticate
             self.prerequisites.auth(self.client)
-            # get csrf
-            csrf_token = self.prerequisites.get_csrf(self.client)
             # get API response
             not_allowed_status = ['draft', 'productive', 'blocked', 'inactive', 'archived']
             for _status in not_allowed_status:
-                response = self.client.patch('{}/{}'.format(self.ok_path, _status), format='json',
-                                             HTTP_X_CSRFTOKEN=csrf_token)
+                response = self.client.patch('{}/{}'.format(self.ok_path, _status), format='json')
                 self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_400_circulation(self):
         if self.execute:
             # authenticate
             self.prerequisites.auth(self.client)
-            # get csrf
-            csrf_token = self.prerequisites.get_csrf(self.client)
             # get API response
-            response = self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json',
-                                         HTTP_X_CSRFTOKEN=csrf_token)
+            response = self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json')
             self.assertEqual(response.data['status'], 'circulation')
             not_allowed_status = ['circulation', 'blocked', 'inactive', 'archived']
             for _status in not_allowed_status:
-                response = self.client.patch('{}/{}'.format(self.ok_path, _status), format='json',
-                                             HTTP_X_CSRFTOKEN=csrf_token)
+                response = self.client.patch('{}/{}'.format(self.ok_path, _status), format='json')
                 self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_400_productive(self):
         if self.execute:
             # authenticate
             self.prerequisites.auth(self.client)
-            # get csrf
-            csrf_token = self.prerequisites.get_csrf(self.client)
             # get API response
-            self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json', HTTP_X_CSRFTOKEN=csrf_token)
-            response = self.client.patch('{}/{}'.format(self.ok_path, 'productive'), format='json',
-                                         HTTP_X_CSRFTOKEN=csrf_token)
+            self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json')
+            response = self.client.patch('{}/{}'.format(self.ok_path, 'productive'), format='json')
             self.assertEqual(response.data['status'], 'productive')
             not_allowed_status = ['draft', 'circulation', 'productive']
             for _status in not_allowed_status:
-                response = self.client.patch('{}/{}'.format(self.ok_path, _status), format='json',
-                                             HTTP_X_CSRFTOKEN=csrf_token)
+                response = self.client.patch('{}/{}'.format(self.ok_path, _status), format='json')
                 self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_400_blocked(self):
         if self.execute:
             # authenticate
             self.prerequisites.auth(self.client)
-            # get csrf
-            csrf_token = self.prerequisites.get_csrf(self.client)
             # get API response
-            self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json', HTTP_X_CSRFTOKEN=csrf_token)
-            self.client.patch('{}/{}'.format(self.ok_path, 'productive'), format='json', HTTP_X_CSRFTOKEN=csrf_token)
-            response = self.client.patch('{}/{}'.format(self.ok_path, 'blocked'), format='json',
-                                         HTTP_X_CSRFTOKEN=csrf_token)
+            self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json')
+            self.client.patch('{}/{}'.format(self.ok_path, 'productive'), format='json')
+            response = self.client.patch('{}/{}'.format(self.ok_path, 'blocked'), format='json')
             self.assertEqual(response.data['status'], 'blocked')
             not_allowed_status = ['draft', 'circulation', 'archived', 'inactive', 'blocked']
             for _status in not_allowed_status:
-                response = self.client.patch('{}/{}'.format(self.ok_path, _status), format='json',
-                                             HTTP_X_CSRFTOKEN=csrf_token)
+                response = self.client.patch('{}/{}'.format(self.ok_path, _status), format='json')
                 self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_400_archived(self):
         if self.execute:
             # authenticate
             self.prerequisites.auth(self.client)
-            # get csrf
-            csrf_token = self.prerequisites.get_csrf(self.client)
             # get API response
-            self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json', HTTP_X_CSRFTOKEN=csrf_token)
-            self.client.patch('{}/{}'.format(self.ok_path, 'productive'), format='json', HTTP_X_CSRFTOKEN=csrf_token)
-            response = self.client.patch('{}/{}'.format(self.ok_path, 'archived'), format='json',
-                                         HTTP_X_CSRFTOKEN=csrf_token)
+            self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json')
+            self.client.patch('{}/{}'.format(self.ok_path, 'productive'), format='json')
+            response = self.client.patch('{}/{}'.format(self.ok_path, 'archived'), format='json')
             self.assertEqual(response.data['status'], 'archived')
             not_allowed_status = ['draft', 'circulation', 'productive', 'archived', 'inactive', 'blocked']
             for _status in not_allowed_status:
-                response = self.client.patch('{}/{}'.format(self.ok_path, _status), format='json',
-                                             HTTP_X_CSRFTOKEN=csrf_token)
+                response = self.client.patch('{}/{}'.format(self.ok_path, _status), format='json')
                 self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_400_inactive(self):
         if self.execute:
             # authenticate
             self.prerequisites.auth(self.client)
-            # get csrf
-            csrf_token = self.prerequisites.get_csrf(self.client)
             # get API response
-            self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json', HTTP_X_CSRFTOKEN=csrf_token)
-            self.client.patch('{}/{}'.format(self.ok_path, 'productive'), format='json', HTTP_X_CSRFTOKEN=csrf_token)
-            response = self.client.patch('{}/{}'.format(self.ok_path, 'inactive'), format='json',
-                                         HTTP_X_CSRFTOKEN=csrf_token)
+            self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), format='json')
+            self.client.patch('{}/{}'.format(self.ok_path, 'productive'), format='json')
+            response = self.client.patch('{}/{}'.format(self.ok_path, 'inactive'), format='json')
             self.assertEqual(response.data['status'], 'inactive')
             not_allowed_status = ['draft', 'circulation', 'productive', 'archived', 'inactive']
             for _status in not_allowed_status:
-                response = self.client.patch('{}/{}'.format(self.ok_path, _status), format='json',
-                                             HTTP_X_CSRFTOKEN=csrf_token)
+                response = self.client.patch('{}/{}'.format(self.ok_path, _status), format='json')
                 self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_200(self):
         if self.execute:
             # authenticate
             self.prerequisites.auth(self.client)
-            # get csrf
-            csrf_token = self.prerequisites.get_csrf(self.client)
             # get API response
             # draft to circulation
-            self.status_life_cycle(csrf_token, 'circulation')
+            self.status_life_cycle('circulation')
             # circulation back to draft
-            self.status_life_cycle(csrf_token, 'draft')
+            self.status_life_cycle('draft')
             # start circulation again
-            self.status_life_cycle(csrf_token, 'circulation')
+            self.status_life_cycle('circulation')
             # set productive
-            self.status_life_cycle(csrf_token, 'productive')
+            self.status_life_cycle('productive')
             # block
-            self.status_life_cycle(csrf_token, 'blocked')
+            self.status_life_cycle('blocked')
             # back to productive
-            self.status_life_cycle(csrf_token, 'productive')
+            self.status_life_cycle('productive')
             # set inactive
-            self.status_life_cycle(csrf_token, 'inactive')
+            self.status_life_cycle('inactive')
             # block from inactive
-            self.status_life_cycle(csrf_token, 'blocked')
+            self.status_life_cycle('blocked')
             # again back to productive
-            self.status_life_cycle(csrf_token, 'productive')
+            self.status_life_cycle('productive')
             # finally to archive
-            self.status_life_cycle(csrf_token, 'archived')
+            self.status_life_cycle('archived')

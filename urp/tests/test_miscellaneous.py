@@ -50,22 +50,20 @@ class Miscellaneous(APITestCase):
     def test_403_invalid_range(self):
         # authenticate
         self.prerequisites.auth(self.client)
-        # get csrf
-        csrf_token = self.prerequisites.get_csrf(self.client)
         # get data from db
         role = Roles.objects.filter(role='past_valid_from').get()
         # create new version
-        path = '{}{}/{}'.format(self.path, role.lifecycle_id, role.version)
-        self.client.post(path, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+        path = '{}/{}/{}'.format(self.path, role.lifecycle_id, role.version)
+        self.client.post(path, format='json')
         # update draft version 2
-        path = '{}{}/{}'.format(self.path, role.lifecycle_id, role.version + 1)
-        self.client.patch(path, data=self.valid_payload, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+        path = '{}/{}/{}'.format(self.path, role.lifecycle_id, role.version + 1)
+        self.client.patch(path, data=self.valid_payload, format='json')
         # start circulation
-        path = '{}{}/{}/{}'.format(self.path, role.lifecycle_id, role.version + 1, 'circulation')
-        self.client.patch(path, data={}, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+        path = '{}/{}/{}/{}'.format(self.path, role.lifecycle_id, role.version + 1, 'circulation')
+        self.client.patch(path, data={}, format='json')
         # set productive
-        path = '{}{}/{}/{}'.format(self.path, role.lifecycle_id, role.version + 1, 'productive')
-        self.client.patch(path, data={}, format='json', HTTP_X_CSRFTOKEN=csrf_token)
+        path = '{}/{}/{}/{}'.format(self.path, role.lifecycle_id, role.version + 1, 'productive')
+        self.client.patch(path, data={}, format='json')
         # authenticate with user who has invalid roles
         self.prerequisites.auth_not_valid_roles(self.client)
         # get API response
