@@ -24,10 +24,11 @@ from rest_framework.decorators import api_view
 from rest_framework.reverse import reverse
 
 # custom imports
-from .models import Status, Roles, Permissions, Users
+from .models import Status, Roles, Permissions, Users, AccessLog
 from .serializers import StatusReadWriteSerializer, PermissionsReadWriteSerializer, RolesReadSerializer, \
     RolesWriteSerializer, UsersReadSerializer, RolesDeleteStatusSerializer, RolesNewVersionSerializer, \
-    UsersWriteSerializer, UsersNewVersionSerializer, UsersDeleteStatusSerializer
+    UsersWriteSerializer, UsersNewVersionSerializer, UsersDeleteStatusSerializer, \
+    AccessLogReadWriteSerializer
 from .decorators import auth_required, perm_required
 
 # django imports
@@ -80,6 +81,20 @@ def permissions_list(request, format=None):
     """
     perm = Permissions.objects.all()
     serializer = PermissionsReadWriteSerializer(perm, many=True)
+    return Response(serializer.data)
+
+
+#############
+# ACCESSLOG #
+#############
+
+# GET list
+@api_view(['GET'])
+@auth_required()
+@perm_required('05.01')
+def accesslog_list(request, format=None):
+    logs = AccessLog.objects.all()
+    serializer = AccessLogReadWriteSerializer(logs, many=True)
     return Response(serializer.data)
 
 

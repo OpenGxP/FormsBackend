@@ -26,16 +26,16 @@ from django.urls import path
 
 # app imports
 from .views import permissions_list, status_list, roles_list, roles_detail, \
-    roles_status, users_list, users_detail, api_root, users_status
+    roles_status, users_list, users_detail, api_root, users_status, accesslog_list
 
 
 urlpatterns = [
     # status
     path('status', status_list, name='status-list'),
-    # path('status/<int:pk>/', status_detail),
     # permissions
     path('permissions', permissions_list, name='permissions-list'),
-    # path('permissions/<int:pk>/', permissions_detail),
+    # accesslog
+    path('logs/access', accesslog_list, name='accesslog-list'),
     # roles
     path('roles', roles_list, name='roles-list'),
     path('roles/<str:lifecycle_id>/<int:version>', roles_detail),

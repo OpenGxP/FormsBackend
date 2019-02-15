@@ -274,6 +274,18 @@ class PermissionsReadWriteSerializer(GlobalReadWriteSerializer):
         exclude = ('id', 'checksum',)
 
 
+#############
+# ACCESSLOG #
+#############
+
+# read
+class AccessLogReadWriteSerializer(GlobalReadWriteSerializer):
+
+    class Meta:
+        model = Permissions
+        exclude = ('id', 'checksum',)
+
+
 #########
 # ROLES #
 #########

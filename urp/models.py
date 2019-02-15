@@ -85,6 +85,50 @@ class Permissions(GlobalModel):
     UNIQUE = 'key'
 
 
+#############
+# ACCESSLOG #
+#############
+
+# manager
+class AccessLogManager(GlobalManager):
+    # flags
+    HAS_VERSION = False
+    HAS_STATUS = False
+
+
+# table
+class AccessLog(GlobalModel):
+    # custom fields
+    username = models.CharField(_('username'), max_length=CHAR_DEFAULT)
+    timestamp = models.DateTimeField()
+    action = models.CharField(_('action'), max_length=CHAR_DEFAULT)
+    mode = models.CharField(_('mode'), max_length=CHAR_DEFAULT)
+    attempt = models.PositiveIntegerField()
+    active = models.BooleanField()
+
+    # manager
+    objects = AccessLogManager()
+
+    # integrity check
+    def verify_checksum(self):
+        to_hash_payload = 'username:{};timestamp:{};action:{};mode:{};attempt:{};active:{};'\
+            .format(self.username, self.timestamp, self.action, self.mode, self.attempt, self.active)
+        return self._verify_checksum(to_hash_payload=to_hash_payload)
+
+    valid_from = None
+    valid_to = None
+    lifecycle_id = None
+
+    # hashing
+    HASH_SEQUENCE = ['username', 'timestamp', 'action', 'mode', 'attempt', 'active']
+
+    # permissions
+    MODEL_ID = '05'
+    perms = {
+        '01': 'read',
+    }
+
+
 #########
 # ROLES #
 #########
