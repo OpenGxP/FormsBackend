@@ -31,7 +31,6 @@ from .serializers import StatusReadWriteSerializer, PermissionsReadWriteSerializ
 from .decorators import auth_required, perm_required
 
 # django imports
-from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
 from django.core.exceptions import ValidationError
 
 
@@ -67,20 +66,6 @@ def status_list(request, format=None):
     return Response(serializer.data)
 
 
-# GET detail
-"""@api_view(['GET'])
-@auth_required()
-@perm_required('st.rea')
-def status_detail(request, pk, format=None):
-    try:
-        stat = Status.objects.get(pk=pk)
-    except Status.DoesNotExist:
-        return Response(status=http_status.HTTP_404_NOT_FOUND)
-
-    serializer = StatusReadWriteSerializer(stat)
-    return Response(serializer.data)"""
-
-
 ###############
 # PERMISSIONS #
 ###############
@@ -98,20 +83,6 @@ def permissions_list(request, format=None):
     return Response(serializer.data)
 
 
-# GET detail
-"""@api_view(['GET'])
-@auth_required()
-@perm_required('pe.rea')
-def permissions_detail(request, pk, format=None):
-    try:
-        perm = Permissions.objects.get(pk=pk)
-    except Permissions.DoesNotExist:
-        return Response(status=http_status.HTTP_404_NOT_FOUND)
-
-    serializer = PermissionsReadWriteSerializer(perm)
-    return Response(serializer.data)"""
-
-
 #########
 # ROLES #
 #########
@@ -125,7 +96,6 @@ def roles_list(request, format=None):
     """
 
     @perm_required('03.02')
-    @csrf_protect
     def post(_request):
         # add version for new objects because of combined unique constraint
         _request.data['version'] = 1
@@ -137,7 +107,6 @@ def roles_list(request, format=None):
         return Response(_serializer.errors, status=http_status.HTTP_400_BAD_REQUEST)
 
     @perm_required('03.01')
-    @ensure_csrf_cookie
     def get(_request):
         roles = Roles.objects.all()
         serializer = RolesReadSerializer(roles, many=True)
@@ -158,7 +127,6 @@ def roles_detail(request, lifecycle_id, version, format=None):
     """
 
     @perm_required('03.03')
-    @csrf_protect
     def patch(_request):
         _serializer = RolesWriteSerializer(role, data=_request.data, context={'method': 'PATCH',
                                                                               'function': ''})
@@ -167,7 +135,6 @@ def roles_detail(request, lifecycle_id, version, format=None):
             return Response(_serializer.data)
         return Response(_serializer.errors, status=http_status.HTTP_400_BAD_REQUEST)
 
-    @csrf_protect
     def post_base(_request):
         _serializer = RolesNewVersionSerializer(role, data=_request.data, context={'method': 'POST',
                                                                                    'function': 'new_version'})
@@ -185,7 +152,6 @@ def roles_detail(request, lifecycle_id, version, format=None):
         return post_base(_request)
 
     @perm_required('03.04')
-    @csrf_protect
     def delete(_request):
         _serializer = RolesDeleteStatusSerializer(role, data={}, context={'method': 'DELETE',
                                                                           'function': ''})
@@ -195,7 +161,6 @@ def roles_detail(request, lifecycle_id, version, format=None):
         return Response(_serializer.errors, status=http_status.HTTP_400_BAD_REQUEST)
 
     @perm_required('03.01')
-    @ensure_csrf_cookie
     def get(_request):
         serializer = RolesReadSerializer(role)
         return Response(serializer.data)
@@ -227,7 +192,6 @@ def roles_detail(request, lifecycle_id, version, format=None):
 @auth_required()
 def roles_status(request, lifecycle_id, version, status, format=None):
 
-    @csrf_protect
     def patch_base(_request):
         _serializer = RolesDeleteStatusSerializer(role, data={}, context={'method': 'PATCH',
                                                                           'function': 'status_change',
@@ -293,7 +257,6 @@ def roles_status(request, lifecycle_id, version, status, format=None):
 @auth_required()
 def users_list(request, format=None):
     @perm_required('04.02')
-    @csrf_protect
     def post(_request):
         # add version for new objects because of combined unique constraint
         _request.data['version'] = 1
@@ -305,7 +268,6 @@ def users_list(request, format=None):
         return Response(_serializer.errors, status=http_status.HTTP_400_BAD_REQUEST)
 
     @perm_required('04.01')
-    @ensure_csrf_cookie
     def get(_request):
         users = Users.objects.all()
         serializer = UsersReadSerializer(users, many=True)
@@ -322,12 +284,10 @@ def users_list(request, format=None):
 @auth_required()
 def users_detail(request, lifecycle_id, version, format=None):
     @perm_required('04.01')
-    @ensure_csrf_cookie
     def get(_request):
         serializer = UsersReadSerializer(user)
         return Response(serializer.data)
 
-    @csrf_protect
     def post_base(_request):
         _serializer = UsersNewVersionSerializer(user, data=_request.data, context={'method': 'POST',
                                                                                    'function': 'new_version'})
@@ -364,7 +324,6 @@ def users_detail(request, lifecycle_id, version, format=None):
 @auth_required()
 def users_status(request, lifecycle_id, version, status, format=None):
 
-    @csrf_protect
     def patch_base(_request):
         _serializer = UsersDeleteStatusSerializer(user, data={}, context={'method': 'PATCH',
                                                                           'function': 'status_change',

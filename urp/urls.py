@@ -31,25 +31,25 @@ from .views import permissions_list, status_list, roles_list, roles_detail, \
 
 urlpatterns = [
     # status
-    path('status/', status_list, name='status-list'),
+    path('status', status_list, name='status-list'),
     # path('status/<int:pk>/', status_detail),
     # permissions
-    path('permissions/', permissions_list, name='permissions-list'),
+    path('permissions', permissions_list, name='permissions-list'),
     # path('permissions/<int:pk>/', permissions_detail),
     # roles
-    path('roles/', roles_list, name='roles-list'),
+    path('roles', roles_list, name='roles-list'),
     path('roles/<str:lifecycle_id>/<int:version>', roles_detail),
     path('roles/<str:lifecycle_id>/<int:version>/<str:status>', roles_status, name='roles-status'),
     # users
-    path('users/', users_list, name='users-list'),
+    path('users', users_list, name='users-list'),
     path('users/<str:lifecycle_id>/<int:version>', users_detail),
     path('users/<str:lifecycle_id>/<int:version>/<str:status>', users_status, name='users-status'),
     # root
     path('', api_root),
     # authentication JWT
-    path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    # path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    # path('token/verify/', TokenVerifyView.as_view(), name='token_verify'),
+    path('token', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('token/refresh', TokenRefreshView.as_view(), name='token_refresh'),
+    path('token/verify', TokenVerifyView.as_view(), name='token_verify'),
 ]
 
 urlpatterns = format_suffix_patterns(urlpatterns)
