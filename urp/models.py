@@ -95,6 +95,13 @@ class AccessLogManager(GlobalManager):
     HAS_VERSION = False
     HAS_STATUS = False
 
+    def latest_record(self, username):
+        try:
+            return self.filter(username=username).filter(Q(action='attempt') |
+                                                         Q(action='login')).order_by('-timestamp')[0]
+        except IndexError:
+            return None
+
 
 # table
 class AccessLog(GlobalModel):
@@ -104,7 +111,7 @@ class AccessLog(GlobalModel):
     action = models.CharField(_('action'), max_length=CHAR_DEFAULT)
     mode = models.CharField(_('mode'), max_length=CHAR_DEFAULT)
     attempt = models.PositiveIntegerField()
-    active = models.BooleanField()
+    active = models.CharField(_('mode'), max_length=CHAR_DEFAULT)
 
     # manager
     objects = AccessLogManager()
@@ -198,13 +205,20 @@ class Roles(GlobalModel):
 
 # manager
 class UsersManager(BaseUserManager, GlobalManager):
-    def get_by_natural_key_effective(self, username):
+    def get_by_natural_key_productive(self, username):
         status_effective_id = Status.objects.productive
-        return self.filter(status__id=status_effective_id).get(**{self.model.USERNAME_FIELD: username})
+        users = self.filter(status__id=status_effective_id).filter(**{self.model.USERNAME_FIELD: username}).all()
+        if not users:
+            raise self.model.DoesNotExist
+        else:
+            return users
 
     @property
     def existing_users(self):
         return self.all().values_list('username', flat=True)
+
+    def exist(self, username):
+        return self.filter(username=username).exists()
 
     # superuser function for createsuperuser
     def create_superuser(self, username, password, role):

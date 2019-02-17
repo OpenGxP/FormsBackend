@@ -44,9 +44,12 @@ def api_root(request, format=None):
     return Response({
         'status': reverse('status-list', request=request, format=format),
         'permissions': reverse('permissions-list', request=request, format=format),
+        'accesslog': reverse('accesslog-list', request=request, format=format),
         'roles': reverse('roles-list', request=request, format=format),
         'users': reverse('users-list', request=request, format=format),
-        'token': reverse('token_obtain_pair', request=request, format=format)
+        'token': reverse('token_obtain_pair', request=request, format=format),
+        'token_refresh': reverse('token_refresh', request=request, format=format),
+        'token_verify': reverse('token_verify', request=request, format=format)
     })
 
 
