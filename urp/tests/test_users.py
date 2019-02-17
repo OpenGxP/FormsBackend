@@ -25,7 +25,7 @@ from ..models import Users
 from ..serializers import UsersReadSerializer
 
 # test imports
-from . import Prerequisites, GetAll, GetOne, PostNew, PostNewVersion, PatchOneStatus
+from . import Prerequisites, GetAll, GetOne, PostNew, PostNewVersion, PatchOneStatus, DeleteOne, PatchOne
 
 
 BASE_PATH = reverse('users-list')
@@ -129,6 +129,48 @@ class PostNewVersionUser(PostNewVersion):
                                              'password': 'test12345test',
                                              'roles': 'all',
                                              'valid_from': timezone.now()}
+        self.execute = True
+
+
+# delete
+class DeleteOneUser(DeleteOne):
+    def __init__(self, *args, **kwargs):
+        super(DeleteOneUser, self).__init__(*args, **kwargs)
+        self.base_path = BASE_PATH
+        self.model = Users
+        self.prerequisites = Prerequisites(base_path=self.base_path)
+        self.serializer = UsersReadSerializer
+        self.ok_object_data = {'first_name': 'peter',
+                               'last_name': 'pan',
+                               'password': 'test12345test',
+                               'roles': 'all',
+                               'valid_from': timezone.now()}
+        self.execute = True
+
+
+# patch
+class PatchOneUser(PatchOne):
+    def __init__(self, *args, **kwargs):
+        super(PatchOneUser, self).__init__(*args, **kwargs)
+        self.base_path = BASE_PATH
+        self.model = Users
+        self.prerequisites = Prerequisites(base_path=self.base_path)
+        self.serializer = UsersReadSerializer
+        self.ok_object_data = {'first_name': 'peter',
+                               'last_name': 'pan',
+                               'password': 'test12345test',
+                               'roles': 'all',
+                               'valid_from': timezone.now()}
+        self.valid_payload = {'first_name': 'klaus',
+                              'last_name': 'zwei',
+                              'password': 'test12345test',
+                              'roles': 'all',
+                              'valid_from': timezone.now()}
+        self.invalid_payload = {'first_name': '',
+                                'last_name': 'zwei',
+                                'password': 'test12345test',
+                                'roles': 'all',
+                                'valid_from': timezone.now()}
         self.execute = True
 
 
