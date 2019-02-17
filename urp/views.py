@@ -298,9 +298,18 @@ def users_list(request, format=None):
 
 
 # GET detail
-@api_view(['GET', 'POST'])
+@api_view(['GET', 'PATCH', 'POST', 'DELETE'])
 @auth_required()
 def users_detail(request, lifecycle_id, version, format=None):
+    @perm_required('04.03')
+    def patch(_request):
+        _serializer = UsersWriteSerializer(user, data=_request.data, context={'method': 'PATCH',
+                                                                              'function': ''})
+        if _serializer.is_valid():
+            _serializer.save()
+            return Response(_serializer.data)
+        return Response(_serializer.errors, status=http_status.HTTP_400_BAD_REQUEST)
+
     @perm_required('04.01')
     def get(_request):
         serializer = UsersReadSerializer(user)
@@ -322,6 +331,15 @@ def users_detail(request, lifecycle_id, version, format=None):
     def post_archived(_request):
         return post_base(_request)
 
+    @perm_required('04.04')
+    def delete(_request):
+        _serializer = UsersDeleteStatusSerializer(user, data={}, context={'method': 'DELETE',
+                                                                          'function': ''})
+        if _serializer.is_valid():
+            _serializer.delete()
+            return Response(status=http_status.HTTP_204_NO_CONTENT)
+        return Response(_serializer.errors, status=http_status.HTTP_400_BAD_REQUEST)
+
     try:
         user = Users.objects.get(lifecycle_id=lifecycle_id, version=version)
     except Users.DoesNotExist:
@@ -331,11 +349,18 @@ def users_detail(request, lifecycle_id, version, format=None):
 
     if request.method == 'GET':
         return get(request)
+
+    elif request.method == 'PATCH':
+        return patch(request)
+
     elif request.method == 'POST':
         if user.status.id == Status.objects.archived:
             return post_archived(request)
         else:
             return post(request)
+
+    elif request.method == 'DELETE':
+        return delete(request)
 
 
 @api_view(['PATCH'])
