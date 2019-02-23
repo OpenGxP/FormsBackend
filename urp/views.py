@@ -24,11 +24,11 @@ from rest_framework.decorators import api_view
 from rest_framework.reverse import reverse
 
 # custom imports
-from .models import Status, Roles, Permissions, Users, AccessLog
+from .models import Status, Roles, Permissions, Users, AccessLog, CentralLog
 from .serializers import StatusReadWriteSerializer, PermissionsReadWriteSerializer, RolesReadSerializer, \
     RolesWriteSerializer, UsersReadSerializer, RolesDeleteStatusSerializer, RolesNewVersionSerializer, \
     UsersWriteSerializer, UsersNewVersionSerializer, UsersDeleteStatusSerializer, \
-    AccessLogReadWriteSerializer
+    AccessLogReadWriteSerializer, CentralLogReadWriteSerializer
 from .decorators import auth_required, perm_required
 
 # django imports
@@ -44,6 +44,7 @@ def api_root(request, format=None):
     return Response({
         'status': reverse('status-list', request=request, format=format),
         'permissions': reverse('permissions-list', request=request, format=format),
+        'centrallog': reverse('centrallog-list', request=request, format=format),
         'accesslog': reverse('accesslog-list', request=request, format=format),
         'roles': reverse('roles-list', request=request, format=format),
         'users': reverse('users-list', request=request, format=format),
@@ -84,6 +85,20 @@ def permissions_list(request, format=None):
     """
     perm = Permissions.objects.all()
     serializer = PermissionsReadWriteSerializer(perm, many=True)
+    return Response(serializer.data)
+
+
+##############
+# CENTRALLOG #
+##############
+
+# GET list
+@api_view(['GET'])
+@auth_required()
+@perm_required('06.01')
+def centrallog_list(request, format=None):
+    logs = CentralLog.objects.all()
+    serializer = CentralLogReadWriteSerializer(logs, many=True)
     return Response(serializer.data)
 
 

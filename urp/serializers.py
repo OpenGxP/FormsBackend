@@ -20,7 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from rest_framework import serializers
 
 # custom imports
-from .models import Status, Permissions, Users, Roles, AccessLog
+from .models import Status, Permissions, Users, Roles, AccessLog, CentralLog
 from basics.custom import generate_checksum, generate_to_hash
 from basics.models import AVAILABLE_STATUS
 from .decorators import require_STATUS_CHANGE, require_POST, require_DELETE, require_PATCH, require_NONE, \
@@ -271,6 +271,18 @@ class PermissionsReadWriteSerializer(GlobalReadWriteSerializer):
 
     class Meta:
         model = Permissions
+        exclude = ('id', 'checksum',)
+
+
+#############
+# ACCESSLOG #
+#############
+
+# read
+class CentralLogReadWriteSerializer(GlobalReadWriteSerializer):
+
+    class Meta:
+        model = CentralLog
         exclude = ('id', 'checksum',)
 
 

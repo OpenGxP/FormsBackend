@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # python import
 import string
+import uuid as python_uuid
 
 # django imports
 from django.db import models
@@ -83,6 +84,49 @@ class Permissions(GlobalModel):
 
     # unique field
     UNIQUE = 'key'
+
+
+##############
+# CENTRALLOG #
+##############
+
+# manager
+class CentralLogManager(GlobalManager):
+    # flags
+    HAS_VERSION = False
+    HAS_STATUS = False
+
+
+# table
+class CentralLog(GlobalModel):
+    # custom fields
+    log_id = models.UUIDField(default=python_uuid.uuid4)
+    username = models.CharField(_('username'), max_length=CHAR_DEFAULT)
+    timestamp = models.DateTimeField()
+    action = models.CharField(_('action'), max_length=CHAR_DEFAULT)
+    context = models.CharField(_('context'), max_length=CHAR_DEFAULT)
+
+    # manager
+    objects = CentralLogManager()
+
+    # integrity check
+    def verify_checksum(self):
+        to_hash_payload = 'log_id:{};username:{};timestamp:{};action:{};context:{};'\
+            .format(self.log_id, self.username, self.timestamp, self.action, self.context)
+        return self._verify_checksum(to_hash_payload=to_hash_payload)
+
+    valid_from = None
+    valid_to = None
+    lifecycle_id = None
+
+    # hashing
+    HASH_SEQUENCE = ['log_id', 'username', 'timestamp', 'action', 'context']
+
+    # permissions
+    MODEL_ID = '06'
+    perms = {
+        '01': 'read',
+    }
 
 
 #############
