@@ -22,13 +22,14 @@ from rest_framework import serializers
 
 # django imports
 from django.utils import timezone
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.backends import ModelBackend
 from django.utils.translation import ugettext_lazy as _
 
 # custom imports
 from .models import AccessLog
-from .serializers import AccessLogReadWriteSerializer
+from .serializers import AccessLogReadWriteSerializer, UsersDeleteStatusSerializer
 
 
 UserModel = get_user_model()
@@ -42,15 +43,22 @@ def write_access_log(data):
         _serializer.save()
 
 
+def block_user(user):
+    _serializer = UsersDeleteStatusSerializer(user, data={}, context={'method': 'PATCH',
+                                                                      'function': 'status_change',
+                                                                      'status': 'blocked'})
+    if _serializer.is_valid():
+        _serializer.save()
+
+
 def attempt(username):
     query = AccessLog.objects.latest_record(username)
     if query:
         if query.action == 'login':
-            return 1
+            return 1, query
         if query.action == 'attempt':
-            return query.attempt + 1
-    else:
-        return 1
+            return query.attempt + 1, query
+    return 1, None
 
 
 class MyModelBackend(ModelBackend):
@@ -85,7 +93,7 @@ class MyModelBackend(ModelBackend):
                 # create log record
                 data['action'] = 'attempt'
                 data['active'] = 'no'
-                data['attempt'] = attempt(username)
+                data['attempt'] = attempt(username)[0]
                 write_access_log(data)
             raise serializers.ValidationError(ERROR_TEXT_AUTH)
         # user(s) in status productive exist
@@ -96,18 +104,34 @@ class MyModelBackend(ModelBackend):
                 if user.verify_validity_range:
                     # verify password
                     if user.check_password(password):
+                        _attempt, query = attempt(username)
+                        if query:
+                            if query.active == 'no':
+                                data['attempt'] = 1
+                            else:
+                                data['attempt'] = _attempt
+                        else:
+                            data['attempt'] = _attempt
                         # create log record
                         data['action'] = 'login'
                         data['active'] = '--'
-                        data['attempt'] = attempt(username)
                         write_access_log(data)
                         return user
                     # false password but productive and valid user generates speaking error message
                     else:
+                        _attempt, query = attempt(username)
+                        if query:
+                            if query.active == 'no':
+                                data['attempt'] = 1
+                            else:
+                                data['attempt'] = _attempt
+                        else:
+                            data['attempt'] = _attempt
                         # create log record
                         data['action'] = 'attempt'
                         data['active'] = 'yes'
-                        data['attempt'] = attempt(username)
+                        if data['attempt'] >= settings.MAX_LOGIN_ATTEMPTS:
+                            block_user(user)
                         write_access_log(data)
                     raise serializers.ValidationError(ERROR_TEXT_AUTH)
 
@@ -115,7 +139,7 @@ class MyModelBackend(ModelBackend):
             # create log record
             data['action'] = 'attempt'
             data['active'] = 'no'
-            data['attempt'] = attempt(username)
+            data['attempt'] = attempt(username)[0]
             write_access_log(data)
             # Run the default password hasher once to reduce the timing
             # difference between an existing and a nonexistent user (#20760).

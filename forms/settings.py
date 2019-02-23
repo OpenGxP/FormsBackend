@@ -49,6 +49,12 @@ def require_file(path, file_name):
         raise
 
 
+##########
+# CUSTOM #
+##########
+
+MAX_LOGIN_ATTEMPTS = 5
+
 #########
 # PATHS #
 #########
