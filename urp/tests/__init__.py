@@ -33,8 +33,11 @@ from ..models import Users
 class Prerequisites(object):
     def __init__(self, base_path=None):
         self.username = 'superuser'
-        self.password = 'test1234'
+        self.password = 'test1asda2234'
         self.base_path = base_path
+        # second superuser
+        self.username_two = 'superusertesttwo'
+        self.password_two = 'test123123123asd'
         # user for tests without permissions
         self.username_no_perm = 'usernoperms'
         # user for valid from tests
@@ -61,6 +64,11 @@ class Prerequisites(object):
         role = 'all'
         call_command('create-role', name=role)
         Users.objects.create_superuser(username=self.username, password=self.password, role=role)
+
+    def role_superuser_two(self):
+        role = 'all_two'
+        call_command('create-role', name=role)
+        Users.objects.create_superuser(username=self.username_two, password=self.password_two, role=role)
 
     def role_no_permissions(self):
         role = 'no_perms'
