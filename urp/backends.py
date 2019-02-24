@@ -72,7 +72,7 @@ class MyModelBackend(ModelBackend):
 
     def authenticate(self, request, username=None, password=None, **kwargs):
         data = {
-            'username': username,
+            'user': username,
             'timestamp': timezone.now(),
             'mode': 'manual',
         }
