@@ -49,11 +49,19 @@ def require_file(path, file_name):
         raise
 
 
-##########
-# CUSTOM #
-##########
+########################
+# APP SETTINGS DEFAULT #
+########################
 
 MAX_LOGIN_ATTEMPTS = 5
+DEFAULT_SYSTEM_USER = 'system'
+DEFAULT_LOG_CREATE = 'create'
+DEFAULT_LOG_UPDATE = 'update'
+DEFAULT_LOG_DELETE = 'delete'
+DEFAULT_LOG_STATUS = 'status'
+DEFAULT_LOG_ATTEMPT = 'attempt'
+DEFAULT_LOG_LOGIN = 'login'
+DEFAULT_LOG_LOGOUT = 'logout'
 
 #########
 # PATHS #

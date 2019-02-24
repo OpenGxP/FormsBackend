@@ -19,12 +19,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # python import
 import string
-import uuid as python_uuid
 
 # django imports
 from django.db import models
 from django.utils import timezone
 from django.db.models import Q
+from django.conf import settings
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.utils.translation import gettext_lazy as _
 
@@ -32,18 +32,60 @@ from django.utils.translation import gettext_lazy as _
 from .validators import validate_no_space, validate_no_specials, validate_no_specials_reduced, SPECIALS_REDUCED, \
     validate_no_numbers, validate_only_ascii
 from basics.custom import generate_checksum, generate_to_hash
-from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, CHAR_MAX, FIELD_VERSION, Status
+from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, CHAR_MAX, FIELD_VERSION, Status, LOG_HASH_SEQUENCE
 
 
 ###############
 # PERMISSIONS #
 ###############
 
+# log manager
+class PermissionsLogManager(GlobalManager):
+    # flags
+    HAS_VERSION = False
+    HAS_STATUS = False
+
+
+# log table
+class PermissionsLog(GlobalModel):
+    # custom fields
+    key = models.CharField(_('key'), max_length=CHAR_DEFAULT)
+    model = models.CharField(_('model'), max_length=CHAR_DEFAULT)
+    permission = models.CharField(_('permission'), max_length=CHAR_DEFAULT)
+    # log specific fields
+    user = models.CharField(_('user'), max_length=CHAR_DEFAULT)
+    timestamp = models.DateTimeField()
+    action = models.CharField(_('action'), max_length=CHAR_DEFAULT)
+
+    # manager
+    objects = PermissionsLogManager()
+
+    # integrity check
+    def verify_checksum(self):
+        to_hash_payload = 'key:{};model:{};permission:{};user:{};timestamp:{};action:{};' \
+            .format(self.key, self.model, self.permission, self.user, self.timestamp, self.action)
+        return self._verify_checksum(to_hash_payload=to_hash_payload)
+
+    valid_from = None
+    valid_to = None
+    lifecycle_id = None
+
+    # hashing
+    HASH_SEQUENCE = ['key', 'model', 'permission'] + LOG_HASH_SEQUENCE
+
+    # permissions
+    MODEL_ID = '08'
+    perms = {
+            '01': 'read',
+        }
+
+
 # manager
 class PermissionsManager(GlobalManager):
     # flags
     HAS_VERSION = False
     HAS_STATUS = False
+    LOG_TABLE = PermissionsLog
 
     @property
     def all_comma_separated_list(self):
@@ -100,19 +142,16 @@ class CentralLogManager(GlobalManager):
 # table
 class CentralLog(GlobalModel):
     # custom fields
-    log_id = models.UUIDField(default=python_uuid.uuid4)
-    username = models.CharField(_('username'), max_length=CHAR_DEFAULT)
+    log_id = models.UUIDField()
+    user = models.CharField(_('user'), max_length=CHAR_DEFAULT)
     timestamp = models.DateTimeField()
     action = models.CharField(_('action'), max_length=CHAR_DEFAULT)
     context = models.CharField(_('context'), max_length=CHAR_DEFAULT)
 
-    # manager
-    objects = CentralLogManager()
-
     # integrity check
     def verify_checksum(self):
-        to_hash_payload = 'log_id:{};username:{};timestamp:{};action:{};context:{};'\
-            .format(self.log_id, self.username, self.timestamp, self.action, self.context)
+        to_hash_payload = 'log_id:{};user:{};timestamp:{};action:{};context:{};'\
+            .format(self.log_id, self.user, self.timestamp, self.action, self.context)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
 
     valid_from = None
@@ -120,7 +159,7 @@ class CentralLog(GlobalModel):
     lifecycle_id = None
 
     # hashing
-    HASH_SEQUENCE = ['log_id', 'username', 'timestamp', 'action', 'context']
+    HASH_SEQUENCE = ['log_id', 'user', 'timestamp', 'action', 'context']
 
     # permissions
     MODEL_ID = '06'
@@ -141,8 +180,7 @@ class AccessLogManager(GlobalManager):
 
     def latest_record(self, username):
         try:
-            return self.filter(username=username).filter(Q(action='attempt') |
-                                                         Q(action='login')).order_by('-timestamp')[0]
+            return self.filter(user=username).filter(Q(action='attempt') | Q(action='login')).order_by('-timestamp')[0]
         except IndexError:
             return None
 
@@ -150,7 +188,7 @@ class AccessLogManager(GlobalManager):
 # table
 class AccessLog(GlobalModel):
     # custom fields
-    username = models.CharField(_('username'), max_length=CHAR_DEFAULT)
+    user = models.CharField(_('user'), max_length=CHAR_DEFAULT)
     timestamp = models.DateTimeField()
     action = models.CharField(_('action'), max_length=CHAR_DEFAULT)
     mode = models.CharField(_('mode'), max_length=CHAR_DEFAULT)
@@ -162,8 +200,8 @@ class AccessLog(GlobalModel):
 
     # integrity check
     def verify_checksum(self):
-        to_hash_payload = 'username:{};timestamp:{};action:{};mode:{};attempt:{};active:{};'\
-            .format(self.username, self.timestamp, self.action, self.mode, self.attempt, self.active)
+        to_hash_payload = 'user:{};timestamp:{};action:{};mode:{};attempt:{};active:{};'\
+            .format(self.user, self.timestamp, self.action, self.mode, self.attempt, self.active)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
 
     valid_from = None
@@ -171,7 +209,7 @@ class AccessLog(GlobalModel):
     lifecycle_id = None
 
     # hashing
-    HASH_SEQUENCE = ['username', 'timestamp', 'action', 'mode', 'attempt', 'active']
+    HASH_SEQUENCE = ['user', 'timestamp', 'action', 'mode', 'attempt', 'active']
 
     # permissions
     MODEL_ID = '05'
@@ -184,8 +222,61 @@ class AccessLog(GlobalModel):
 # ROLES #
 #########
 
+# log manager
+class RolesLogManager(GlobalManager):
+    # flags
+    HAS_VERSION = False
+    HAS_STATUS = False
+
+
+# log table
+class RolesLog(GlobalModel):
+    # id field
+    lifecycle_id = models.UUIDField()
+    # custom fields
+    role = models.CharField(_('role'), max_length=CHAR_DEFAULT)
+    permissions = models.CharField(_('permissions'), max_length=CHAR_MAX, blank=True)
+    # defaults
+    status = models.ForeignKey(Status, on_delete=models.PROTECT)
+    version = FIELD_VERSION
+    # log specific fields
+    user = models.CharField(_('user'), max_length=CHAR_DEFAULT)
+    timestamp = models.DateTimeField()
+    action = models.CharField(_('action'), max_length=CHAR_DEFAULT)
+
+    # manager
+    objects = RolesLogManager()
+
+    # integrity check
+    def verify_checksum(self):
+        to_hash_payload = 'role:{};status_id:{};version:{};valid_from:{};valid_to:{};permissions:{};' \
+                          'user:{};timestamp:{};action:{};'. \
+            format(self.role, self.status_id, self.version, self.valid_from, self.valid_to, self.permissions,
+                   self.user, self.timestamp, self.action)
+        return self._verify_checksum(to_hash_payload=to_hash_payload)
+
+    @property
+    def get_status(self):
+        return self.status.status
+
+    # hashing
+    HASH_SEQUENCE = ['role', 'status_id', 'version', 'valid_from', 'valid_to', 'permissions'] + LOG_HASH_SEQUENCE
+
+    # permissions
+    MODEL_ID = '09'
+    perms = {
+            '01': 'read',
+        }
+
+    class Meta:
+        unique_together = None
+
+
 # manager
 class RolesManager(GlobalManager):
+    # flags
+    LOG_TABLE = RolesLog
+
     def find_permission_in_roles(self, roles, permission):
         for role in roles.split(','):
             # query all versions of each role that is in status "productive" or "inactive"
@@ -247,8 +338,69 @@ class Roles(GlobalModel):
 # USERS #
 #########
 
+# log manager
+class UsersLogManager(GlobalManager):
+    # flags
+    HAS_VERSION = False
+    HAS_STATUS = False
+
+
+# log table
+class UsersLog(GlobalModel):
+    # id field
+    lifecycle_id = models.UUIDField()
+    # custom fields
+    username = models.CharField(_('username'), max_length=CHAR_DEFAULT)
+    email = models.EmailField(_('email'), max_length=CHAR_MAX, blank=True)
+    first_name = models.CharField(_('first name'), max_length=CHAR_DEFAULT)
+    last_name = models.CharField(_('last name'), max_length=CHAR_DEFAULT)
+    initial_password = models.BooleanField(_('initial password'))
+    roles = models.CharField(_('roles'), max_length=CHAR_DEFAULT)
+    is_active = models.BooleanField(_('is_active'))
+    # defaults
+    status = models.ForeignKey(Status, on_delete=models.PROTECT)
+    version = FIELD_VERSION
+    # log specific fields
+    user = models.CharField(_('user'), max_length=CHAR_DEFAULT)
+    timestamp = models.DateTimeField()
+    action = models.CharField(_('action'), max_length=CHAR_DEFAULT)
+
+    # manager
+    objects = UsersLogManager()
+
+    # integrity check
+    def verify_checksum(self):
+        to_hash_payload = 'username:{};email:{};first_name:{};last_name:{};is_active:{};initial_password:{};' \
+                          'status_id:{};version:{};valid_from:{};valid_to:{};roles:{};' \
+                          'user:{};timestamp:{};action:{};' \
+            .format(self.username, self.email, self.first_name, self.last_name, self.is_active, self.initial_password,
+                    self.status_id, self.version, self.valid_from, self.valid_to, self.roles,
+                    self.user, self.timestamp, self.action)
+        return self._verify_checksum(to_hash_payload=to_hash_payload)
+
+    @property
+    def get_status(self):
+        return self.status.status
+
+    # hashing
+    HASH_SEQUENCE = ['username', 'email', 'first_name', 'last_name', 'is_active', 'initial_password',
+                     'status_id', 'version', 'valid_from', 'valid_to', 'roles'] + LOG_HASH_SEQUENCE
+
+    # permissions
+    MODEL_ID = '10'
+    perms = {
+            '01': 'read',
+        }
+
+    class Meta:
+        unique_together = None
+
+
 # manager
 class UsersManager(BaseUserManager, GlobalManager):
+    # flags
+    LOG_TABLE = UsersLog
+
     def get_by_natural_key_productive(self, username):
         status_effective_id = Status.objects.productive
         users = self.filter(status__id=status_effective_id).filter(**{self.model.USERNAME_FIELD: username}).all()
@@ -286,6 +438,18 @@ class UsersManager(BaseUserManager, GlobalManager):
                                    lifecycle_id=user.lifecycle_id)
         user.checksum = generate_checksum(to_hash)
         user.save()
+        # log record
+        del fields['password']
+        fields['user'] = settings.DEFAULT_SYSTEM_USER
+        fields['timestamp'] = timezone.now()
+        fields['action'] = settings.DEFAULT_LOG_CREATE
+        fields['lifecycle_id'] = user.lifecycle_id
+        log_record = self.model.objects.LOG_TABLE(**fields)
+        # generate hash
+        to_hash = generate_to_hash(fields, hash_sequence=log_record.HASH_SEQUENCE, unique_id=log_record.id,
+                                   lifecycle_id=user.lifecycle_id)
+        log_record.checksum = generate_checksum(to_hash)
+        log_record.save()
         return user
 
 

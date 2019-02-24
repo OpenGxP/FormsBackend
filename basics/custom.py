@@ -22,6 +22,7 @@ from passlib.hash import sha512_crypt
 
 # django imports
 from django.conf import settings
+from django.utils import timezone
 
 
 ##########
@@ -65,3 +66,24 @@ def generate_to_hash(fields, hash_sequence, unique_id, lifecycle_id=None):
 
 def intersection_two(list_one, list_two):
     return list(set(list_one) & set(list_two))
+
+
+def create_log_record(model, context, obj, validated_data, action):
+    log_obj = model.objects.LOG_TABLE()
+    # add log related data
+    if context['function'] == 'init':
+        validated_data['user'] = settings.DEFAULT_SYSTEM_USER
+    else:
+        validated_data['user'] = context['user']
+    validated_data['timestamp'] = timezone.now()
+    validated_data['action'] = action
+    # generate hash
+    log_hash_sequence = log_obj.HASH_SEQUENCE
+    for attr in log_hash_sequence:
+        if attr in validated_data.keys():
+            setattr(log_obj, attr, validated_data[attr])
+    setattr(log_obj, 'lifecycle_id', obj.lifecycle_id)
+    to_hash = generate_to_hash(fields=validated_data, hash_sequence=log_hash_sequence, unique_id=log_obj.id,
+                               lifecycle_id=obj.lifecycle_id)
+    log_obj.checksum = generate_checksum(to_hash)
+    log_obj.save()

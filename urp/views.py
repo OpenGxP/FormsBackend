@@ -24,12 +24,14 @@ from rest_framework.decorators import api_view
 from rest_framework.reverse import reverse
 
 # custom imports
-from .models import Status, Roles, Permissions, Users, AccessLog, CentralLog
+from .models import Status, Roles, Permissions, Users, AccessLog, CentralLog, PermissionsLog, RolesLog, UsersLog
 from .serializers import StatusReadWriteSerializer, PermissionsReadWriteSerializer, RolesReadSerializer, \
     RolesWriteSerializer, UsersReadSerializer, RolesDeleteStatusSerializer, RolesNewVersionSerializer, \
     UsersWriteSerializer, UsersNewVersionSerializer, UsersDeleteStatusSerializer, \
-    AccessLogReadWriteSerializer, CentralLogReadWriteSerializer
+    AccessLogReadWriteSerializer, CentralLogReadWriteSerializer, StatusLogReadSerializer, \
+    PermissionsLogReadSerializer, RolesLogReadSerializer, UsersLogReadSerializer
 from .decorators import auth_required, perm_required
+from basics.models import StatusLog
 
 # django imports
 from django.core.exceptions import ValidationError
@@ -43,11 +45,15 @@ from django.core.exceptions import ValidationError
 def api_root(request, format=None):
     return Response({
         'status': reverse('status-list', request=request, format=format),
+        'status_logs': reverse('status-log-list', request=request, format=format),
         'permissions': reverse('permissions-list', request=request, format=format),
-        'centrallog': reverse('centrallog-list', request=request, format=format),
-        'accesslog': reverse('accesslog-list', request=request, format=format),
+        'permissions_logs': reverse('permissions-log-list', request=request, format=format),
+        'central_log': reverse('central-log-list', request=request, format=format),
+        'access_log': reverse('access-log-list', request=request, format=format),
         'roles': reverse('roles-list', request=request, format=format),
+        'roles_logs': reverse('roles-log-list', request=request, format=format),
         'users': reverse('users-list', request=request, format=format),
+        'users_logs': reverse('users-log-list', request=request, format=format),
         'token': reverse('token_obtain_pair', request=request, format=format),
         'token_refresh': reverse('token_refresh', request=request, format=format),
         'token_verify': reverse('token_verify', request=request, format=format)
@@ -71,6 +77,23 @@ def status_list(request, format=None):
     return Response(serializer.data)
 
 
+#############
+# STATUSLOG #
+#############
+
+# GET list
+@api_view(['GET'])
+@auth_required()
+@perm_required('07.01')
+def status_log_list(request, format=None):
+    """
+    List all status log records.
+    """
+    logs = StatusLog.objects.all()
+    serializer = StatusLogReadSerializer(logs, many=True)
+    return Response(serializer.data)
+
+
 ###############
 # PERMISSIONS #
 ###############
@@ -88,6 +111,23 @@ def permissions_list(request, format=None):
     return Response(serializer.data)
 
 
+##################
+# PERMISSIONSLOG #
+##################
+
+# GET list
+@api_view(['GET'])
+@auth_required()
+@perm_required('08.01')
+def permissions_log_list(request, format=None):
+    """
+    List all permissions log records.
+    """
+    logs = PermissionsLog.objects.all()
+    serializer = PermissionsLogReadSerializer(logs, many=True)
+    return Response(serializer.data)
+
+
 ##############
 # CENTRALLOG #
 ##############
@@ -96,7 +136,7 @@ def permissions_list(request, format=None):
 @api_view(['GET'])
 @auth_required()
 @perm_required('06.01')
-def centrallog_list(request, format=None):
+def central_log_list(request, format=None):
     logs = CentralLog.objects.all()
     serializer = CentralLogReadWriteSerializer(logs, many=True)
     return Response(serializer.data)
@@ -110,7 +150,7 @@ def centrallog_list(request, format=None):
 @api_view(['GET'])
 @auth_required()
 @perm_required('05.01')
-def accesslog_list(request, format=None):
+def access_log_list(request, format=None):
     logs = AccessLog.objects.all()
     serializer = AccessLogReadWriteSerializer(logs, many=True)
     return Response(serializer.data)
@@ -133,7 +173,8 @@ def roles_list(request, format=None):
         # add version for new objects because of combined unique constraint
         _request.data['version'] = 1
         _serializer = RolesWriteSerializer(data=_request.data, context={'method': 'POST',
-                                                                        'function': 'new'})
+                                                                        'function': 'new',
+                                                                        'user': request.user.username})
         if _serializer.is_valid():
             _serializer.save()
             return Response(_serializer.data, status=http_status.HTTP_201_CREATED)
@@ -162,7 +203,8 @@ def roles_detail(request, lifecycle_id, version, format=None):
     @perm_required('03.03')
     def patch(_request):
         _serializer = RolesWriteSerializer(role, data=_request.data, context={'method': 'PATCH',
-                                                                              'function': ''})
+                                                                              'function': '',
+                                                                              'user': request.user.username})
         if _serializer.is_valid():
             _serializer.save()
             return Response(_serializer.data)
@@ -170,7 +212,8 @@ def roles_detail(request, lifecycle_id, version, format=None):
 
     def post_base(_request):
         _serializer = RolesNewVersionSerializer(role, data=_request.data, context={'method': 'POST',
-                                                                                   'function': 'new_version'})
+                                                                                   'function': 'new_version',
+                                                                                   'user': request.user.username})
         if _serializer.is_valid():
             _serializer.create(validated_data=_serializer.validated_data)
             return Response(_serializer.data, status=http_status.HTTP_201_CREATED)
@@ -187,7 +230,8 @@ def roles_detail(request, lifecycle_id, version, format=None):
     @perm_required('03.04')
     def delete(_request):
         _serializer = RolesDeleteStatusSerializer(role, data={}, context={'method': 'DELETE',
-                                                                          'function': ''})
+                                                                          'function': '',
+                                                                          'user': request.user.username})
         if _serializer.is_valid():
             _serializer.delete()
             return Response(status=http_status.HTTP_204_NO_CONTENT)
@@ -228,7 +272,8 @@ def roles_status(request, lifecycle_id, version, status, format=None):
     def patch_base(_request):
         _serializer = RolesDeleteStatusSerializer(role, data={}, context={'method': 'PATCH',
                                                                           'function': 'status_change',
-                                                                          'status': status})
+                                                                          'status': status,
+                                                                          'user': request.user.username})
         if _serializer.is_valid():
             _serializer.save()
             return Response(_serializer.data)
@@ -281,6 +326,23 @@ def roles_status(request, lifecycle_id, version, status, format=None):
         return patch_base(request)
 
 
+############
+# ROLESLOG #
+############
+
+# GET list
+@api_view(['GET'])
+@auth_required()
+@perm_required('09.01')
+def roles_log_list(request, format=None):
+    """
+    List all roles log records.
+    """
+    logs = RolesLog.objects.all()
+    serializer = RolesLogReadSerializer(logs, many=True)
+    return Response(serializer.data)
+
+
 #########
 # USERS #
 #########
@@ -294,7 +356,8 @@ def users_list(request, format=None):
         # add version for new objects because of combined unique constraint
         _request.data['version'] = 1
         _serializer = UsersWriteSerializer(data=_request.data, context={'method': 'POST',
-                                                                        'function': 'new'})
+                                                                        'function': 'new',
+                                                                        'user': request.user.username})
         if _serializer.is_valid():
             _serializer.save()
             return Response(_serializer.data, status=http_status.HTTP_201_CREATED)
@@ -319,7 +382,8 @@ def users_detail(request, lifecycle_id, version, format=None):
     @perm_required('04.03')
     def patch(_request):
         _serializer = UsersWriteSerializer(user, data=_request.data, context={'method': 'PATCH',
-                                                                              'function': ''})
+                                                                              'function': '',
+                                                                              'user': request.user.username})
         if _serializer.is_valid():
             _serializer.save()
             return Response(_serializer.data)
@@ -332,7 +396,8 @@ def users_detail(request, lifecycle_id, version, format=None):
 
     def post_base(_request):
         _serializer = UsersNewVersionSerializer(user, data=_request.data, context={'method': 'POST',
-                                                                                   'function': 'new_version'})
+                                                                                   'function': 'new_version',
+                                                                                   'user': request.user.username})
         if _serializer.is_valid():
             _serializer.create(validated_data=_serializer.validated_data)
             return Response(_serializer.data, status=http_status.HTTP_201_CREATED)
@@ -349,7 +414,8 @@ def users_detail(request, lifecycle_id, version, format=None):
     @perm_required('04.04')
     def delete(_request):
         _serializer = UsersDeleteStatusSerializer(user, data={}, context={'method': 'DELETE',
-                                                                          'function': ''})
+                                                                          'function': '',
+                                                                          'user': request.user.username})
         if _serializer.is_valid():
             _serializer.delete()
             return Response(status=http_status.HTTP_204_NO_CONTENT)
@@ -385,7 +451,8 @@ def users_status(request, lifecycle_id, version, status, format=None):
     def patch_base(_request):
         _serializer = UsersDeleteStatusSerializer(user, data={}, context={'method': 'PATCH',
                                                                           'function': 'status_change',
-                                                                          'status': status})
+                                                                          'status': status,
+                                                                          'user': request.user.username})
         if _serializer.is_valid():
             _serializer.save()
             return Response(_serializer.data)
@@ -436,3 +503,20 @@ def users_status(request, lifecycle_id, version, status, format=None):
         if status == 'inactive':
             return patch_inactive(request)
         return patch_base(request)
+
+
+############
+# USERSLOG #
+############
+
+# GET list
+@api_view(['GET'])
+@auth_required()
+@perm_required('10.01')
+def users_log_list(request, format=None):
+    """
+    List all users log records.
+    """
+    logs = UsersLog.objects.all()
+    serializer = UsersLogReadSerializer(logs, many=True)
+    return Response(serializer.data)

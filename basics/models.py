@@ -40,15 +40,17 @@ CHAR_DEFAULT = 100
 CHAR_MAX = 255
 
 # default fields
-FIELD_VERSION = models.PositiveIntegerField()
+FIELD_VERSION = models.IntegerField()
 
 AVAILABLE_STATUS = ['draft', 'circulation', 'productive', 'blocked', 'inactive', 'archived']
+LOG_HASH_SEQUENCE = ['user', 'timestamp', 'action']
 
 
 class GlobalManager(models.Manager):
     # flags
     HAS_VERSION = True
     HAS_STATUS = True
+    LOG_TABLE = None
 
     def validate_unique(self, instance):
         model_unique = self.model.UNIQUE
@@ -126,11 +128,51 @@ class GlobalModel(models.Model):
 # STATUS #
 ##########
 
+# log manager
+class StatusLogManager(GlobalManager):
+    # flags
+    HAS_VERSION = False
+    HAS_STATUS = False
+
+
+# log table
+class StatusLog(GlobalModel):
+    # custom fields
+    status = models.CharField(_('status'), max_length=CHAR_DEFAULT)
+    # log specific fields
+    user = models.CharField(_('user'), max_length=CHAR_DEFAULT)
+    timestamp = models.DateTimeField()
+    action = models.CharField(_('action'), max_length=CHAR_DEFAULT)
+
+    # manager
+    objects = StatusLogManager()
+
+    # integrity check
+    def verify_checksum(self):
+        to_hash_payload = 'status:{};user:{};timestamp:{};action:{};' \
+            .format(self.status, self.user, self.timestamp, self.action)
+        return self._verify_checksum(to_hash_payload=to_hash_payload)
+
+    valid_from = None
+    valid_to = None
+    lifecycle_id = None
+
+    # hashing
+    HASH_SEQUENCE = ['status'] + LOG_HASH_SEQUENCE
+
+    # permissions
+    MODEL_ID = '07'
+    perms = {
+            '01': 'read',
+        }
+
+
 # manager
 class StatusManager(GlobalManager):
     # flags
     HAS_VERSION = False
     HAS_STATUS = False
+    LOG_TABLE = StatusLog
 
     def status_by_text(self, value):
         try:

@@ -20,15 +20,16 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from rest_framework import serializers
 
 # custom imports
-from .models import Status, Permissions, Users, Roles, AccessLog, CentralLog
-from basics.custom import generate_checksum, generate_to_hash
-from basics.models import AVAILABLE_STATUS
+from .models import Status, Permissions, Users, Roles, AccessLog, CentralLog, PermissionsLog, RolesLog, UsersLog
+from basics.custom import generate_checksum, generate_to_hash, create_log_record
+from basics.models import AVAILABLE_STATUS, StatusLog
 from .decorators import require_STATUS_CHANGE, require_POST, require_DELETE, require_PATCH, require_NONE, \
     require_NEW_VERSION, require_ROLES, require_status
 from .custom import UserName
 
 # django imports
 from django.db import IntegrityError
+from django.conf import settings
 
 
 ##########
@@ -84,6 +85,10 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         # save obj
         try:
             obj.save()
+            # log record
+            if model.objects.LOG_TABLE:
+                create_log_record(model=model, context=self.context, obj=obj, validated_data=validated_data,
+                                  action=settings.DEFAULT_LOG_CREATE)
         except IntegrityError as e:
             if 'UNIQUE constraint' in e.args[0]:
                 raise serializers.ValidationError('Object already exists.')
@@ -94,6 +99,7 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
 
     # update
     def update(self, instance, validated_data, self_call=None):
+        model = getattr(getattr(self, 'Meta', None), 'model', None)
         if 'function' in self.context.keys():
             if self.context['function'] == 'status_change':
                 validated_data['status_id'] = Status.objects.status_by_text(self.context['status'])
@@ -101,7 +107,6 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 # change "valid_to" of previous version to "valid from" of new version
                 # only for set productive step
                 if self.context['status'] == 'productive' and self.instance.version > 1 and not self_call:
-                    model = getattr(getattr(self, 'Meta', None), 'model', None)
                     prev_instance = model.objects.get_previous_version(instance)
                     data = {'valid_to': self.instance.valid_from}
                     # if no valid_to, always set
@@ -125,11 +130,23 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                                    lifecycle_id=instance.lifecycle_id)
         instance.checksum = generate_checksum(to_hash)
         instance.save()
+        # log record
+        if model.objects.LOG_TABLE:
+            create_log_record(model=model, context=self.context, obj=instance, validated_data=fields,
+                              action=settings.DEFAULT_LOG_UPDATE)
         return instance
 
     def delete(self):
         # get meta model assigned in custom serializer
+        model = getattr(getattr(self, 'Meta', None), 'model', None)
+        hash_sequence = model.HASH_SEQUENCE
+        fields = dict()
+        for attr in hash_sequence:
+            fields[attr] = getattr(self.instance, attr)
         self.instance.delete()
+        if model.objects.LOG_TABLE:
+            create_log_record(model=model, context=self.context, obj=self.instance, validated_data=fields,
+                              action=settings.DEFAULT_LOG_DELETE)
 
     def validate(self, data):
         if self.context['function'] == 'init':
@@ -262,6 +279,14 @@ class StatusReadWriteSerializer(GlobalReadWriteSerializer):
         exclude = ('id', 'checksum', )
 
 
+# read
+class StatusLogReadSerializer(GlobalReadWriteSerializer):
+
+    class Meta:
+        model = StatusLog
+        exclude = ('id', 'checksum', )
+
+
 ###############
 # PERMISSIONS #
 ###############
@@ -272,6 +297,14 @@ class PermissionsReadWriteSerializer(GlobalReadWriteSerializer):
     class Meta:
         model = Permissions
         exclude = ('id', 'checksum',)
+
+
+# read
+class PermissionsLogReadSerializer(GlobalReadWriteSerializer):
+
+    class Meta:
+        model = PermissionsLog
+        exclude = ('id', 'checksum', )
 
 
 #############
@@ -343,6 +376,15 @@ class RolesNewVersionSerializer(GlobalReadWriteSerializer):
                         'valid_from': {'required': False}}
 
 
+# log
+class RolesLogReadSerializer(GlobalReadWriteSerializer):
+    status = serializers.CharField(source='get_status')
+
+    class Meta:
+        model = RolesLog
+        exclude = ('id', 'checksum', )
+
+
 #########
 # USERS #
 #########
@@ -398,3 +440,12 @@ class UsersDeleteStatusSerializer(GlobalReadWriteSerializer):
                         'initial_password': {'required': False},
                         'roles': {'required': False},
                         'valid_from': {'required': False}}
+
+
+# log
+class UsersLogReadSerializer(GlobalReadWriteSerializer):
+    status = serializers.CharField(source='get_status')
+
+    class Meta:
+        model = UsersLog
+        exclude = ('id', 'checksum', 'is_active')
