@@ -35,7 +35,7 @@ from . import GetAll
 class GetAccessLog(GetAll):
     def __init__(self, *args, **kwargs):
         super(GetAccessLog, self).__init__(*args, **kwargs)
-        self.base_path = reverse('accesslog-list')
+        self.base_path = reverse('access-log-list')
         self.model = AccessLog
         self.serializer = AccessLogReadWriteSerializer
         self.execute = True
