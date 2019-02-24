@@ -39,6 +39,3 @@ class GetPermissions(GetAll):
         self.model = Permissions
         self.serializer = PermissionsReadWriteSerializer
         self.execute = True
-
-    def test_200_csrf(self):
-        pass
