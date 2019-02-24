@@ -35,7 +35,7 @@ from . import GetAll
 class GetCentralLog(GetAll):
     def __init__(self, *args, **kwargs):
         super(GetCentralLog, self).__init__(*args, **kwargs)
-        self.base_path = reverse('centrallog-list')
+        self.base_path = reverse('central-log-list')
         self.model = CentralLog
         self.serializer = CentralLogReadWriteSerializer
         self.execute = True
