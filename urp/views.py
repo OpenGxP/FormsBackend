@@ -29,9 +29,10 @@ from .serializers import StatusReadWriteSerializer, PermissionsReadWriteSerializ
     RolesWriteSerializer, UsersReadSerializer, RolesDeleteStatusSerializer, RolesNewVersionSerializer, \
     UsersWriteSerializer, UsersNewVersionSerializer, UsersDeleteStatusSerializer, \
     AccessLogReadWriteSerializer, CentralLogReadWriteSerializer, StatusLogReadSerializer, \
-    PermissionsLogReadSerializer, RolesLogReadSerializer, UsersLogReadSerializer
+    PermissionsLogReadSerializer, RolesLogReadSerializer, UsersLogReadSerializer, AUDIT_TRAIL_SERIALIZERS
 from .decorators import auth_required, perm_required
 from basics.models import StatusLog, CentralLog
+from basics.custom import get_model_by_string
 
 # django imports
 from django.core.exceptions import ValidationError
@@ -154,6 +155,44 @@ def access_log_list(request, format=None):
     logs = AccessLog.objects.all()
     serializer = AccessLogReadWriteSerializer(logs, many=True)
     return Response(serializer.data)
+
+
+###############
+# AUDIT_TRAIL #
+###############
+
+# GET list
+@api_view(['GET'])
+@auth_required()
+def audit_trail_list(request, dialog, lifecycle_id, format=None):
+    # lower all inputs for dialog
+    dialog = dialog.lower()
+    # determine the model instance from string parameter
+    try:
+        model = get_model_by_string(dialog).objects.LOG_TABLE
+    except ValidationError:
+        return Response(status=http_status.HTTP_400_BAD_REQUEST)
+
+    @perm_required('{}.01'.format(model.MODEL_ID))
+    def get(_request):
+        # check if at least one record exists
+        try:
+            record = model.objects.filter(lifecycle_id=lifecycle_id).get()
+            serializer = AUDIT_TRAIL_SERIALIZERS[dialog](record)
+        # no record exists for that lifecycle_id
+        except model.DoesNotExist:
+            return Response(status=http_status.HTTP_404_NOT_FOUND)
+        # not a valid lifecycle_id
+        except ValidationError:
+            return Response(status=http_status.HTTP_400_BAD_REQUEST)
+        # lifecycle_id ok and multiple records, no error
+        except model.MultipleObjectsReturned:
+            records = model.objects.filter(lifecycle_id=lifecycle_id).all()
+            serializer = AUDIT_TRAIL_SERIALIZERS[dialog](records, many=True)
+        return Response(serializer.data)
+
+    if request.method == 'GET':
+        return get(request)
 
 
 #########

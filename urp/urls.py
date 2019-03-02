@@ -27,7 +27,7 @@ from django.urls import path
 # app imports
 from .views import permissions_list, status_list, roles_list, roles_detail, \
     roles_status, users_list, users_detail, api_root, users_status, access_log_list, central_log_list, \
-    status_log_list, permissions_log_list, users_log_list, roles_log_list
+    status_log_list, permissions_log_list, users_log_list, roles_log_list, audit_trail_list
 
 
 urlpatterns = [
@@ -35,7 +35,7 @@ urlpatterns = [
     path('status', status_list, name='status-list'),
     # permissions
     path('permissions', permissions_list, name='permissions-list'),
-    # accesslog
+    # logs
     path('logs/central', central_log_list, name='central-log-list'),
     path('logs/access', access_log_list, name='access-log-list'),
     path('logs/status', status_log_list, name='status-log-list'),
@@ -56,6 +56,8 @@ urlpatterns = [
     path('token', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh', TokenRefreshView.as_view(), name='token_refresh'),
     path('token/verify', TokenVerifyView.as_view(), name='token_verify'),
+    # audit trails
+    path('audit_trail/<str:dialog>/<str:lifecycle_id>', audit_trail_list, name='audit-trail-list')
 ]
 
 urlpatterns = format_suffix_patterns(urlpatterns)

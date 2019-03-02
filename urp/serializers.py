@@ -455,3 +455,9 @@ class UsersLogReadSerializer(GlobalReadWriteSerializer):
     class Meta:
         model = UsersLog
         exclude = ('id', 'checksum', 'is_active')
+
+
+AUDIT_TRAIL_SERIALIZERS = {
+    Users.MODEL_CONTEXT.lower(): UsersLogReadSerializer,
+    Roles.MODEL_CONTEXT.lower(): RolesLogReadSerializer
+}

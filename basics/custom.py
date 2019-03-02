@@ -22,6 +22,8 @@ from passlib.hash import sha512_crypt
 
 # django imports
 from django.conf import settings
+from django.apps import apps
+from django.core.exceptions import ValidationError
 
 
 ##########
@@ -65,3 +67,13 @@ def generate_to_hash(fields, hash_sequence, unique_id, lifecycle_id=None):
 
 def intersection_two(list_one, list_two):
     return list(set(list_one) & set(list_two))
+
+
+def get_model_by_string(model_str):
+    models = apps.all_models['urp']
+    models.update(apps.all_models['basics'])
+    for model in models:
+        if models[model].MODEL_CONTEXT:
+            if models[model].MODEL_CONTEXT.lower() == model_str.lower():
+                return models[model]
+    raise ValidationError('Requested model "{}" does not exist.'.format(model_str))
