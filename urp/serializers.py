@@ -99,9 +99,11 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
 
     # update
     def update(self, instance, validated_data, self_call=None):
+        action = settings.DEFAULT_LOG_UPDATE
         model = getattr(getattr(self, 'Meta', None), 'model', None)
         if 'function' in self.context.keys():
             if self.context['function'] == 'status_change':
+                action = settings.DEFAULT_LOG_STATUS
                 validated_data['status_id'] = Status.objects.status_by_text(self.context['status'])
 
                 # change "valid_to" of previous version to "valid from" of new version
@@ -133,7 +135,7 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         # log record
         if model.objects.LOG_TABLE:
             create_log_record(model=model, context=self.context, obj=instance, validated_data=fields,
-                              action=settings.DEFAULT_LOG_UPDATE)
+                              action=action)
         return instance
 
     def delete(self):
