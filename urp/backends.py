@@ -46,7 +46,8 @@ def write_access_log(data):
 def block_user(user):
     _serializer = UsersDeleteStatusSerializer(user, data={}, context={'method': 'PATCH',
                                                                       'function': 'status_change',
-                                                                      'status': 'blocked'})
+                                                                      'status': 'blocked',
+                                                                      'user': settings.DEFAULT_SYSTEM_USER})
     if _serializer.is_valid():
         _serializer.save()
 
