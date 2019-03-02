@@ -55,9 +55,9 @@ def block_user(user):
 def attempt(username):
     query = AccessLog.objects.latest_record(username)
     if query:
-        if query.action == 'login':
+        if query.action == settings.DEFAULT_LOG_LOGIN:
             return 1, query
-        if query.action == 'attempt':
+        if query.action == settings.DEFAULT_LOG_ATTEMPT:
             return query.attempt + 1, query
     return 1, None
 
@@ -92,7 +92,7 @@ class MyModelBackend(ModelBackend):
             # but user(s) in status other than productive exists
             if UserModel.objects.exist(username):
                 # create log record
-                data['action'] = 'attempt'
+                data['action'] = settings.DEFAULT_LOG_ATTEMPT
                 data['active'] = 'no'
                 data['attempt'] = attempt(username)[0]
                 write_access_log(data)
@@ -114,7 +114,7 @@ class MyModelBackend(ModelBackend):
                         else:
                             data['attempt'] = _attempt
                         # create log record
-                        data['action'] = 'login'
+                        data['action'] = settings.DEFAULT_LOG_LOGIN
                         data['active'] = '--'
                         write_access_log(data)
                         return user
@@ -129,7 +129,7 @@ class MyModelBackend(ModelBackend):
                         else:
                             data['attempt'] = _attempt
                         # create log record
-                        data['action'] = 'attempt'
+                        data['action'] = settings.DEFAULT_LOG_ATTEMPT
                         data['active'] = 'yes'
                         if data['attempt'] >= settings.MAX_LOGIN_ATTEMPTS:
                             block_user(user)
@@ -138,7 +138,7 @@ class MyModelBackend(ModelBackend):
 
             # no user was valid
             # create log record
-            data['action'] = 'attempt'
+            data['action'] = settings.DEFAULT_LOG_ATTEMPT
             data['active'] = 'no'
             data['attempt'] = attempt(username)[0]
             write_access_log(data)

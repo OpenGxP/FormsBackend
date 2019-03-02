@@ -60,8 +60,7 @@ DEFAULT_LOG_UPDATE = 'update'
 DEFAULT_LOG_DELETE = 'delete'
 DEFAULT_LOG_STATUS = 'status'
 DEFAULT_LOG_ATTEMPT = 'attempt'
-DEFAULT_LOG_LOGIN = 'login'
-DEFAULT_LOG_LOGOUT = 'logout'
+DEFAULT_LOG_LOGIN = 'authenticate'
 
 #########
 # PATHS #

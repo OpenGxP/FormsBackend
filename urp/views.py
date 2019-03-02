@@ -24,14 +24,14 @@ from rest_framework.decorators import api_view
 from rest_framework.reverse import reverse
 
 # custom imports
-from .models import Status, Roles, Permissions, Users, AccessLog, CentralLog, PermissionsLog, RolesLog, UsersLog
+from .models import Status, Roles, Permissions, Users, AccessLog, PermissionsLog, RolesLog, UsersLog
 from .serializers import StatusReadWriteSerializer, PermissionsReadWriteSerializer, RolesReadSerializer, \
     RolesWriteSerializer, UsersReadSerializer, RolesDeleteStatusSerializer, RolesNewVersionSerializer, \
     UsersWriteSerializer, UsersNewVersionSerializer, UsersDeleteStatusSerializer, \
     AccessLogReadWriteSerializer, CentralLogReadWriteSerializer, StatusLogReadSerializer, \
     PermissionsLogReadSerializer, RolesLogReadSerializer, UsersLogReadSerializer
 from .decorators import auth_required, perm_required
-from basics.models import StatusLog
+from basics.models import StatusLog, CentralLog
 
 # django imports
 from django.core.exceptions import ValidationError

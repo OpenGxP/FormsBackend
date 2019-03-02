@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # django imports
 from django.urls import reverse
 from django.apps import apps
+from django.conf import settings
 from django.core.management import call_command
 
 # rest framework imports
@@ -28,6 +29,7 @@ from rest_framework.test import APIClient, APITestCase
 
 # app imports
 from ..models import Users
+from basics.models import CentralLog, Status
 
 
 class Prerequisites(object):
@@ -133,6 +135,26 @@ class Prerequisites(object):
         client = APIClient()
         response = client.post(path=reverse('token_obtain_pair'), data=data, format='json')
         ext_client.credentials(HTTP_AUTHORIZATION='Bearer ' + response.data['access'])
+
+
+def log_records(model, action, data, access_log=None):
+    data['action'] = action
+    # remove valid field, because its read only and not in db
+    del data['valid']
+    # human readable status is a read only field and not in db, but uuid
+    data['status_id'] = Status.objects.status_by_text(data['status'])
+    del data['status']
+    # get log model of tested model
+    if not access_log:
+        log_model = model.objects.LOG_TABLE
+    else:
+        log_model = access_log
+    try:
+        query = log_model.objects.filter(**data).all()[0]
+    except model.DoesNotExist:
+        assert 'No log record found for "{}".'.format(data)
+    else:
+        return CentralLog.objects.filter(log_id=query.id).exists()
 
 
 class GetAll(APITestCase):
@@ -318,6 +340,9 @@ class PostNew(APITestCase):
             self.assertEqual(response.status_code, status.HTTP_201_CREATED)
             self.assertEqual(response.data['version'], 1)
             self.assertEqual(response.data['status'], 'draft')
+            # verify log record
+            self.assertEqual(log_records(model=self.model, data=response.data, action=settings.DEFAULT_LOG_CREATE),
+                             True)
 
 
 # post
@@ -447,6 +472,9 @@ class PostNewVersion(APITestCase):
             serializer = self.serializer(query)
             self.assertEqual(response.data[self.model.UNIQUE], serializer.data[self.model.UNIQUE])
             self.assertEqual(response.data['valid_from'], serializer.data['valid_from'])
+            # verify log record
+            self.assertEqual(log_records(model=self.model, data=response.data, action=settings.DEFAULT_LOG_CREATE),
+                             True)
 
     def test_400_second(self):
         if self.execute:
@@ -559,6 +587,9 @@ class DeleteOne(APITestCase):
                 raise AssertionError('Object not deleted.')
             except self.model.DoesNotExist:
                 pass
+            # verify log record
+            self.assertEqual(log_records(model=self.model, data=self.ok_object, action=settings.DEFAULT_LOG_DELETE),
+                             True)
 
     def test_400_circulation(self):
         if self.execute:
@@ -776,6 +807,9 @@ class PatchOne(APITestCase):
             serializer = self.serializer(query)
             self.assertEqual(response.status_code, status.HTTP_200_OK)
             self.assertEqual(response.data, serializer.data)
+            # verify log record
+            self.assertEqual(log_records(model=self.model, data=response.data, action=settings.DEFAULT_LOG_UPDATE),
+                             True)
 
 
 # patch status
@@ -800,6 +834,9 @@ class PatchOneStatus(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data, serializer.data)
         self.assertEqual(response.data['status'], _status)
+        # verify log record
+        self.assertEqual(log_records(model=self.model, data=response.data, action=settings.DEFAULT_LOG_STATUS),
+                         True)
 
     def setUp(self):
         if self.execute:

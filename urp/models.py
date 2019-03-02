@@ -25,12 +25,14 @@ from django.db import models
 from django.utils import timezone
 from django.db.models import Q
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.utils.translation import gettext_lazy as _
 
 # app imports
 from .validators import validate_no_space, validate_no_specials, validate_no_specials_reduced, SPECIALS_REDUCED, \
     validate_no_numbers, validate_only_ascii
+from .custom import create_log_record, create_central_log_record
 from basics.custom import generate_checksum, generate_to_hash
 from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, CHAR_MAX, FIELD_VERSION, Status, LOG_HASH_SEQUENCE
 
@@ -120,52 +122,13 @@ class Permissions(GlobalModel):
 
     # permissions
     MODEL_ID = '02'
+    MODEL_CONTEXT = 'Permissions'
     perms = {
         '01': 'read',
     }
 
     # unique field
     UNIQUE = 'key'
-
-
-##############
-# CENTRALLOG #
-##############
-
-# manager
-class CentralLogManager(GlobalManager):
-    # flags
-    HAS_VERSION = False
-    HAS_STATUS = False
-
-
-# table
-class CentralLog(GlobalModel):
-    # custom fields
-    log_id = models.UUIDField()
-    user = models.CharField(_('user'), max_length=CHAR_DEFAULT)
-    timestamp = models.DateTimeField()
-    action = models.CharField(_('action'), max_length=CHAR_DEFAULT)
-    context = models.CharField(_('context'), max_length=CHAR_DEFAULT)
-
-    # integrity check
-    def verify_checksum(self):
-        to_hash_payload = 'log_id:{};user:{};timestamp:{};action:{};context:{};'\
-            .format(self.log_id, self.user, self.timestamp, self.action, self.context)
-        return self._verify_checksum(to_hash_payload=to_hash_payload)
-
-    valid_from = None
-    valid_to = None
-    lifecycle_id = None
-
-    # hashing
-    HASH_SEQUENCE = ['log_id', 'user', 'timestamp', 'action', 'context']
-
-    # permissions
-    MODEL_ID = '06'
-    perms = {
-        '01': 'read',
-    }
 
 
 #############
@@ -213,6 +176,7 @@ class AccessLog(GlobalModel):
 
     # permissions
     MODEL_ID = '05'
+    MODEL_CONTEXT = 'Authentication'
     perms = {
         '01': 'read',
     }
@@ -326,6 +290,7 @@ class Roles(GlobalModel):
 
     # permissions
     MODEL_ID = '03'
+    MODEL_CONTEXT = 'Roles'
 
     # unique field
     UNIQUE = 'role'
@@ -419,15 +384,16 @@ class UsersManager(BaseUserManager, GlobalManager):
     # superuser function for createsuperuser
     def create_superuser(self, username, password, role):
         # initial status "Effective" to immediately user superuser
+        now = timezone.now()
         status_id = Status.objects.productive
         fields = {'username': username,
-                  'first_name': '--',
-                  'last_name': '--',
+                  'first_name': username,
+                  'last_name': username,
                   'version': 1,
                   'is_active': True,
-                  'valid_from': timezone.now(),
+                  'valid_from': now,
                   'initial_password': True,
-                  'email': '--',
+                  'email': '{}@opengxp.org'.format(username),
                   'status_id': status_id,
                   'roles': role}
         user = self.model(**fields)
@@ -437,19 +403,18 @@ class UsersManager(BaseUserManager, GlobalManager):
         to_hash = generate_to_hash(fields, hash_sequence=user.HASH_SEQUENCE, unique_id=user.id,
                                    lifecycle_id=user.lifecycle_id)
         user.checksum = generate_checksum(to_hash)
-        user.save()
+        try:
+            user.full_clean()
+        except ValidationError as e:
+            raise e
+        else:
+            user.save()
         # log record
         del fields['password']
-        fields['user'] = settings.DEFAULT_SYSTEM_USER
-        fields['timestamp'] = timezone.now()
-        fields['action'] = settings.DEFAULT_LOG_CREATE
-        fields['lifecycle_id'] = user.lifecycle_id
-        log_record = self.model.objects.LOG_TABLE(**fields)
-        # generate hash
-        to_hash = generate_to_hash(fields, hash_sequence=log_record.HASH_SEQUENCE, unique_id=log_record.id,
-                                   lifecycle_id=user.lifecycle_id)
-        log_record.checksum = generate_checksum(to_hash)
-        log_record.save()
+        context = dict()
+        context['function'] = 'init'
+        create_log_record(model=self.model, context=context, obj=user,
+                          validated_data=fields, action=settings.DEFAULT_LOG_CREATE)
         return user
 
 
@@ -519,6 +484,7 @@ class Users(AbstractBaseUser, GlobalModel):
 
     # permissions
     MODEL_ID = '04'
+    MODEL_CONTEXT = 'Users'
 
     def get_full_name(self):
         return _('{} - {} {}').format(self.username, self.first_name, self.last_name)

@@ -27,7 +27,7 @@ from rest_framework.test import APITestCase
 # app imports
 from . import Prerequisites
 from ..models import AccessLog, Users
-from basics.models import Status
+from basics.models import Status, CentralLog
 
 
 class Authenticate(APITestCase):
@@ -75,24 +75,30 @@ class AuthenticateLogging(APITestCase):
         self.prerequisites.role_superuser()
         self.prerequisites.role_superuser_two()
 
-    def login_ok(self):
+    def test_login_ok(self):
         # get API response
         data = {'username': self.prerequisites.username_two, 'password': self.prerequisites.password_two}
         self.client.post(self.path, data=data, format='json')
-        query = AccessLog.objects.filter(username=self.prerequisites.username_two).all()[0]
-        self.assertEqual(query.action, 'login')
+        query = AccessLog.objects.filter(user=self.prerequisites.username_two).all()[0]
+        self.assertEqual(query.action, settings.DEFAULT_LOG_LOGIN)
         self.assertEqual(query.attempt, 1)
         self.assertEqual(query.active, '--')
+        # verify log record
+        self.assertEqual(CentralLog.objects.filter(log_id=query.id).exists(), True)
+        central_record = CentralLog.objects.filter(log_id=query.id).get()
+        self.assertEqual(query.action, central_record.action)
+        self.assertEqual(query.user, central_record.user)
+        self.assertEqual(AccessLog.MODEL_CONTEXT, central_record.context)
 
-    def login_attempts(self):
+    def test_login_attempts(self):
         # get API response
         data = {'username': self.prerequisites.username_two, 'password': 'sadasdasd'}
         # login for the maximum allowed attempts
         for idx in range(settings.MAX_LOGIN_ATTEMPTS + 1):
             self.client.post(self.path, data=data, format='json')
-        query = AccessLog.objects.filter(username=self.prerequisites.username_two).all()
+        query = AccessLog.objects.filter(user=self.prerequisites.username_two).all()
         for idx, record in enumerate(query):
-            self.assertEqual(record.action, 'attempt')
+            self.assertEqual(record.action, settings.DEFAULT_LOG_ATTEMPT)
             self.assertEqual(record.attempt, idx + 1)
             if idx + 1 > settings.MAX_LOGIN_ATTEMPTS:
                 self.assertEqual(record.active, 'no')
@@ -100,9 +106,15 @@ class AuthenticateLogging(APITestCase):
                 self.assertEqual(user.status_id, Status.objects.blocked)
             else:
                 self.assertEqual(record.active, 'yes')
+            # verify log record
+            self.assertEqual(CentralLog.objects.filter(log_id=record.id).exists(), True)
+            central_record = CentralLog.objects.filter(log_id=record.id).get()
+            self.assertEqual(record.action, central_record.action)
+            self.assertEqual(record.user, central_record.user)
+            self.assertEqual(AccessLog.MODEL_CONTEXT, central_record.context)
 
     def login_attempts_nok(self):
-        self.login_attempts()
+        self.test_login_attempts()
         data = {'username': self.prerequisites.username_two, 'password': 'sadasdasd'}
         user = Users.objects.filter(username=self.prerequisites.username_two).get()
         # un-block user to grant new attempts
@@ -113,13 +125,19 @@ class AuthenticateLogging(APITestCase):
         self.assertEqual(response.data['status'], 'productive')
         # login again
         self.client.post(self.path, data=data, format='json')
-        record = AccessLog.objects.filter(username=self.prerequisites.username_two).order_by('-timestamp')[0]
-        self.assertEqual(record.action, 'attempt')
+        record = AccessLog.objects.filter(user=self.prerequisites.username_two).order_by('-timestamp')[0]
+        self.assertEqual(record.action, settings.DEFAULT_LOG_ATTEMPT)
         self.assertEqual(record.attempt, 1)
         self.assertEqual(record.active, 'yes')
+        # verify log record
+        self.assertEqual(CentralLog.objects.filter(log_id=record.id).exists(), True)
+        central_record = CentralLog.objects.filter(log_id=record.id).get()
+        self.assertEqual(record.action, central_record.action)
+        self.assertEqual(record.user, central_record.user)
+        self.assertEqual(AccessLog.MODEL_CONTEXT, central_record.context)
 
-    def login_attempts_ok(self):
-        self.login_attempts()
+    def test_login_attempts_ok(self):
+        self.test_login_attempts()
         data = {'username': self.prerequisites.username_two, 'password': self.prerequisites.password_two}
         user = Users.objects.filter(username=self.prerequisites.username_two).get()
         # un-block user to grant new attempts
@@ -130,7 +148,13 @@ class AuthenticateLogging(APITestCase):
         self.assertEqual(response.data['status'], 'productive')
         # login again
         self.client.post(self.path, data=data, format='json')
-        record = AccessLog.objects.filter(username=self.prerequisites.username_two).order_by('-timestamp')[0]
-        self.assertEqual(record.action, 'login')
+        record = AccessLog.objects.filter(user=self.prerequisites.username_two).order_by('-timestamp')[0]
+        self.assertEqual(record.action, settings.DEFAULT_LOG_LOGIN)
         self.assertEqual(record.attempt, 1)
         self.assertEqual(record.active, '--')
+        # verify log record
+        self.assertEqual(CentralLog.objects.filter(log_id=record.id).exists(), True)
+        central_record = CentralLog.objects.filter(log_id=record.id).get()
+        self.assertEqual(record.action, central_record.action)
+        self.assertEqual(record.user, central_record.user)
+        self.assertEqual(AccessLog.MODEL_CONTEXT, central_record.context)

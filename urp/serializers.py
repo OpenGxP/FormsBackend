@@ -20,12 +20,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from rest_framework import serializers
 
 # custom imports
-from .models import Status, Permissions, Users, Roles, AccessLog, CentralLog, PermissionsLog, RolesLog, UsersLog
-from basics.custom import generate_checksum, generate_to_hash, create_log_record
-from basics.models import AVAILABLE_STATUS, StatusLog
+from .models import Status, Permissions, Users, Roles, AccessLog, PermissionsLog, RolesLog, UsersLog
+from basics.custom import generate_checksum, generate_to_hash
+from basics.models import AVAILABLE_STATUS, StatusLog, CentralLog
 from .decorators import require_STATUS_CHANGE, require_POST, require_DELETE, require_PATCH, require_NONE, \
     require_NEW_VERSION, require_ROLES, require_status
-from .custom import UserName
+from .custom import UserName, create_log_record, create_central_log_record
 
 # django imports
 from django.db import IntegrityError
@@ -69,6 +69,10 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                                     last_name=validated_data['last_name'],
                                     existing_users=Users.objects.existing_users)
                 validated_data['username'] = username.algorithm
+            # for access log
+            if obj.MODEL_ID == '05':
+                create_central_log_record(log_id=obj.id, now=validated_data['timestamp'], context=model.MODEL_CONTEXT,
+                                          action=validated_data['action'], user=validated_data['user'])
         # add default fields for new objects
         if model.objects.HAS_STATUS:
             validated_data['status_id'] = Status.objects.draft

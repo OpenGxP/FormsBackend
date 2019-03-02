@@ -108,6 +108,7 @@ class GlobalModel(models.Model):
 
     # default permissions for every status and version managed dialog
     MODEL_ID = None
+    MODEL_CONTEXT = None
     perms = {
         '01': 'read',
         '02': 'add',
@@ -230,6 +231,47 @@ class Status(GlobalModel):
 
     # permissions
     MODEL_ID = '01'
+    MODEL_CONTEXT = 'Status'
+    perms = {
+        '01': 'read',
+    }
+
+
+##############
+# CENTRALLOG #
+##############
+
+# manager
+class CentralLogManager(GlobalManager):
+    # flags
+    HAS_VERSION = False
+    HAS_STATUS = False
+
+
+# table
+class CentralLog(GlobalModel):
+    # custom fields
+    log_id = models.UUIDField()
+    user = models.CharField(_('user'), max_length=CHAR_DEFAULT)
+    timestamp = models.DateTimeField()
+    action = models.CharField(_('action'), max_length=CHAR_DEFAULT)
+    context = models.CharField(_('context'), max_length=CHAR_DEFAULT)
+
+    # integrity check
+    def verify_checksum(self):
+        to_hash_payload = 'log_id:{};user:{};timestamp:{};action:{};context:{};'\
+            .format(self.log_id, self.user, self.timestamp, self.action, self.context)
+        return self._verify_checksum(to_hash_payload=to_hash_payload)
+
+    valid_from = None
+    valid_to = None
+    lifecycle_id = None
+
+    # hashing
+    HASH_SEQUENCE = ['log_id', 'user', 'timestamp', 'action', 'context']
+
+    # permissions
+    MODEL_ID = '06'
     perms = {
         '01': 'read',
     }

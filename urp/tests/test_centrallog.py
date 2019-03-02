@@ -20,7 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from django.urls import reverse
 
 # app imports
-from ..models import CentralLog
+from basics.models import CentralLog
 from ..serializers import CentralLogReadWriteSerializer
 
 # test imports
