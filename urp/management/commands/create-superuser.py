@@ -45,12 +45,14 @@ class Command(BaseCommand):
         self.UserModel = get_user_model()
         self.username_field = self.UserModel._meta.get_field(self.UserModel.USERNAME_FIELD)
         self.role_field = self.UserModel._meta.get_field('roles')
+        self.email_field = self.UserModel._meta.get_field('email')
 
     def add_arguments(self, parser):
         super(Command, self).add_arguments(parser)
         parser.add_argument('--username', dest='user', help='Specify the user name.', default=None)
         parser.add_argument('--password', dest='pw', help='Define a password.', default=None)
         parser.add_argument('--role', dest='role', help='Name the user role.', default=None)
+        parser.add_argument('--email', dest='email', help='User email.', default=None)
 
     def execute(self, *args, **options):
         self.stdin = options.get('stdin', sys.stdin)  # Used for testing
@@ -64,6 +66,13 @@ class Command(BaseCommand):
             self.stderr.write("Error: Username is mandatory.")
         else:
             username = self.clean_input(self.username_field, username)
+
+        # email
+        email = options.get('email')
+        if not email:
+            self.stderr.write("Error: Email is mandatory.")
+        else:
+            email = self.clean_input(self.email_field, email)
 
         # role
         role = options.get('role')
@@ -116,10 +125,11 @@ class Command(BaseCommand):
             except exceptions.ValidationError as err:
                 self.stderr.write('\n'.join(err.messages))
 
-        if username and password and role:
+        if username and password and role and email:
             user_data[self.UserModel.USERNAME_FIELD] = username
             user_data['password'] = password
             user_data['role'] = role
+            user_data['email'] = email
 
             try:
                 user = {self.UserModel.USERNAME_FIELD: username}

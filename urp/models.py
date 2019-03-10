@@ -382,7 +382,7 @@ class UsersManager(BaseUserManager, GlobalManager):
         return self.filter(username=username).exists()
 
     # superuser function for createsuperuser
-    def create_superuser(self, username, password, role):
+    def create_superuser(self, username, password, role, email):
         # initial status "Effective" to immediately user superuser
         now = timezone.now()
         status_id = Status.objects.productive
@@ -393,7 +393,7 @@ class UsersManager(BaseUserManager, GlobalManager):
                   'is_active': True,
                   'valid_from': now,
                   'initial_password': True,
-                  'email': '{}@opengxp.org'.format(username),
+                  'email': email,
                   'status_id': status_id,
                   'roles': role}
         user = self.model(**fields)

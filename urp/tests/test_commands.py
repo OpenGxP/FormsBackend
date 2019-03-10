@@ -75,13 +75,15 @@ class CreateSuperuser(TestCase):
     def test_OK(self):
         out = StringIO()
         call_command('create-role', name='all')
-        call_command('create-superuser', role='all', username='admin', password='FAH2a28djakd2', stdout=out)
+        call_command('create-superuser', role='all', username='admin', email='test@opengxp.org',
+                     password='FAH2a28djakd2', stdout=out)
         self.assertIn('Superuser "admin" created successfully.', out.getvalue())
 
     def test_NOK_no_prod_role(self):
         out = StringIO()
         err = StringIO()
-        call_command('create-superuser', role='all', username='admin', password='FAH2a28djakd2', stdout=out, stderr=err)
+        call_command('create-superuser', role='all', username='admin', email='test@opengxp.org',
+                     password='FAH2a28djakd2', stdout=out, stderr=err)
         self.assertNotIn('Superuser "admin" created successfully.', out.getvalue())
         self.assertIn('Error: Selected role "all" does not exist in status "productive".', err.getvalue())
 
@@ -89,6 +91,7 @@ class CreateSuperuser(TestCase):
         self.test_OK()
         out = StringIO()
         err = StringIO()
-        call_command('create-superuser', role='all', username='admin', password='FAH2a28djakd2', stdout=out, stderr=err)
+        call_command('create-superuser', role='all', username='admin', email='test@opengxp.org',
+                     password='FAH2a28djakd2', stdout=out, stderr=err)
         self.assertNotIn('Superuser "admin" created successfully.', out.getvalue())
         self.assertIn('Error: User "admin" already exists.', err.getvalue())

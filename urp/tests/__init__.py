@@ -36,6 +36,7 @@ class Prerequisites(object):
     def __init__(self, base_path=None):
         self.username = 'superuser'
         self.password = 'test1asda2234'
+        self.email = 'test@opengxp.org'
         self.base_path = base_path
         # second superuser
         self.username_two = 'superusertesttwo'
@@ -65,17 +66,19 @@ class Prerequisites(object):
         call_command('collect-permissions')
         role = 'all'
         call_command('create-role', name=role)
-        Users.objects.create_superuser(username=self.username, password=self.password, role=role)
+        Users.objects.create_superuser(username=self.username, password=self.password, role=role, email=self.email)
 
     def role_superuser_two(self):
         role = 'all_two'
         call_command('create-role', name=role)
-        Users.objects.create_superuser(username=self.username_two, password=self.password_two, role=role)
+        Users.objects.create_superuser(username=self.username_two, password=self.password_two, role=role,
+                                       email=self.email)
 
     def role_no_permissions(self):
         role = 'no_perms'
         call_command('create-role', name=role, permissions='xx.xx,xx.xx')
-        Users.objects.create_superuser(username=self.username_no_perm, password=self.password, role=role)
+        Users.objects.create_superuser(username=self.username_no_perm, password=self.password, role=role,
+                                       email=self.email)
 
     def role_no_write_permissions(self):
         models = apps.all_models['urp']
@@ -86,7 +89,8 @@ class Prerequisites(object):
             perms += '{}.01,'.format(models[model].MODEL_ID)
         role = 'no_write_perms'
         call_command('create-role', name=role, permissions=perms[:-1])
-        Users.objects.create_superuser(username=self.username_no_write_perm, password=self.password, role=role)
+        Users.objects.create_superuser(username=self.username_no_write_perm, password=self.password, role=role,
+                                       email=self.email)
 
     def role_no_version_archived(self):
         models = apps.all_models['urp']
@@ -99,12 +103,14 @@ class Prerequisites(object):
             perms += '{}.11,'.format(models[model].MODEL_ID)
         role = 'no_version_archived'
         call_command('create-role', name=role, permissions=perms[:-1])
-        Users.objects.create_superuser(username=self.username_no_version_archived, password=self.password, role=role)
+        Users.objects.create_superuser(username=self.username_no_version_archived, password=self.password, role=role,
+                                       email=self.email)
 
     def role_past_valid_from(self):
         role = 'past_valid_from'
         call_command('create-role', name=role, valid_from='01-01-2016 00:00:00')
-        Users.objects.create_superuser(username=self.username_valid_from, password=self.password, role=role)
+        Users.objects.create_superuser(username=self.username_valid_from, password=self.password, role=role,
+                                       email=self.email)
 
     def auth(self, ext_client):
         data = {'username': self.username, 'password': self.password}
