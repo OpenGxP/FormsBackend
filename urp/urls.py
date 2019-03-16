@@ -18,7 +18,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
 # rest imports
-from rest_framework.urlpatterns import format_suffix_patterns
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView, TokenVerifyView
 
 # django imports
@@ -27,7 +26,8 @@ from django.urls import path
 # app imports
 from .views import permissions_list, status_list, roles_list, roles_detail, \
     roles_status, users_list, users_detail, api_root, users_status, access_log_list, central_log_list, \
-    status_log_list, permissions_log_list, users_log_list, roles_log_list, audit_trail_list
+    status_log_list, permissions_log_list, users_log_list, roles_log_list, audit_trail_list, \
+    ldap_list, ldap_detail, ldap_log_list
 
 
 urlpatterns = [
@@ -42,6 +42,10 @@ urlpatterns = [
     path('logs/permissions', permissions_log_list, name='permissions-log-list'),
     path('logs/roles', roles_log_list, name='roles-log-list'),
     path('logs/users', users_log_list, name='users-log-list'),
+    path('logs/ldap', ldap_log_list, name='ldap-log-list'),
+    # ldap
+    path('ldap', ldap_list, name='ldap-list'),
+    path('ldap/<str:host>', ldap_detail, name='ldap-detail'),
     # roles
     path('roles', roles_list, name='roles-list'),
     path('roles/<str:lifecycle_id>/<int:version>', roles_detail),
@@ -59,5 +63,3 @@ urlpatterns = [
     # audit trails
     path('audit_trail/<str:dialog>/<str:lifecycle_id>', audit_trail_list, name='audit-trail-list')
 ]
-
-urlpatterns = format_suffix_patterns(urlpatterns)

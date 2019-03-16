@@ -28,7 +28,7 @@ from django.contrib.auth.backends import ModelBackend
 from django.utils.translation import ugettext_lazy as _
 
 # custom imports
-from .models import AccessLog
+from .models import AccessLog, LDAP
 from .serializers import AccessLogReadWriteSerializer, UsersDeleteStatusSerializer
 
 
@@ -76,6 +76,7 @@ class MyModelBackend(ModelBackend):
             'user': username,
             'timestamp': timezone.now(),
             'mode': 'manual',
+            'method': settings.DEFAULT_SYSTEM_DEVALUE
         }
 
         if username is None:
@@ -103,37 +104,74 @@ class MyModelBackend(ModelBackend):
             for user in users:
                 # if user is valid (can only be one off all users in status productive)
                 if user.verify_validity_range:
-                    # verify password
-                    if user.check_password(password):
-                        _attempt, query = attempt(username)
-                        if query:
-                            if query.active == 'no':
-                                data['attempt'] = 1
+                    # check if ldap user
+                    if not user.ldap:
+                        # verify password
+                        if user.check_password(password):
+                            _attempt, query = attempt(username)
+                            if query:
+                                if query.active == 'no':
+                                    data['attempt'] = 1
+                                else:
+                                    data['attempt'] = _attempt
                             else:
                                 data['attempt'] = _attempt
+                            # create log record
+                            data['action'] = settings.DEFAULT_LOG_LOGIN
+                            data['active'] = settings.DEFAULT_SYSTEM_DEVALUE
+                            data['method'] = 'local'
+                            write_access_log(data)
+                            return user
+                        # false password but productive and valid user generates speaking error message
                         else:
-                            data['attempt'] = _attempt
-                        # create log record
-                        data['action'] = settings.DEFAULT_LOG_LOGIN
-                        data['active'] = '--'
-                        write_access_log(data)
-                        return user
-                    # false password but productive and valid user generates speaking error message
+                            _attempt, query = attempt(username)
+                            if query:
+                                if query.active == 'no':
+                                    data['attempt'] = 1
+                                else:
+                                    data['attempt'] = _attempt
+                            else:
+                                data['attempt'] = _attempt
+                            # create log record
+                            data['action'] = settings.DEFAULT_LOG_ATTEMPT
+                            data['active'] = 'yes'
+                            data['method'] = 'local'
+                            if data['attempt'] >= settings.MAX_LOGIN_ATTEMPTS:
+                                block_user(user)
+                            write_access_log(data)
                     else:
-                        _attempt, query = attempt(username)
-                        if query:
-                            if query.active == 'no':
-                                data['attempt'] = 1
+                        # check user password against ldap (bind)
+                        if LDAP.objects.bind(username=username, password=password):
+                            _attempt, query = attempt(username)
+                            if query:
+                                if query.active == 'no':
+                                    data['attempt'] = 1
+                                else:
+                                    data['attempt'] = _attempt
                             else:
                                 data['attempt'] = _attempt
+                            # create log record
+                            data['action'] = settings.DEFAULT_LOG_LOGIN
+                            data['active'] = settings.DEFAULT_SYSTEM_DEVALUE
+                            data['method'] = 'ldap'
+                            write_access_log(data)
+                            return user
                         else:
-                            data['attempt'] = _attempt
-                        # create log record
-                        data['action'] = settings.DEFAULT_LOG_ATTEMPT
-                        data['active'] = 'yes'
-                        if data['attempt'] >= settings.MAX_LOGIN_ATTEMPTS:
-                            block_user(user)
-                        write_access_log(data)
+                            _attempt, query = attempt(username)
+                            if query:
+                                if query.active == 'no':
+                                    data['attempt'] = 1
+                                else:
+                                    data['attempt'] = _attempt
+                            else:
+                                data['attempt'] = _attempt
+                            # create log record
+                            data['action'] = settings.DEFAULT_LOG_ATTEMPT
+                            data['active'] = 'yes'
+                            data['method'] = 'local'
+                            if data['attempt'] >= settings.MAX_LOGIN_ATTEMPTS:
+                                block_user(user)
+                            write_access_log(data)
                     raise serializers.ValidationError(ERROR_TEXT_AUTH)
 
             # no user was valid

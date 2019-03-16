@@ -20,12 +20,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from rest_framework import serializers
 
 # custom imports
-from .models import Status, Permissions, Users, Roles, AccessLog, PermissionsLog, RolesLog, UsersLog
+from .models import Status, Permissions, Users, Roles, AccessLog, PermissionsLog, RolesLog, UsersLog, LDAP, LDAPLog
 from basics.custom import generate_checksum, generate_to_hash
 from basics.models import AVAILABLE_STATUS, StatusLog, CentralLog
 from .decorators import require_STATUS_CHANGE, require_POST, require_DELETE, require_PATCH, require_NONE, \
-    require_NEW_VERSION, require_ROLES, require_status
-from .custom import UserName, create_log_record, create_central_log_record
+    require_NEW_VERSION, require_status, require_LDAP, require_USERS, require_NEW
+from .custom import create_log_record, create_central_log_record
+from .ldap import server_check
 
 # django imports
 from django.db import IntegrityError
@@ -64,11 +65,11 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
             # for users
             if obj.MODEL_ID == '04':
                 validated_data['is_active'] = True
-                validated_data['initial_password'] = True
-                username = UserName(first_name=validated_data['first_name'],
-                                    last_name=validated_data['last_name'],
-                                    existing_users=Users.objects.existing_users)
-                validated_data['username'] = username.algorithm
+                # only set initial password for non-ldap managed users
+                if not validated_data['ldap']:
+                    validated_data['initial_password'] = True
+                else:
+                    validated_data['initial_password'] = False
             # for access log
             if obj.MODEL_ID == '05':
                 create_central_log_record(log_id=obj.id, now=validated_data['timestamp'], context=model.MODEL_CONTEXT,
@@ -243,13 +244,22 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
 
             @require_NONE
             def validate_updates_only_in_draft(self):
-                if self.instance.status.id != Status.objects.draft:
-                    raise serializers.ValidationError('Updates are only permitted in status draft.')
+                if self.model.objects.HAS_STATUS:
+                    if self.instance.status.id != Status.objects.draft:
+                        raise serializers.ValidationError('Updates are only permitted in status draft.')
 
-            # model specific rules
-            @require_ROLES
-            def validate_tbd(self):
-                pass
+            @require_NONE
+            @require_LDAP
+            def validate_server_check(self):
+                server_check(data)
+
+            @require_NONE
+            @require_USERS
+            def validate_ldap(self):
+                if data['ldap']:
+                    # in case a password was passed, set to none
+                    data['password'] = ''
+                    LDAP.objects.search(data)
 
         @require_POST
         class Post(Validate):
@@ -260,11 +270,28 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError('New versions can only be created in status productive, '
                                                       'blocked, inactive or archived.')
 
+            @require_NEW
+            @require_LDAP
+            def validate_server_check(self):
+                server_check(data)
+
+            @require_NEW
+            @require_USERS
+            def validate_ldap(self):
+                if data['ldap']:
+                    # in case a password was passed, set to none
+                    data['password'] = ''
+                    LDAP.objects.search(data)
+                else:
+                    if 'password' not in data:
+                        raise serializers.ValidationError({'password': ['This filed is required.']})
+
         @require_DELETE
         class Delete(Validate):
             def validate_delete_only_in_draft(self):
-                if self.instance.status.id != Status.objects.draft:
-                    raise serializers.ValidationError('Delete is only permitted in status draft.')
+                if self.model.objects.HAS_STATUS:
+                    if self.instance.status.id != Status.objects.draft:
+                        raise serializers.ValidationError('Delete is only permitted in status draft.')
 
         Patch(self)
         Post(self)
@@ -311,6 +338,32 @@ class PermissionsLogReadSerializer(GlobalReadWriteSerializer):
     class Meta:
         model = PermissionsLog
         exclude = ('id', 'checksum', )
+
+
+########
+# LDAP #
+########
+
+# read
+class LDAPReadWriteSerializer(GlobalReadWriteSerializer):
+    class Meta:
+        model = LDAP
+        exclude = ('id', 'checksum',)
+        extra_kwargs = {'password': {'write_only': True}}
+
+
+# read
+class LDAPLogReadSerializer(GlobalReadWriteSerializer):
+    class Meta:
+        model = LDAPLog
+        exclude = ('id', 'checksum', )
+
+
+# delete
+class LDAPDeleteSerializer(GlobalReadWriteSerializer):
+    class Meta:
+        model = LDAP
+        fields = ()
 
 
 #############
@@ -414,8 +467,9 @@ class UsersWriteSerializer(GlobalReadWriteSerializer):
         extra_kwargs = {'version': {'required': False},
                         'username': {'required': False},
                         'email': {'required': False},
-                        'initial_password': {'required': False},
-                        'password': {'write_only': True}}
+                        'initial_password': {'read_only': True},
+                        'password': {'write_only': True,
+                                     'required': False}}
 
 
 class UsersNewVersionSerializer(GlobalReadWriteSerializer):
@@ -430,7 +484,8 @@ class UsersNewVersionSerializer(GlobalReadWriteSerializer):
                         'last_name': {'required': False},
                         'initial_password': {'required': False},
                         'roles': {'required': False},
-                        'valid_from': {'required': False}}
+                        'valid_from': {'required': False},
+                        'ldap': {'required': False}}
 
 
 class UsersDeleteStatusSerializer(GlobalReadWriteSerializer):
@@ -445,7 +500,8 @@ class UsersDeleteStatusSerializer(GlobalReadWriteSerializer):
                         'last_name': {'required': False},
                         'initial_password': {'required': False},
                         'roles': {'required': False},
-                        'valid_from': {'required': False}}
+                        'valid_from': {'required': False},
+                        'ldap': {'required': False}}
 
 
 # log

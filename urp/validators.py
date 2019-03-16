@@ -83,3 +83,12 @@ def validate_only_ascii(value):
         value.encode('ascii')
     except UnicodeEncodeError:
         raise ValidationError(_('Only ascii characters are allowed.'))
+
+
+def validate_only_positive_numbers(value):
+
+    try:
+        if value < 0:
+            raise ValidationError(_('Only positive integers are allowed.'))
+    except ValueError:
+        raise ValidationError(_('Only positive integers are allowed.'))

@@ -16,6 +16,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+# ldap imports
+from ldap3 import SIMPLE, AUTO_BIND_DEFAULT, SUBTREE
 
 # python imports
 import os
@@ -23,6 +25,7 @@ from datetime import timedelta
 
 # django imports
 from django.core.exceptions import ImproperlyConfigured
+from corsheaders.defaults import default_headers
 
 
 # function for required settings from local files
@@ -49,12 +52,25 @@ def require_file(path, file_name):
         raise
 
 
+#################
+# LDAP SETTINGS #
+#################
+
+LDAP_SERVER_CONNECTION_TIMEOUT = 5
+LDAP_CON_VERSION = 3
+LDAP_CON_AUTHENTICATE = SIMPLE
+LDAP_CON_READ_ONLY = True
+LDAP_CON_AUTO_BIN = AUTO_BIND_DEFAULT
+LDAP_SEARCH_SCOPE = SUBTREE
+
+
 ########################
 # APP SETTINGS DEFAULT #
 ########################
 
 MAX_LOGIN_ATTEMPTS = 5
 DEFAULT_SYSTEM_USER = 'system'
+DEFAULT_SYSTEM_DEVALUE = '--'
 DEFAULT_LOG_CREATE = 'create'
 DEFAULT_LOG_UPDATE = 'update'
 DEFAULT_LOG_DELETE = 'delete'
@@ -150,6 +166,10 @@ SIMPLE_JWT = {
 }
 
 CORS_ORIGIN_ALLOW_ALL = True
+CORS_ALLOW_HEADERS = default_headers + (
+    'authentication',
+)
+
 
 AUTHENTICATION_BACKENDS = [
     'urp.backends.MyModelBackend',

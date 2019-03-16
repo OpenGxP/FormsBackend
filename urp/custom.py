@@ -25,45 +25,6 @@ from basics.models import CentralLog
 from basics.custom import generate_checksum, generate_to_hash
 
 
-class UserName(object):
-    def __init__(self, first_name, last_name, existing_users):
-        self.first_name = first_name.lower()
-        self.last_name = last_name.lower()
-        self.length = len(first_name)
-        self._tmp_first_name = str()
-        self.existing = existing_users
-
-    @property
-    def tmp_first_name(self):
-        return self._tmp_first_name
-
-    @tmp_first_name.setter
-    def tmp_first_name(self, value):
-        self._tmp_first_name = value
-
-    @property
-    def algorithm(self):
-        """Function to generate unique user names.
-
-            :returns: username
-            :rtype: str
-        """
-        for x in range(self.length):
-            first_name = '{}{}'.format(self.tmp_first_name, self.first_name[x])
-            username = '{}{}'.format(self.last_name, first_name)
-            if username in self.existing:
-                self.tmp_first_name = first_name
-            else:
-                return username
-        for x in range(1000):
-            first_name = '{}{}'.format(self.first_name, x + 1)
-            username = '{}{}'.format(self.last_name, first_name)
-            if username in self.existing:
-                self.tmp_first_name = first_name
-            else:
-                return username
-
-
 def create_central_log_record(log_id, now, action, context, user):
     obj = CentralLog()
     data = dict()

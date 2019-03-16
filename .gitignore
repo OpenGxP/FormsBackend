@@ -118,3 +118,6 @@ settings.json
 
 # private backup
 .tresorit
+
+# test openldap server
+/openldap

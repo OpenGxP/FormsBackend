@@ -52,37 +52,20 @@ class PostNewUsers(PostNew):
         self.base_path = BASE_PATH
         self.model = Users
         self.prerequisites = Prerequisites(base_path=self.base_path)
-        self.valid_payload = {'first_name': 'peter',
-                              'last_name': 'pan',
+        self.valid_payload = {'username': 'test123',
                               'password': 'test12345test',
                               'roles': 'all',
-                              'valid_from': timezone.now()}
+                              'valid_from': timezone.now(),
+                              'ldap': False}
         self.invalid_payloads = [dict(),
-                                 {'first_name': '',
-                                  'last_name': 'pan',
-                                  'password': 'test12345test',
+                                 {'username': 'test123',
                                   'roles': 'all',
-                                  'valid_from': timezone.now()},
-                                 {'first_name': 'peter',
-                                  'last_name': '',
-                                  'password': 'test12345test',
-                                  'roles': 'all',
-                                  'valid_from': timezone.now()},
-                                 {'first_name': 'peter',
-                                  'last_name': 'pan',
                                   'password': '',
-                                  'roles': 'all',
                                   'valid_from': timezone.now()},
-                                 {'first_name': 'peter',
-                                  'last_name': 'pan',
+                                 {'username': 'test123',
                                   'password': 'test12345test',
                                   'roles': '',
-                                  'valid_from': timezone.now()},
-                                 {'first_name': 'peter',
-                                  'last_name': 'pan',
-                                  'password': 'test12345test',
-                                  'roles': 'all',
-                                  'valid_from': ''}]
+                                  'valid_from': timezone.now()}]
         self.execute = True
 
 
@@ -98,11 +81,11 @@ class GetOneUser(GetOne):
         self.model = Users
         self.prerequisites = Prerequisites(base_path=self.base_path)
         self.serializer = UsersReadSerializer
-        self.ok_object_data = {'first_name': 'peter',
-                               'last_name': 'pan',
+        self.ok_object_data = {'username': 'test123',
                                'password': 'test12345test',
                                'roles': 'all',
-                               'valid_from': timezone.now()}
+                               'valid_from': timezone.now(),
+                               'ldap': False}
         self.execute = True
 
 
@@ -114,21 +97,21 @@ class PostNewVersionUser(PostNewVersion):
         self.model = Users
         self.prerequisites = Prerequisites(base_path=self.base_path)
         self.serializer = UsersReadSerializer
-        self.ok_object_data = {'first_name': 'peter',
-                               'last_name': 'pan',
+        self.ok_object_data = {'username': 'test123',
                                'password': 'test12345test',
                                'roles': 'all',
-                               'valid_from': timezone.now()}
-        self.fail_object_draft_data = {'first_name': 'peter',
-                                       'last_name': 'pandraft',
+                               'valid_from': timezone.now(),
+                               'ldap': False}
+        self.fail_object_draft_data = {'username': 'test123',
                                        'password': 'test12345test',
                                        'roles': 'all',
-                                       'valid_from': timezone.now()}
-        self.fail_object_circulation_data = {'first_name': 'peter',
-                                             'last_name': 'pancirc',
+                                       'valid_from': timezone.now(),
+                                       'ldap': False}
+        self.fail_object_circulation_data = {'username': 'test123',
                                              'password': 'test12345test',
                                              'roles': 'all',
-                                             'valid_from': timezone.now()}
+                                             'valid_from': timezone.now(),
+                                             'ldap': False}
         self.execute = True
 
 
@@ -140,11 +123,11 @@ class DeleteOneUser(DeleteOne):
         self.model = Users
         self.prerequisites = Prerequisites(base_path=self.base_path)
         self.serializer = UsersReadSerializer
-        self.ok_object_data = {'first_name': 'peter',
-                               'last_name': 'pan',
+        self.ok_object_data = {'username': 'test123',
                                'password': 'test12345test',
                                'roles': 'all',
-                               'valid_from': timezone.now()}
+                               'valid_from': timezone.now(),
+                               'ldap': False}
         self.execute = True
 
 
@@ -156,21 +139,21 @@ class PatchOneUser(PatchOne):
         self.model = Users
         self.prerequisites = Prerequisites(base_path=self.base_path)
         self.serializer = UsersReadSerializer
-        self.ok_object_data = {'first_name': 'peter',
-                               'last_name': 'pan',
+        self.ok_object_data = {'username': 'test123',
                                'password': 'test12345test',
                                'roles': 'all',
-                               'valid_from': timezone.now()}
-        self.valid_payload = {'first_name': 'klaus',
-                              'last_name': 'zwei',
+                               'valid_from': timezone.now(),
+                               'ldap': False}
+        self.valid_payload = {'username': 'dasddasd',
                               'password': 'test12345test',
                               'roles': 'all',
-                              'valid_from': timezone.now()}
-        self.invalid_payload = {'first_name': '',
-                                'last_name': 'zwei',
+                              'valid_from': timezone.now(),
+                              'ldap': False}
+        self.invalid_payload = {'username': '',
                                 'password': 'test12345test',
                                 'roles': 'all',
-                                'valid_from': timezone.now()}
+                                'valid_from': timezone.now(),
+                                'ldap': False}
         self.execute = True
 
 
@@ -186,9 +169,9 @@ class PatchOneStatusUser(PatchOneStatus):
         self.model = Users
         self.prerequisites = Prerequisites(base_path=self.base_path)
         self.serializer = UsersReadSerializer
-        self.ok_object_data = {'first_name': 'peter',
-                               'last_name': 'pan',
+        self.ok_object_data = {'username': 'test123',
                                'password': 'test12345test',
                                'roles': 'all',
-                               'valid_from': timezone.now()}
+                               'valid_from': timezone.now(),
+                               'ldap': False}
         self.execute = True

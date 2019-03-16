@@ -31,10 +31,11 @@ from django.utils.translation import gettext_lazy as _
 
 # app imports
 from .validators import validate_no_space, validate_no_specials, validate_no_specials_reduced, SPECIALS_REDUCED, \
-    validate_no_numbers, validate_only_ascii
-from .custom import create_log_record, create_central_log_record
+    validate_no_numbers, validate_only_ascii, validate_only_positive_numbers
+from .custom import create_log_record
 from basics.custom import generate_checksum, generate_to_hash
 from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, CHAR_MAX, FIELD_VERSION, Status, LOG_HASH_SEQUENCE
+from .ldap import init_server, connect, search
 
 
 ###############
@@ -155,6 +156,7 @@ class AccessLog(GlobalModel):
     timestamp = models.DateTimeField()
     action = models.CharField(_('action'), max_length=CHAR_DEFAULT)
     mode = models.CharField(_('mode'), max_length=CHAR_DEFAULT)
+    method = models.CharField(_('method'), max_length=CHAR_DEFAULT)
     attempt = models.PositiveIntegerField()
     active = models.CharField(_('mode'), max_length=CHAR_DEFAULT)
 
@@ -163,8 +165,8 @@ class AccessLog(GlobalModel):
 
     # integrity check
     def verify_checksum(self):
-        to_hash_payload = 'user:{};timestamp:{};action:{};mode:{};attempt:{};active:{};'\
-            .format(self.user, self.timestamp, self.action, self.mode, self.attempt, self.active)
+        to_hash_payload = 'user:{};timestamp:{};action:{};mode:{};method:{};attempt:{};active:{};' \
+            .format(self.user, self.timestamp, self.action, self.mode, self.method, self.attempt, self.active)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
 
     valid_from = None
@@ -172,7 +174,7 @@ class AccessLog(GlobalModel):
     lifecycle_id = None
 
     # hashing
-    HASH_SEQUENCE = ['user', 'timestamp', 'action', 'mode', 'attempt', 'active']
+    HASH_SEQUENCE = ['user', 'timestamp', 'action', 'mode', 'method', 'attempt', 'active']
 
     # permissions
     MODEL_ID = '05'
@@ -299,6 +301,182 @@ class Roles(GlobalModel):
         unique_together = ('lifecycle_id', 'version')
 
 
+########
+# LDAP #
+########
+
+# log manager
+class LDAPLogManager(GlobalManager):
+    # flags
+    HAS_VERSION = False
+    HAS_STATUS = False
+
+
+# log table
+class LDAPLog(GlobalModel):
+    # custom fields
+    host = models.CharField(_('host'), max_length=CHAR_DEFAULT)
+    port = models.IntegerField(_('port'))
+    ssl_tls = models.BooleanField(_('ssl_tls'))
+    bindDN = models.CharField(_('bindDN'), max_length=CHAR_DEFAULT)
+    password = models.CharField(_('password'), max_length=CHAR_MAX)
+    base = models.CharField(_('base'), max_length=CHAR_DEFAULT)
+    filter = models.CharField(_('filter'), max_length=CHAR_DEFAULT)
+    attr_username = models.CharField(_('attr_username'), max_length=CHAR_DEFAULT)
+    attr_email = models.CharField(_('attr_email'), max_length=CHAR_DEFAULT, blank=True)
+    attr_surname = models.CharField(_('attr_surname'), max_length=CHAR_DEFAULT, blank=True)
+    attr_forename = models.CharField(_('attr_forename'), max_length=CHAR_DEFAULT, blank=True)
+    priority = models.IntegerField(_('priority'), validators=[validate_only_positive_numbers])
+    # log specific fields
+    user = models.CharField(_('user'), max_length=CHAR_DEFAULT)
+    timestamp = models.DateTimeField()
+    action = models.CharField(_('action'), max_length=CHAR_DEFAULT)
+
+    # manager
+    objects = LDAPLogManager()
+
+    # integrity check
+    def verify_checksum(self):
+        to_hash_payload = 'host:{};port:{};ssl_tls:{};bindDN:{};password:{};base:{};filter:{};attr_username:{};' \
+                          'attr_email:{};attr_surname:{};attr_forename:{};priority:{};' \
+                          'user:{};timestamp:{};action:{};'. \
+            format(self.host, self.port, self.ssl_tls, self.bindDN, self.password, self.base, self.filter,
+                   self.attr_username, self.attr_email, self.attr_surname, self.attr_forename, self.priority,
+                   self.user, self.timestamp, self.action)
+        return self._verify_checksum(to_hash_payload=to_hash_payload)
+
+    valid_from = None
+    valid_to = None
+    lifecycle_id = None
+
+    # hashing
+    HASH_SEQUENCE = ['host', 'port', 'ssl_tls', 'bindDN', 'password', 'base', 'filter', 'attr_username',
+                     'attr_email', 'attr_surname', 'attr_forename', 'priority'] + LOG_HASH_SEQUENCE
+
+    # permissions
+    MODEL_ID = '12'
+    perms = {
+        '01': 'read',
+    }
+
+
+class LDAPManager(GlobalManager):
+    # flags
+    HAS_VERSION = False
+    HAS_STATUS = False
+    LOG_TABLE = LDAPLog
+
+    def _server(self):
+        query = self.order_by('-priority').all()
+        if not query:
+            raise ValidationError('No LDAP server configured.')
+        return query
+
+    def search(self, data):
+        query = self._server()
+        error = dict()
+        for server in query:
+            # try to connect to server
+            try:
+                ser = init_server(host=server.host, port=server.port, use_ssl=server.ssl_tls)
+            except ValidationError as e:
+                error[server.host] = e
+            else:
+                if ser.check_availability():
+                    con = connect(server=ser, bind_dn=server.bindDN, password=server.password)
+                    if con.bind():
+                        attributes = [server.attr_username]
+                        if server.attr_email:
+                            attributes.append(server.attr_email)
+                        if server.attr_surname:
+                            attributes.append(server.attr_surname)
+                        if server.attr_forename:
+                            attributes.append(server.attr_forename)
+                        # build filter
+                        ldap_filter = '(&{}({}={}))'.format(server.filter, server.attr_username, data['username'])
+                        try:
+                            search(con=con, base=server.base, attributes=attributes, ldap_filter=ldap_filter)
+                        except ValidationError as e:
+                            error[server.host] = e
+                        else:
+                            # check if search was successful as specified in RFC4511
+                            if con.response and con.result['description'] == 'success':
+                                response_attributes = con.response[0]['attributes']
+                                for attr in response_attributes:
+                                    if attr == server.attr_email:
+                                        data[Users.EMAIL_FIELD] = response_attributes[attr][0]
+                                    if attr == server.attr_forename:
+                                        data['first_name'] = response_attributes[attr][0]
+                                    if attr == server.attr_surname:
+                                        data['last_name'] = response_attributes[attr][0]
+                                return
+                            else:
+                                error[server.host] = ('Username "{}" does not exist on LDAP host "{}".'
+                                                      .format(data['username'], server.host))
+                    else:
+                        error[server.host] = 'LDAP connection failed. False credentials and / or false bind.'
+                else:
+                    error[server.host] = 'LDAP server <{}> not available at port <{}>.'.format(server.host, server.port)
+        raise ValidationError(error)
+
+    def bind(self, username, password):
+        query = self._server()
+        for server in query:
+            ser = init_server(host=server.host, port=server.port, use_ssl=server.ssl_tls)
+            bind_dn = '{}={},{}'.format(server.attr_username, username, server.base)
+            con = connect(server=ser, bind_dn=bind_dn, password=password)
+            return con.bind()
+
+
+# table
+class LDAP(GlobalModel):
+    # custom fields
+    host = models.CharField(_('host'), max_length=CHAR_DEFAULT, unique=True)
+    port = models.IntegerField(_('port'))
+    ssl_tls = models.BooleanField(_('ssl_tls'))
+    bindDN = models.CharField(_('bindDN'), max_length=CHAR_DEFAULT)
+    password = models.CharField(_('password'), max_length=CHAR_MAX)
+    base = models.CharField(_('base'), max_length=CHAR_DEFAULT)
+    filter = models.CharField(_('filter'), max_length=CHAR_DEFAULT)
+    attr_username = models.CharField(_('attr_username'), max_length=CHAR_DEFAULT)
+    attr_email = models.CharField(_('attr_email'), max_length=CHAR_DEFAULT, blank=True)
+    attr_surname = models.CharField(_('attr_surname'), max_length=CHAR_DEFAULT, blank=True)
+    attr_forename = models.CharField(_('attr_forename'), max_length=CHAR_DEFAULT, blank=True)
+    priority = models.IntegerField(_('priority'), validators=[validate_only_positive_numbers], unique=True)
+
+    # manager
+    objects = LDAPManager()
+
+    # integrity check
+    def verify_checksum(self):
+        to_hash_payload = 'host:{};port:{};ssl_tls:{};bindDN:{};password:{};base:{};filter:{};attr_username:{};' \
+                          'attr_email:{};attr_surname:{};attr_forename:{};priority:{};'. \
+            format(self.host, self.port, self.ssl_tls, self.bindDN, self.password, self.base, self.filter,
+                   self.attr_username, self.attr_email, self.attr_surname, self.attr_forename, self.priority)
+        return self._verify_checksum(to_hash_payload=to_hash_payload)
+
+    valid_from = None
+    valid_to = None
+    lifecycle_id = None
+
+    # hashing
+    HASH_SEQUENCE = ['host', 'port', 'ssl_tls', 'bindDN', 'password', 'base', 'filter', 'attr_username',
+                     'attr_email', 'attr_surname', 'attr_forename', 'priority']
+
+    # permissions
+    MODEL_ID = '11'
+    MODEL_CONTEXT = 'LDAP'
+    perms = {
+        '01': 'read',
+        '02': 'add',
+        '03': 'edit',
+        '04': 'delete',
+    }
+
+    # unique field
+    UNIQUE = 'host'
+
+
 #########
 # USERS #
 #########
@@ -317,9 +495,10 @@ class UsersLog(GlobalModel):
     # custom fields
     username = models.CharField(_('username'), max_length=CHAR_DEFAULT)
     email = models.EmailField(_('email'), max_length=CHAR_MAX, blank=True)
-    first_name = models.CharField(_('first name'), max_length=CHAR_DEFAULT)
-    last_name = models.CharField(_('last name'), max_length=CHAR_DEFAULT)
+    first_name = models.CharField(_('first name'), max_length=CHAR_DEFAULT, blank=True)
+    last_name = models.CharField(_('last name'), max_length=CHAR_DEFAULT, blank=True)
     initial_password = models.BooleanField(_('initial password'))
+    ldap = models.BooleanField(_('ldap'))
     roles = models.CharField(_('roles'), max_length=CHAR_DEFAULT)
     is_active = models.BooleanField(_('is_active'))
     # defaults
@@ -336,10 +515,10 @@ class UsersLog(GlobalModel):
     # integrity check
     def verify_checksum(self):
         to_hash_payload = 'username:{};email:{};first_name:{};last_name:{};is_active:{};initial_password:{};' \
-                          'status_id:{};version:{};valid_from:{};valid_to:{};roles:{};' \
+                          'status_id:{};version:{};valid_from:{};valid_to:{};ldap:{};roles:{};' \
                           'user:{};timestamp:{};action:{};' \
             .format(self.username, self.email, self.first_name, self.last_name, self.is_active, self.initial_password,
-                    self.status_id, self.version, self.valid_from, self.valid_to, self.roles,
+                    self.status_id, self.version, self.valid_from, self.valid_to, self.ldap, self.roles,
                     self.user, self.timestamp, self.action)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
 
@@ -349,7 +528,7 @@ class UsersLog(GlobalModel):
 
     # hashing
     HASH_SEQUENCE = ['username', 'email', 'first_name', 'last_name', 'is_active', 'initial_password',
-                     'status_id', 'version', 'valid_from', 'valid_to', 'roles'] + LOG_HASH_SEQUENCE
+                     'status_id', 'version', 'valid_from', 'valid_to', 'ldap', 'roles'] + LOG_HASH_SEQUENCE
 
     # permissions
     MODEL_ID = '10'
@@ -395,6 +574,7 @@ class UsersManager(BaseUserManager, GlobalManager):
                   'initial_password': True,
                   'email': email,
                   'status_id': status_id,
+                  'ldap': False,
                   'roles': role}
         user = self.model(**fields)
         user.set_password(password)
@@ -431,7 +611,7 @@ class Users(AbstractBaseUser, GlobalModel):
         validators=[validate_no_specials,
                     validate_no_space,
                     validate_no_numbers,
-                    validate_only_ascii])
+                    validate_only_ascii], blank=True)
     last_name = models.CharField(
         _('last name'),
         max_length=CHAR_DEFAULT,
@@ -440,9 +620,10 @@ class Users(AbstractBaseUser, GlobalModel):
         validators=[validate_no_specials,
                     validate_no_space,
                     validate_no_numbers,
-                    validate_only_ascii])
+                    validate_only_ascii], blank=True)
     initial_password = models.BooleanField(_('initial password'))
     password = models.CharField(_('password'), max_length=CHAR_MAX)
+    ldap = models.BooleanField(_('ldap'))
     roles = models.CharField(_('roles'), max_length=CHAR_DEFAULT)
     # defaults
     status = models.ForeignKey(Status, on_delete=models.PROTECT)
@@ -454,9 +635,9 @@ class Users(AbstractBaseUser, GlobalModel):
     # integrity check
     def verify_checksum(self):
         to_hash_payload = 'username:{};email:{};first_name:{};last_name:{};is_active:{};initial_password:{};' \
-                          'password:{};status_id:{};version:{};valid_from:{};valid_to:{};roles:{};'\
+                          'password:{};status_id:{};version:{};valid_from:{};valid_to:{};ldap:{};roles:{};'\
             .format(self.username, self.email, self.first_name, self.last_name, self.is_active, self.initial_password,
-                    self.password, self.status_id, self.version, self.valid_from, self.valid_to, self.roles)
+                    self.password, self.status_id, self.version, self.valid_from, self.valid_to, self.ldap, self.roles)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
 
     @property
@@ -480,7 +661,7 @@ class Users(AbstractBaseUser, GlobalModel):
 
     # hashing
     HASH_SEQUENCE = ['username', 'email', 'first_name', 'last_name', 'is_active', 'initial_password', 'password',
-                     'status_id', 'version', 'valid_from', 'valid_to', 'roles']
+                     'status_id', 'version', 'valid_from', 'valid_to', 'ldap', 'roles']
 
     # permissions
     MODEL_ID = '04'

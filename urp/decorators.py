@@ -25,7 +25,7 @@ from rest_framework.response import Response
 from rest_framework import status
 
 # app imports
-from .models import Roles
+from .models import Roles, LDAP, Users
 
 
 def auth_required():
@@ -85,6 +85,7 @@ def require_function(required_function):
 require_STATUS_CHANGE = require_function('status_change')
 require_NEW_VERSION = require_function('new_version')
 require_NONE = require_function('')
+require_NEW = require_function('new')
 
 
 def require_model(model):
@@ -99,6 +100,8 @@ def require_model(model):
 
 
 require_ROLES = require_model(Roles)
+require_LDAP = require_model(LDAP)
+require_USERS = require_model(Users)
 
 
 def require_status(_status):
