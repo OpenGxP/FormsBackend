@@ -58,7 +58,7 @@ def attempt(username):
         if query.action == settings.DEFAULT_LOG_LOGIN:
             return 1, query
         if query.action == settings.DEFAULT_LOG_ATTEMPT:
-            return query.attempt + 1, query
+            return int(query.attempt) + 1, query
     return 1, None
 
 

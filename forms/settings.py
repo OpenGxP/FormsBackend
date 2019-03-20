@@ -76,7 +76,8 @@ DEFAULT_LOG_UPDATE = 'update'
 DEFAULT_LOG_DELETE = 'delete'
 DEFAULT_LOG_STATUS = 'status'
 DEFAULT_LOG_ATTEMPT = 'attempt'
-DEFAULT_LOG_LOGIN = 'authenticate'
+DEFAULT_LOG_LOGIN = 'login'
+DEFAULT_LOG_LOGOUT = 'logout'
 
 #########
 # PATHS #
@@ -112,7 +113,7 @@ INSTALLED_APPS = [
     'urp.apps.UrpConfig',
     'django.contrib.auth',
     'django.contrib.contenttypes',
-    # 'django.contrib.sessions',
+    'django.contrib.sessions',
     # 'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
@@ -124,7 +125,7 @@ MIDDLEWARE = [
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
-    # 'django.middleware.csrf.CsrfViewMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -138,31 +139,10 @@ REST_FRAMEWORK = {
     ],
     'NON_FIELD_ERRORS_KEY': 'validation_errors',
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication'
+        # 'rest_framework_simplejwt.authentication.JWTAuthentication',
         # 'rest_framework.authentication.BasicAuthentication',
     ]
-}
-
-SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=3),
-    'REFRESH_TOKEN_LIFETIME': timedelta(minutes=3),
-    'ROTATE_REFRESH_TOKENS': False,
-    'BLACKLIST_AFTER_ROTATION': True,
-
-    'ALGORITHM': 'HS512',
-    'SIGNING_KEY': SECRET_JWT_SIGNING_KEY,
-    'VERIFYING_KEY': None,
-
-    'AUTH_HEADER_TYPES': ('Bearer',),
-    'USER_ID_FIELD': 'username',
-    'USER_ID_CLAIM': 'username',
-
-    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
-    'TOKEN_TYPE_CLAIM': 'token_type',
-
-    'SLIDING_TOKEN_REFRESH_EXP_CLAIM': 'refresh_exp',
-    'SLIDING_TOKEN_LIFETIME': timedelta(minutes=5),
-    'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
 }
 
 CORS_ORIGIN_ALLOW_ALL = True
@@ -177,6 +157,7 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 AUTH_USER_MODEL = 'urp.Users'
+LOGIN_URL = '/login'
 
 PASSWORD_HASHERS = [
     'django.contrib.auth.hashers.Argon2PasswordHasher',

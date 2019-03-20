@@ -39,3 +39,6 @@ class GetCentralLog(GetAll):
         self.model = CentralLog
         self.serializer = CentralLogReadWriteSerializer
         self.execute = True
+
+    def test_200_csrf(self):
+        pass

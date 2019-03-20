@@ -35,8 +35,7 @@ def auth_required():
         def wrapper(request, *args, **kwargs):
             if request.user.is_authenticated:
                 return view_func(request, *args, **kwargs)
-            return Response(status=status.HTTP_401_UNAUTHORIZED,
-                            headers={'WWW-Authenticate': 'Bearer realm="api", charset="UTF-8"'})
+            return Response(status=status.HTTP_401_UNAUTHORIZED)
         return wrapper
     return decorator
 

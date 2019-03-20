@@ -39,3 +39,6 @@ class GetStatus(GetAll):
         self.model = Status
         self.serializer = StatusReadWriteSerializer
         self.execute = True
+
+    def test_200_csrf(self):
+        pass

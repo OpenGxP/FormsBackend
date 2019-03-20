@@ -19,10 +19,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # django imports
 from django.urls import reverse
 from django.utils import timezone
+from django.test import Client
 
 # rest framework imports
 from rest_framework import status
-from rest_framework.test import APITestCase, APIClient
+from rest_framework.test import APITestCase
 
 # app imports
 from ..models import Roles
@@ -43,30 +44,32 @@ class Miscellaneous(APITestCase):
         }
 
     def setUp(self):
-        self.client = APIClient(enforce_csrf_checks=True)
+        self.client = Client(enforce_csrf_checks=True)
         self.prerequisites.role_superuser()
         self.prerequisites.role_past_valid_from()
 
     def test_403_invalid_range(self):
         # authenticate
         self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
         # get data from db
         role = Roles.objects.filter(role='past_valid_from').get()
         # create new version
         path = '{}/{}/{}'.format(self.path, role.lifecycle_id, role.version)
-        self.client.post(path, format='json')
+        self.client.post(path, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
         # update draft version 2
         path = '{}/{}/{}'.format(self.path, role.lifecycle_id, role.version + 1)
-        self.client.patch(path, data=self.valid_payload, format='json')
+        self.client.patch(path, data=self.valid_payload, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
         # start circulation
         path = '{}/{}/{}/{}'.format(self.path, role.lifecycle_id, role.version + 1, 'circulation')
-        self.client.patch(path, data={}, format='json')
+        self.client.patch(path, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
         # set productive
         path = '{}/{}/{}/{}'.format(self.path, role.lifecycle_id, role.version + 1, 'productive')
-        self.client.patch(path, data={}, format='json')
+        self.client.patch(path, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
         # authenticate with user who has invalid roles
         self.prerequisites.auth_not_valid_roles(self.client)
         # get API response
         path = reverse('status-list')
-        response = self.client.get(path, format='json')
+        response = self.client.get(path, content_type='application/json')
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)

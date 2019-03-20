@@ -157,7 +157,7 @@ class AccessLog(GlobalModel):
     action = models.CharField(_('action'), max_length=CHAR_DEFAULT)
     mode = models.CharField(_('mode'), max_length=CHAR_DEFAULT)
     method = models.CharField(_('method'), max_length=CHAR_DEFAULT)
-    attempt = models.PositiveIntegerField()
+    attempt = models.CharField(_('attempt'), max_length=CHAR_DEFAULT)
     active = models.CharField(_('mode'), max_length=CHAR_DEFAULT)
 
     # manager
