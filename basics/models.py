@@ -72,6 +72,14 @@ class GlobalManager(models.Manager):
         except self.model.DoesNotExist:
             return None
 
+    def get_by_natural_key_productive(self, key):
+        status_effective_id = Status.objects.productive
+        query = self.filter(status__id=status_effective_id).filter(**{self.model.UNIQUE: key}).all()
+        if not query:
+            raise self.model.DoesNotExist
+        else:
+            return query
+
 
 class GlobalModel(models.Model):
     # id

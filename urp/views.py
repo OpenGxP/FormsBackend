@@ -51,20 +51,50 @@ from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie, csrf_
 
 @api_view(['GET'])
 def api_root(request):
-    return Response({
-        'status': reverse('status-list', request=request),
-        'status_logs': reverse('status-log-list', request=request),
-        'permissions': reverse('permissions-list', request=request),
-        'permissions_logs': reverse('permissions-log-list', request=request),
-        'central_log': reverse('central-log-list', request=request),
-        'access_log': reverse('access-log-list', request=request),
-        'roles': reverse('roles-list', request=request),
-        'roles_logs': reverse('roles-log-list', request=request),
-        'ldap': reverse('ldap-list', request=request),
-        'ldap_logs': reverse('ldap-log-list', request=request),
-        'users': reverse('users-list', request=request),
-        'users_logs': reverse('users-log-list', request=request)
-    })
+    root = [{'subject': 'login',
+             'root': '/',
+             'url': reverse('login-view', request=request)},
+            {'subject': 'logout',
+             'root': '/',
+             'url': reverse('logout-view', request=request)},
+            {'subject': 'status',
+             'root': '/md/',
+             'url': reverse('status-list', request=request)},
+            {'subject': 'permissions',
+             'root': '/md/',
+             'url': reverse('permissions-list', request=request)},
+            {'subject': 'roles',
+             'root': '/md/',
+             'url': reverse('roles-list', request=request)},
+            {'subject': 'ldap',
+             'root': '/md/',
+             'url': reverse('ldap-list', request=request)},
+            {'subject': 'users',
+             'root': '/md/',
+             'url': reverse('users-list', request=request)},
+            {'subject': 'central',
+             'root': '/logs/',
+             'url': reverse('central-log-list', request=request)},
+            {'subject': 'access',
+             'root': '/logs/',
+             'url': reverse('access-log-list', request=request)},
+            {'subject': 'status',
+             'root': '/logs/',
+             'url': reverse('status-log-list', request=request)},
+            {'subject': 'permissions',
+             'root': '/logs/',
+             'url': reverse('permissions-log-list', request=request)},
+            {'subject': 'roles',
+             'root': '/logs/',
+             'url': reverse('roles-log-list', request=request)},
+            {'subject': 'ldap',
+             'root': '/logs/',
+             'url': reverse('ldap-log-list', request=request)},
+            {'subject': 'users',
+             'root': '/logs/',
+             'url': reverse('users-log-list', request=request)},
+            ]
+    return Response(root)
 
 
 #########
@@ -81,7 +111,9 @@ def login_view(request):
         raise ValidationError('Fields "{}" and "password are required.'.format(Users.USERNAME_FIELD))
     if user:
         login(request, user)
-        return Response(status=http_status.HTTP_200_OK)
+        # pass authenticated user roles to casl method, split to parse
+        casl = Roles.objects.casl(user.roles.split(','))
+        return Response(casl, status=http_status.HTTP_200_OK)
     else:
         return Response(status=http_status.HTTP_400_BAD_REQUEST)
 
