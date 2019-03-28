@@ -572,6 +572,9 @@ class UsersManager(BaseUserManager, GlobalManager):
     # flags
     LOG_TABLE = UsersLog
 
+    # form
+    MODEL_EXCLUDE = ('initial_password', 'is_active')
+
     @property
     def existing_users(self):
         return self.all().values_list('username', flat=True)

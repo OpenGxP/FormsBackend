@@ -52,6 +52,10 @@ class GlobalManager(models.Manager):
     HAS_STATUS = True
     LOG_TABLE = None
 
+    # form
+    BASE_EXCLUDE = ('id', 'lifecycle_id', 'checksum', 'status', 'version')
+    MODEL_EXCLUDE = tuple()
+
     def validate_unique(self, instance):
         model_unique = self.model.UNIQUE
         unique = getattr(instance, self.model.UNIQUE)

@@ -24,7 +24,7 @@ from django.urls import path
 from .views import permissions_list, status_list, roles_list, roles_detail, \
     roles_status, users_list, users_detail, api_root, users_status, access_log_list, central_log_list, \
     status_log_list, permissions_log_list, users_log_list, roles_log_list, audit_trail_list, \
-    ldap_list, ldap_detail, ldap_log_list, login_view, logout_view
+    ldap_list, ldap_detail, ldap_log_list, login_view, logout_view, forms_list
 
 
 urlpatterns = [
@@ -57,5 +57,7 @@ urlpatterns = [
     # root
     path('', api_root),
     # audit trails
-    path('at/<str:dialog>/<str:lifecycle_id>', audit_trail_list, name='audit-trail-list')
+    path('at/<str:dialog>/<str:lifecycle_id>', audit_trail_list, name='audit-trail-list'),
+    # form views
+    path('form/<str:dialog>', forms_list, name='forms-list')
 ]

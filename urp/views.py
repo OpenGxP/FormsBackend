@@ -370,6 +370,37 @@ def audit_trail_list(request, dialog, lifecycle_id):
 
 
 #########
+# FORMS #
+#########
+
+@api_view(['GET'])
+@auth_required()
+def forms_list(request, dialog):
+    # lower all inputs for dialog
+    dialog = dialog.lower()
+    # determine the model instance from string parameter
+    try:
+        model = get_model_by_string(dialog)
+    except ValidationError:
+        return Response(status=http_status.HTTP_400_BAD_REQUEST)
+
+    def get(_request):
+        data = dict()
+        exclude = model.objects.BASE_EXCLUDE + model.objects.MODEL_EXCLUDE
+        fields = [i for i in model._meta.get_fields() if i.name not in exclude]
+        for f in fields:
+            data[f.name] = {'verbose_name': f.verbose_name,
+                            'help_text': f.help_text,
+                            'max_length': f.max_length,
+                            'data_type': f.get_internal_type(),
+                            'required': not f.blank}
+        return Response(data=data, status=http_status.HTTP_200_OK)
+
+    if request.method == 'GET':
+        return get(request)
+
+
+#########
 # ROLES #
 #########
 
