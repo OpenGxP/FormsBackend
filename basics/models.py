@@ -90,7 +90,7 @@ class GlobalModel(models.Model):
     id = models.UUIDField(primary_key=True, default=python_uuid.uuid4)
     lifecycle_id = models.UUIDField(default=python_uuid.uuid4)
     checksum = models.CharField(_('checksum'), max_length=CHAR_MAX)
-    valid_from = models.DateTimeField()
+    valid_from = models.DateTimeField(blank=True, null=True)
     valid_to = models.DateTimeField(blank=True, null=True)
 
     class Meta:
@@ -113,10 +113,11 @@ class GlobalModel(models.Model):
     @property
     def verify_validity_range(self):
         now = timezone.now()
-        if now > self.valid_from and self.valid_to is None:
-            return True
-        if self.valid_to > now > self.valid_from:
-            return True
+        if self.valid_from < now:
+            if now > self.valid_from and self.valid_to is None:
+                return True
+            if self.valid_to > now > self.valid_from:
+                return True
 
     # default permissions for every status and version managed dialog
     MODEL_ID = None

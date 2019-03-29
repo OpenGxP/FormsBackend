@@ -16,6 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+# django imports
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 
@@ -47,8 +48,9 @@ def create_central_log_record(log_id, now, action, context, user):
         obj.save()
 
 
-def create_log_record(model, context, obj, validated_data, action):
-    now = timezone.now()
+def create_log_record(model, context, obj, validated_data, action, now=None):
+    if not now:
+        now = timezone.now()
     log_obj = model.objects.LOG_TABLE()
     # add log related data
     if context['function'] == 'init':

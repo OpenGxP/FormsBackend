@@ -60,8 +60,7 @@ class PostNewRoles(PostNew):
         self.valid_payload = {'role': 'test',
                               'valid_from': timezone.now()}
         self.invalid_payloads = [dict(),
-                                 {'role': ''},
-                                 {'role': 'test'}]
+                                 {'role': ''}]
         self.execute = True
 
 

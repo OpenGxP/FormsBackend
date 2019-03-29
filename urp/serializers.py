@@ -29,6 +29,7 @@ from .custom import create_log_record, create_central_log_record
 from .ldap import server_check
 
 # django imports
+from django.utils import timezone
 from django.db import IntegrityError
 from django.conf import settings
 
@@ -103,13 +104,18 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
             return obj
 
     # update
-    def update(self, instance, validated_data, self_call=None):
+    def update(self, instance, validated_data, self_call=None, now=None):
         action = settings.DEFAULT_LOG_UPDATE
         model = getattr(getattr(self, 'Meta', None), 'model', None)
         if 'function' in self.context.keys():
             if self.context['function'] == 'status_change':
                 action = settings.DEFAULT_LOG_STATUS
                 validated_data['status_id'] = Status.objects.status_by_text(self.context['status'])
+
+                # if "valid_from" is empty, set "valid_from" to timestamp of set productive
+                if self.context['status'] == 'productive' and not self.instance.valid_from and not self_call:
+                    now = timezone.now()
+                    validated_data['valid_from'] = now
 
                 # change "valid_to" of previous version to "valid from" of new version
                 # only for set productive step
@@ -140,7 +146,7 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         # log record
         if model.objects.LOG_TABLE:
             create_log_record(model=model, context=self.context, obj=instance, validated_data=fields,
-                              action=action)
+                              action=action, now=now)
         return instance
 
     def delete(self):
