@@ -120,16 +120,17 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 # change "valid_to" of previous version to "valid from" of new version
                 # only for set productive step
                 if self.context['status'] == 'productive' and self.instance.version > 1 and not self_call:
+                    now = timezone.now()
                     prev_instance = model.objects.get_previous_version(instance)
                     data = {'valid_to': self.instance.valid_from}
                     # if no valid_to, always set
                     valid_to_prev_version = getattr(prev_instance, 'valid_to')
                     if not valid_to_prev_version:
-                        self.update(instance=prev_instance, validated_data=data, self_call=True)
+                        self.update(instance=prev_instance, validated_data=data, self_call=True, now=now)
                     else:
                         # only overlapping validity ranges
                         if getattr(instance, 'valid_from') < valid_to_prev_version:
-                            self.update(instance=prev_instance, validated_data=data, self_call=True)
+                            self.update(instance=prev_instance, validated_data=data, self_call=True, now=now)
 
         hash_sequence = instance.HASH_SEQUENCE
         fields = dict()
@@ -223,6 +224,14 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 if self.context['status'] not in ['productive', 'draft']:
                     raise serializers.ValidationError('From circulation only reject to draft and set '
                                                       'productive are allowed.')
+
+                # SoD
+                if 'disable-sod' not in self.context.keys():
+                    log = self.model.objects.LOG_TABLE
+                    previous_user = log.objects.get_circulation_user_for_sod(self.instance)
+                    if previous_user == self.context['user']:
+                        raise serializers.ValidationError('SoD conflict - set productive can not be performed by '
+                                                          'the same user as set in circulation.')
 
             @require_STATUS_CHANGE
             @require_productive

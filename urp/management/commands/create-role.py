@@ -90,7 +90,8 @@ class Command(BaseCommand):
                                                                  context={'method': 'PATCH',
                                                                           'function': 'status_change',
                                                                           'status': 'circulation',
-                                                                          'user': settings.DEFAULT_SYSTEM_USER})
+                                                                          'user': settings.DEFAULT_SYSTEM_USER,
+                                                                          'disable-sod': True})
             if serializer_circulation.is_valid():
                 serializer_circulation.save()
                 self.stdout.write(self.style.SUCCESS('Role "{}" successfully changed to status "circulation".'
@@ -101,7 +102,8 @@ class Command(BaseCommand):
                                                                     context={'method': 'PATCH',
                                                                              'function': 'status_change',
                                                                              'status': 'productive',
-                                                                             'user': settings.DEFAULT_SYSTEM_USER})
+                                                                             'user': settings.DEFAULT_SYSTEM_USER,
+                                                                             'disable-sod': True})
                 if serializer_productive.is_valid():
                     serializer_productive.save()
                     self.stdout.write(self.style.SUCCESS('Role "{}" successfully changed to status "productive".'

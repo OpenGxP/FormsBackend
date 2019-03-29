@@ -229,7 +229,7 @@ def ldap_log_list(request):
 @api_view(['GET', 'POST'])
 @auth_required()
 def ldap_list(request):
-    @perm_required('{}.02'.format(LDAPLog.MODEL_ID))
+    @perm_required('{}.02'.format(LDAP.MODEL_ID))
     @csrf_protect
     def post(_request):
         _serializer = LDAPReadWriteSerializer(data=_request.data, context={'method': 'POST',
@@ -241,7 +241,7 @@ def ldap_list(request):
             return Response(_serializer.data, status=http_status.HTTP_201_CREATED)
         return Response(_serializer.errors, status=http_status.HTTP_400_BAD_REQUEST)
 
-    @perm_required('{}.01'.format(LDAPLog.MODEL_ID))
+    @perm_required('{}.01'.format(LDAP.MODEL_ID))
     @ensure_csrf_cookie
     def get(_request):
         query = LDAP.objects.all()
@@ -258,7 +258,7 @@ def ldap_list(request):
 @api_view(['GET', 'PATCH', 'DELETE'])
 @auth_required()
 def ldap_detail(request, host):
-    @perm_required('{}.03'.format(LDAPLog.MODEL_ID))
+    @perm_required('{}.03'.format(LDAP.MODEL_ID))
     @csrf_protect
     def patch(_request):
         _serializer = LDAPReadWriteSerializer(query, data=_request.data, context={'method': 'PATCH',
@@ -269,7 +269,7 @@ def ldap_detail(request, host):
             return Response(_serializer.data)
         return Response(_serializer.errors, status=http_status.HTTP_400_BAD_REQUEST)
 
-    @perm_required('{}.04'.format(LDAPLog.MODEL_ID))
+    @perm_required('{}.04'.format(LDAP.MODEL_ID))
     @csrf_protect
     def delete(_request):
         _serializer = LDAPDeleteSerializer(query, data={}, context={'method': 'DELETE',
@@ -280,7 +280,7 @@ def ldap_detail(request, host):
             return Response(status=http_status.HTTP_204_NO_CONTENT)
         return Response(_serializer.errors, status=http_status.HTTP_400_BAD_REQUEST)
 
-    @perm_required('{}.01'.format(LDAPLog.MODEL_ID))
+    @perm_required('{}.01'.format(LDAP.MODEL_ID))
     @ensure_csrf_cookie
     def get(_request):
         serializer = LDAPReadWriteSerializer(query)

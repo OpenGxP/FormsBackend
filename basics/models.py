@@ -84,6 +84,15 @@ class GlobalManager(models.Manager):
         else:
             return query
 
+    def get_circulation_user_for_sod(self, instance):
+        status_circulation_id = Status.objects.circulation
+        try:
+            query = self.filter(action='status', status=status_circulation_id, version=instance.version,
+                                lifecycle_id=instance.lifecycle_id).get()
+            return query.user
+        except self.model.DoesNotExist:
+            return None
+
 
 class GlobalModel(models.Model):
     # id
