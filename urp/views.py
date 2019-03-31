@@ -33,7 +33,7 @@ from .serializers import StatusReadWriteSerializer, PermissionsReadWriteSerializ
     LDAPLogReadSerializer, LDAPReadWriteSerializer, LDAPDeleteSerializer
 from .decorators import perm_required, auth_required
 from basics.models import StatusLog, CentralLog
-from basics.custom import get_model_by_string
+from basics.custom import get_model_by_string, encrypt, decrypt
 from .backends import write_access_log
 
 # django imports
@@ -42,6 +42,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.utils import timezone
 from django.conf import settings
 from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie, csrf_exempt
+from django.middleware.csrf import get_token
 
 
 ########
@@ -53,6 +54,9 @@ def api_root(request):
     root = [{'subject': 'login',
              'root': '/',
              'url': reverse('login-view', request=request)},
+            {'subject': 'csrftoken',
+             'root': '/',
+             'url': reverse('get_csrf_token', request=request)},
             {'subject': 'logout',
              'root': '/',
              'url': reverse('logout-view', request=request)},
@@ -115,6 +119,17 @@ def login_view(request):
         return Response(casl, status=http_status.HTTP_200_OK)
     else:
         return Response(status=http_status.HTTP_400_BAD_REQUEST)
+
+
+########
+# CSRF #
+########
+
+@api_view(['GET'])
+@auth_required()
+def get_csrf_token(request):
+    token = {settings.CSRF_COOKIE_NAME: get_token(request)}
+    return Response(data=token, status=http_status.HTTP_200_OK)
 
 
 @api_view(['GET'])
@@ -379,6 +394,8 @@ def audit_trail_list(request, dialog, lifecycle_id):
 def forms_list(request, dialog):
     # lower all inputs for dialog
     dialog = dialog.lower()
+    if dialog not in ['users', 'roles', 'ldap']:
+        return Response(status=http_status.HTTP_400_BAD_REQUEST)
     # determine the model instance from string parameter
     try:
         model = get_model_by_string(dialog)
@@ -394,7 +411,8 @@ def forms_list(request, dialog):
                             'help_text': f.help_text,
                             'max_length': f.max_length,
                             'data_type': f.get_internal_type(),
-                            'required': not f.blank}
+                            'required': not f.blank,
+                            'unique': f.unique}
         return Response(data=data, status=http_status.HTTP_200_OK)
 
     if request.method == 'GET':

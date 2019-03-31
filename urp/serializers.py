@@ -21,7 +21,7 @@ from rest_framework import serializers
 
 # custom imports
 from .models import Status, Permissions, Users, Roles, AccessLog, PermissionsLog, RolesLog, UsersLog, LDAP, LDAPLog
-from basics.custom import generate_checksum, generate_to_hash
+from basics.custom import generate_checksum, generate_to_hash, encrypt
 from basics.models import AVAILABLE_STATUS, StatusLog, CentralLog
 from .decorators import require_STATUS_CHANGE, require_POST, require_DELETE, require_PATCH, require_NONE, \
     require_NEW_VERSION, require_status, require_LDAP, require_USERS, require_NEW
@@ -75,6 +75,11 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
             if obj.MODEL_ID == '05':
                 create_central_log_record(log_id=obj.id, now=validated_data['timestamp'], context=model.MODEL_CONTEXT,
                                           action=validated_data['action'], user=validated_data['user'])
+            # ldap encrypt password before save to db
+            if obj.MODEL_ID == '11':
+                raw_pw = validated_data['password']
+                validated_data['password'] = encrypt(raw_pw)
+
         # add default fields for new objects
         if model.objects.HAS_STATUS:
             validated_data['status_id'] = Status.objects.draft
@@ -321,7 +326,6 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
 
 # read
 class StatusReadWriteSerializer(GlobalReadWriteSerializer):
-
     class Meta:
         model = Status
         exclude = ('id', 'checksum', )
@@ -329,7 +333,6 @@ class StatusReadWriteSerializer(GlobalReadWriteSerializer):
 
 # read
 class StatusLogReadSerializer(GlobalReadWriteSerializer):
-
     class Meta:
         model = StatusLog
         exclude = ('id', 'checksum', )
@@ -341,7 +344,6 @@ class StatusLogReadSerializer(GlobalReadWriteSerializer):
 
 # read
 class PermissionsReadWriteSerializer(GlobalReadWriteSerializer):
-
     class Meta:
         model = Permissions
         exclude = ('id', 'checksum',)
@@ -349,7 +351,6 @@ class PermissionsReadWriteSerializer(GlobalReadWriteSerializer):
 
 # read
 class PermissionsLogReadSerializer(GlobalReadWriteSerializer):
-
     class Meta:
         model = PermissionsLog
         exclude = ('id', 'checksum', )
@@ -387,7 +388,6 @@ class LDAPDeleteSerializer(GlobalReadWriteSerializer):
 
 # read
 class CentralLogReadWriteSerializer(GlobalReadWriteSerializer):
-
     class Meta:
         model = CentralLog
         exclude = ('id', 'checksum',)
@@ -399,7 +399,6 @@ class CentralLogReadWriteSerializer(GlobalReadWriteSerializer):
 
 # read
 class AccessLogReadWriteSerializer(GlobalReadWriteSerializer):
-
     class Meta:
         model = AccessLog
         exclude = ('id', 'checksum',)

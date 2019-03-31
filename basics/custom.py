@@ -19,12 +19,16 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # python imports
 import os
+import base64
 from passlib.hash import sha512_crypt
 
 # django imports
 from django.conf import settings
 from django.apps import apps
 from django.core.exceptions import ValidationError, ImproperlyConfigured
+
+# crypto imports
+from Crypto.Cipher import AES
 
 
 ##########
@@ -154,3 +158,15 @@ def require_file(path, file_name):
                 raise ImproperlyConfigured('File "{}" is empty.'.format(file_name))
     except FileNotFoundError:
         raise
+
+
+def encrypt(value):
+    cipher = AES.new(settings.CRYPT_KEY, AES.MODE_CFB, settings.IV)
+    _crypt = cipher.encrypt(value)
+    return str(base64.b64encode(_crypt), 'utf-8')
+
+
+def decrypt(value):
+    cipher = AES.new(settings.CRYPT_KEY, AES.MODE_CFB, settings.IV)
+    _crypt = base64.b64decode(value)
+    return cipher.decrypt(_crypt).decode('utf-8')

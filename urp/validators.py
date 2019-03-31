@@ -22,7 +22,8 @@ import string
 
 
 # django imports
-from django.core.exceptions import ValidationError
+# from django.core.exceptions import ValidationError
+from rest_framework.serializers import ValidationError
 from django.utils.translation import gettext_lazy as _
 
 

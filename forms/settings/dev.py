@@ -72,6 +72,8 @@ LOG_DIR = os.path.join(BASE_DIR, 'logs')
 # secret keys
 SECRET_KEY = require_file(path=SECURITY_DIR + '/keys/', file_name='SECRET_KEY')
 SECRET_HASH_KEY = require_file(path=SECURITY_DIR + '/keys/', file_name='SECRET')
+CRYPT_KEY = require_file(path=SECURITY_DIR + '/keys/', file_name='CRYPT')
+IV = require_file(path=SECURITY_DIR + '/keys/', file_name='IV')
 POSTGRES_USER = require_file(path=SECURITY_DIR + '/credentials/', file_name='POSTGRES_USER')
 POSTGRES_PASSWORD = require_file(path=SECURITY_DIR + '/credentials/', file_name='POSTGRES_PASSWORD')
 
@@ -186,7 +188,7 @@ if os.environ.get('CACHE', 0):
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 SESSION_CACHE_ALIAS = "default"
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
-SESSION_COOKIE_HTTPONLY = value_to_bool(os.environ.get('SESSION_COOKIE_HTTPONLY', 0))
+SESSION_COOKIE_HTTPONLY = value_to_bool(os.environ.get('SESSION_COOKIE_HTTPONLY', 1))
 SESSION_COOKIE_SECURE = value_to_bool(os.environ.get('SESSION_COOKIE_SECURE', 0))
 # SESSION_COOKIE_DOMAIN
 SESSION_COOKIE_SAMESITE = None

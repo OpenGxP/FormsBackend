@@ -28,12 +28,13 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.utils.translation import gettext_lazy as _
+from django.contrib.auth.password_validation import password_validators_help_texts, validate_password
 
 # app imports
 from .validators import validate_no_space, validate_no_specials, validate_no_specials_reduced, SPECIALS_REDUCED, \
     validate_no_numbers, validate_only_ascii, validate_only_positive_numbers
 from .custom import create_log_record
-from basics.custom import generate_checksum, generate_to_hash
+from basics.custom import generate_checksum, generate_to_hash, decrypt
 from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, CHAR_MAX, FIELD_VERSION, Status, LOG_HASH_SEQUENCE
 from .ldap import init_server, connect, search
 
@@ -287,16 +288,19 @@ class RolesManager(GlobalManager):
 class Roles(GlobalModel):
     # custom fields
     role = models.CharField(
-        _('role'),
+        _('Role'),
         max_length=CHAR_DEFAULT,
-        help_text=_('Unique and required. {} characters or fewer. Special characters "{}" are not permitted. '
-                    'No whitespaces.'
-                    .format(CHAR_DEFAULT, SPECIALS_REDUCED)),
+        help_text=_('Special characters "{}" are not permitted. No whitespaces and numbers.'
+                    .format(SPECIALS_REDUCED)),
         validators=[validate_no_specials_reduced,
                     validate_no_space,
                     validate_no_numbers,
                     validate_only_ascii])
-    permissions = models.CharField(_('permissions'), max_length=CHAR_MAX, blank=True)
+    permissions = models.CharField(
+        _('Permissions'),
+        help_text='Provide comma separated permission keys.',
+        max_length=CHAR_MAX,
+        blank=True)
     # defaults
     status = models.ForeignKey(Status, on_delete=models.PROTECT)
     version = FIELD_VERSION
@@ -410,7 +414,9 @@ class LDAPManager(GlobalManager):
                 error[server.host] = e
             else:
                 if ser.check_availability():
-                    con = connect(server=ser, bind_dn=server.bindDN, password=server.password)
+                    # decrypt password before usage
+                    password = decrypt(server.password)
+                    con = connect(server=ser, bind_dn=server.bindDN, password=password)
                     if con.bind():
                         attributes = [server.attr_username]
                         if server.attr_email:
@@ -458,18 +464,45 @@ class LDAPManager(GlobalManager):
 # table
 class LDAP(GlobalModel):
     # custom fields
-    host = models.CharField(_('host'), max_length=CHAR_DEFAULT, unique=True)
-    port = models.IntegerField(_('port'))
-    ssl_tls = models.BooleanField(_('ssl_tls'))
-    bindDN = models.CharField(_('bindDN'), max_length=CHAR_DEFAULT)
-    password = models.CharField(_('password'), max_length=CHAR_MAX)
-    base = models.CharField(_('base'), max_length=CHAR_DEFAULT)
-    filter = models.CharField(_('filter'), max_length=CHAR_DEFAULT)
-    attr_username = models.CharField(_('attr_username'), max_length=CHAR_DEFAULT)
-    attr_email = models.CharField(_('attr_email'), max_length=CHAR_DEFAULT, blank=True)
-    attr_surname = models.CharField(_('attr_surname'), max_length=CHAR_DEFAULT, blank=True)
-    attr_forename = models.CharField(_('attr_forename'), max_length=CHAR_DEFAULT, blank=True)
-    priority = models.IntegerField(_('priority'), validators=[validate_only_positive_numbers], unique=True)
+    host = models.CharField(
+        _('Host'),
+        max_length=CHAR_DEFAULT,
+        unique=True)
+    port = models.IntegerField(
+        _('Port'))
+    ssl_tls = models.BooleanField(
+        _('SSL'))
+    bindDN = models.CharField(
+        _('BindDN'),
+        max_length=CHAR_DEFAULT)
+    password = models.CharField(
+        _('Password'),
+        max_length=CHAR_MAX)
+    base = models.CharField(
+        _('Base'),
+        max_length=CHAR_DEFAULT)
+    filter = models.CharField(
+        _('Filter'),
+        max_length=CHAR_DEFAULT)
+    attr_username = models.CharField(
+        _('attr_username'),
+        max_length=CHAR_DEFAULT)
+    attr_email = models.CharField(
+        _('attr_email'),
+        max_length=CHAR_DEFAULT,
+        blank=True)
+    attr_surname = models.CharField(
+        _('attr_surname'),
+        max_length=CHAR_DEFAULT,
+        blank=True)
+    attr_forename = models.CharField(
+        _('attr_forename'),
+        max_length=CHAR_DEFAULT,
+        blank=True)
+    priority = models.IntegerField(
+        _('Priority'),
+        validators=[validate_only_positive_numbers],
+        unique=True)
 
     # manager
     objects = LDAPManager()
@@ -623,30 +656,53 @@ class UsersManager(BaseUserManager, GlobalManager):
 # table
 class Users(AbstractBaseUser, GlobalModel):
     # custom fields
-    username = models.CharField(_('username'), max_length=CHAR_DEFAULT)
-    email = models.EmailField(_('email'), max_length=CHAR_MAX, blank=True)
+    username = models.CharField(
+        _('Username'),
+        help_text=_('Special characters "{}" are not permitted. No whitespaces and numbers.'
+                    .format(string.punctuation)),
+        max_length=CHAR_DEFAULT,
+        validators=[validate_no_specials,
+                    validate_no_space,
+                    validate_no_numbers,
+                    validate_only_ascii])
+    email = models.EmailField(
+        _('Email'),
+        help_text='Email must be provided in format info@test.com.',
+        max_length=CHAR_MAX,
+        blank=True)
     first_name = models.CharField(
-        _('first name'),
+        _('First name'),
         max_length=CHAR_DEFAULT,
-        help_text=_('Required. {} characters or fewer. Special characters "{}" are not permitted. No whitespaces.'
-                    .format(CHAR_DEFAULT, string.punctuation)),
+        help_text=_('Special characters "{}" are not permitted. No whitespaces and numbers.'
+                    .format(string.punctuation)),
         validators=[validate_no_specials,
                     validate_no_space,
                     validate_no_numbers,
-                    validate_only_ascii], blank=True)
+                    validate_only_ascii],
+        blank=True)
     last_name = models.CharField(
-        _('last name'),
+        _('Last name'),
         max_length=CHAR_DEFAULT,
-        help_text=_('Required. {} characters or fewer. Special characters "{}" are not permitted. No whitespaces.'
-                    .format(CHAR_DEFAULT, string.punctuation)),
+        help_text=_('Special characters "{}" are not permitted. No whitespaces and numbers.'
+                    .format(string.punctuation)),
         validators=[validate_no_specials,
                     validate_no_space,
                     validate_no_numbers,
-                    validate_only_ascii], blank=True)
+                    validate_only_ascii],
+        blank=True)
     initial_password = models.BooleanField(_('initial password'))
-    password = models.CharField(_('password'), max_length=CHAR_MAX)
-    ldap = models.BooleanField(_('ldap'))
-    roles = models.CharField(_('roles'), max_length=CHAR_DEFAULT)
+    password = models.CharField(
+        _('Password'),
+        help_text='{}'.format(password_validators_help_texts()),
+        max_length=CHAR_MAX,
+        validators=[validate_password])
+    ldap = models.BooleanField(
+        _('LDAP'),
+        help_text=_('Specify if user is manually or LDAP manged.'))
+    roles = models.CharField(
+        _('Roles'),
+        help_text='Provide comma separated roles. Roles must exist in status "productive".',
+        max_length=CHAR_DEFAULT)
     # defaults
     status = models.ForeignKey(Status, on_delete=models.PROTECT)
     version = FIELD_VERSION

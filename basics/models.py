@@ -99,8 +99,16 @@ class GlobalModel(models.Model):
     id = models.UUIDField(primary_key=True, default=python_uuid.uuid4)
     lifecycle_id = models.UUIDField(default=python_uuid.uuid4)
     checksum = models.CharField(_('checksum'), max_length=CHAR_MAX)
-    valid_from = models.DateTimeField(blank=True, null=True)
-    valid_to = models.DateTimeField(blank=True, null=True)
+    valid_from = models.DateTimeField(
+        _('Valid from'),
+        help_text='Provide valid from in format yyyy-mm-dd hh:mm:ss',
+        blank=True,
+        null=True)
+    valid_to = models.DateTimeField(
+        _('Valid to'),
+        help_text='Provide valid to in format yyyy-mm-dd hh:mm:ss',
+        blank=True,
+        null=True)
 
     class Meta:
         abstract = True
