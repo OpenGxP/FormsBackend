@@ -18,12 +18,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
 # python imports
+import os
 from passlib.hash import sha512_crypt
 
 # django imports
 from django.conf import settings
 from django.apps import apps
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ValidationError, ImproperlyConfigured
 
 
 ##########
@@ -109,3 +110,47 @@ def value_to_bool(value):
     if value > 1:
         raise ValueError('Only 0 or 1 allowed.')
     return bool(value)
+
+
+# function for required settings from environment variable
+def require_env(env):
+    """Raise an error if environment variable is not defined.
+
+    :param env: environment variable
+    :type env: str
+    :return: returns string or integer of env variable
+    :rtype: str/int
+    """
+    if not isinstance(env, str):
+        raise TypeError('Argument of type string expected.')
+    raw_value = os.getenv(env)
+    if raw_value is None:
+        raise ImproperlyConfigured('Required environment variable "{}" is not set.'.format(env))
+    try:
+        return value_to_int(raw_value)
+    except ValueError:
+        return raw_value
+
+
+# function for required settings from local files
+def require_file(path, file_name):
+    """Raise an error if file for configuration not existing or empty.
+
+        :param path: absolute path to file ending with /
+        :type path: str
+        :param file_name: file name
+        :type file_name: str
+        :return: returns string of file content
+        :rtype: str
+    """
+    if not isinstance(path, str) or not isinstance(file_name, str):
+        raise TypeError('Argument of type string expected.')
+    try:
+        with open(path + file_name) as local_file:
+            content = local_file.read().strip()
+            if content:
+                return content
+            else:
+                raise ImproperlyConfigured('File "{}" is empty.'.format(file_name))
+    except FileNotFoundError:
+        raise

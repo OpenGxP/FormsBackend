@@ -17,12 +17,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 # python imports
+import os
 import sys
 import getpass
 
 # app imports
 from basics.models import Status
 from urp.models import Roles
+from basics.custom import require_file
 
 # django imports
 from django.contrib.auth import get_user_model
@@ -30,6 +32,12 @@ from django.core import exceptions
 from django.db.models import Q
 from django.core.management.base import BaseCommand
 from django.contrib.auth.password_validation import validate_password
+
+
+# base directory
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+# security directory for storing secrets in permission controlled files
+SECURITY_DIR = os.path.join(BASE_DIR, 'security')
 
 
 class NotRunningInTTYException(Exception):
@@ -53,6 +61,7 @@ class Command(BaseCommand):
         parser.add_argument('--password', dest='pw', help='Define a password.', default=None)
         parser.add_argument('--role', dest='role', help='Name the user role.', default=None)
         parser.add_argument('--email', dest='email', help='User email.', default=None)
+        parser.add_argument('--pwfile', action='store_true', dest='pwfile', help='Password from file.', default=None)
 
     def execute(self, *args, **options):
         self.stdin = options.get('stdin', sys.stdin)  # Used for testing
@@ -89,7 +98,10 @@ class Command(BaseCommand):
                     role = None
 
         # password
-        password = options.get('pw')
+        if options['pwfile']:
+            password = require_file(path=SECURITY_DIR + '/credentials/', file_name='INITIAL_PASSWORD')
+        else:
+            password = options.get('pw')
         if not password:
             try:
                 if hasattr(self.stdin, 'isatty') and not self.stdin.isatty():

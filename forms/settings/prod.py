@@ -17,62 +17,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 # basic imports
-from basics.custom import value_to_int, value_to_bool
+from basics.custom import value_to_int, value_to_bool, require_file, require_env
 
 # ldap imports
 from ldap3 import SIMPLE, AUTO_BIND_DEFAULT, SUBTREE
 
 # python imports
 import os
-from datetime import timedelta
-
-# django imports
-from django.core.exceptions import ImproperlyConfigured
-from corsheaders.defaults import default_headers
-
-
-# function for required settings from environment variable
-def _require_env(env):
-    """Raise an error if environment variable is not defined.
-
-    :param env: environment variable
-    :type env: str
-    :return: returns string or integer of env variable
-    :rtype: str/int
-    """
-    if not isinstance(env, str):
-        raise TypeError('Argument of type string expected.')
-    raw_value = os.getenv(env)
-    if raw_value is None:
-        raise ImproperlyConfigured('Required environment variable "{}" is not set.'.format(env))
-    try:
-        return value_to_int(raw_value)
-    except ValueError:
-        return raw_value
-
-
-# function for required settings from local files
-def _require_file(path, file_name):
-    """Raise an error if file for configuration not existing or empty. 
-
-        :param path: absolute path to file ending with /
-        :type path: str
-        :param file_name: file name
-        :type file_name: str
-        :return: returns string of file content
-        :rtype: str
-    """
-    if not isinstance(path, str) or not isinstance(file_name, str):
-        raise TypeError('Argument of type string expected.')
-    try:
-        with open(path + file_name) as local_file:
-            content = local_file.read().strip()
-            if content:
-                return content
-            else:
-                raise ImproperlyConfigured('File "{}" is empty.'.format(file_name))
-    except FileNotFoundError:
-        raise
 
 
 #################
@@ -107,7 +58,7 @@ DEFAULT_LOG_LOGOUT = 'logout'
 #########
 
 # base directory
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # security directory for storing secrets in permission controlled files
 SECURITY_DIR = os.path.join(BASE_DIR, 'security')
 # log directory
@@ -119,10 +70,10 @@ LOG_DIR = os.path.join(BASE_DIR, 'logs')
 ###########
 
 # secret keys
-SECRET_KEY = _require_file(path=SECURITY_DIR + '/keys/', file_name='SECRET_KEY')
-SECRET_HASH_KEY = _require_file(path=SECURITY_DIR + '/keys/', file_name='SECRET_HASH_KEY')
-POSTGRES_USER = _require_file(path=SECURITY_DIR + '/credentials/', file_name='POSTGRES_USER')
-POSTGRES_PASSWORD = _require_file(path=SECURITY_DIR + '/credentials/', file_name='POSTGRES_PASSWORD')
+SECRET_KEY = require_file(path=SECURITY_DIR + '/keys/', file_name='SECRET_KEY')
+SECRET_HASH_KEY = require_file(path=SECURITY_DIR + '/keys/', file_name='SECRET')
+POSTGRES_USER = require_file(path=SECURITY_DIR + '/credentials/', file_name='POSTGRES_USER')
+POSTGRES_PASSWORD = require_file(path=SECURITY_DIR + '/credentials/', file_name='POSTGRES_PASSWORD')
 
 
 ##########################
@@ -157,6 +108,9 @@ MIDDLEWARE = [
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.AllowAny',
+    ],
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
     ],
     'NON_FIELD_ERRORS_KEY': 'validation_errors',
     'DEFAULT_AUTHENTICATION_CLASSES': [
@@ -270,10 +224,8 @@ USE_TZ = True
 ####################
 
 # general settings
-DEBUG = value_to_bool(_require_env('DEBUG'))
-# DEBUG = True
-ALLOWED_HOSTS = ['{}'.format(_require_env('ALLOWED_HOSTS'))]
-# ALLOWED_HOSTS = ['*']
+DEBUG = value_to_bool(require_env('DEBUG'))
+ALLOWED_HOSTS = ['{}'.format(require_env('ALLOWED_HOSTS'))]
 CONN_MAX_AGE = None
 APPEND_SLASH = False
 SILENCED_SYSTEM_CHECKS = ['auth.W004']  # disable warning that username is not unique

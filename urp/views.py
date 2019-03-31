@@ -39,7 +39,6 @@ from .backends import write_access_log
 # django imports
 from django.core.exceptions import ValidationError
 from django.contrib.auth import authenticate, login, logout
-from django.http import HttpResponseRedirect
 from django.utils import timezone
 from django.conf import settings
 from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie, csrf_exempt
@@ -126,14 +125,16 @@ def logout_view(request):
         'timestamp': timezone.now(),
         'mode': 'manual',
         'method': settings.DEFAULT_SYSTEM_DEVALUE,
-        'action': settings.DEFAULT_LOG_LOGIN,
+        'action': settings.DEFAULT_LOG_LOGOUT,
         'attempt': settings.DEFAULT_LOG_ATTEMPT,
         'active': settings.DEFAULT_SYSTEM_DEVALUE
     }
     logout(request)
     if request.user.is_anonymous:
         write_access_log(data)
-    return HttpResponseRedirect('/')
+        return Response(status=http_status.HTTP_200_OK)
+    else:
+        return Response(status=http_status.HTTP_400_BAD_REQUEST)
 
 
 ##########

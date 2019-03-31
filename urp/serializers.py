@@ -381,9 +381,9 @@ class LDAPDeleteSerializer(GlobalReadWriteSerializer):
         fields = ()
 
 
-#############
-# ACCESSLOG #
-#############
+##############
+# CENTRALLOG #
+##############
 
 # read
 class CentralLogReadWriteSerializer(GlobalReadWriteSerializer):

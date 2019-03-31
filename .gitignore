@@ -109,7 +109,8 @@ venv.bak/
 
 # custom
 private_test.py
-/security
+*/keys
+*/credentials
 # start.sh
 status.json
 permissions.json
@@ -121,4 +122,4 @@ settings.json
 
 # test openldap server
 /openldap
-/logs
+path.py

@@ -8,5 +8,5 @@ markdown===3.0.1
 django-filter===2.0.0
 django-cors-headers===2.4.0
 ldap3===2.5.2
-django-redis===4.9.0
+django-redis===4.10.0
 gunicorn===19.8.1
