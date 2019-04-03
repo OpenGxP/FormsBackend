@@ -245,6 +245,7 @@ CSRF_COOKIE_SECURE = value_to_bool(os.environ.get('CSRF_COOKIE_SECURE', 0))
 CSRF_USE_SESSIONS = value_to_bool(os.environ.get('CSRF_USE_SESSIONS', 0))
 # CSRF_COOKIE_DOMAIN
 CSRF_COOKIE_SAMESITE = None
+CSRF_TRUSTED_ORIGINS = []
 
 # security
 SECURE_CONTENT_TYPE_NOSNIFF = value_to_bool(os.environ.get('SECURE_CONTENT_TYPE_NOSNIFF', 0))
@@ -269,7 +270,7 @@ X_FRAME_OPTIONS = os.environ.get('X_FRAME_OPTIONS', 'SAMEORIGIN')
 CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOW_CREDENTIALS = True
 CORS_ORIGIN_WHITELIST = (
-    os.environ.get('X_FRAME_OPTIONS', 'http://staging.opengxp.com')
+    os.environ.get('CORS_ORIGIN_WHITELIST', '')
 )
 
 
