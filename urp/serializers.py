@@ -230,13 +230,15 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError('From circulation only reject to draft and set '
                                                       'productive are allowed.')
 
-                # SoD
-                if 'disable-sod' not in self.context.keys():
-                    log = self.model.objects.LOG_TABLE
-                    previous_user = log.objects.get_circulation_user_for_sod(self.instance)
-                    if previous_user == self.context['user']:
-                        raise serializers.ValidationError('SoD conflict - set productive can not be performed by '
-                                                          'the same user as set in circulation.')
+                # FO-122: SoD check only for set productive
+                if self.context['status'] == 'productive':
+                    # SoD
+                    if 'disable-sod' not in self.context.keys():
+                        log = self.model.objects.LOG_TABLE
+                        previous_user = log.objects.get_circulation_user_for_sod(self.instance)
+                        if previous_user == self.context['user']:
+                            raise serializers.ValidationError('SoD conflict - set productive can not be performed by '
+                                                              'the same user as set in circulation.')
 
             @require_STATUS_CHANGE
             @require_productive

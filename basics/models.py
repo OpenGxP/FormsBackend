@@ -87,8 +87,9 @@ class GlobalManager(models.Manager):
     def get_circulation_user_for_sod(self, instance):
         status_circulation_id = Status.objects.circulation
         try:
+            # FO-122: order log record by timestamp and take last record
             query = self.filter(action='status', status=status_circulation_id, version=instance.version,
-                                lifecycle_id=instance.lifecycle_id).get()
+                                lifecycle_id=instance.lifecycle_id).order_by('-timestamp').all()[0]
             return query.user
         except self.model.DoesNotExist:
             return None
