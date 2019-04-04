@@ -141,7 +141,7 @@ def logout_view(request):
         'mode': 'manual',
         'method': settings.DEFAULT_SYSTEM_DEVALUE,
         'action': settings.DEFAULT_LOG_LOGOUT,
-        'attempt': settings.DEFAULT_LOG_ATTEMPT,
+        'attempt': settings.DEFAULT_SYSTEM_DEVALUE,
         'active': settings.DEFAULT_SYSTEM_DEVALUE
     }
     logout(request)
