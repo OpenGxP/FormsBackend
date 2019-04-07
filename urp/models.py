@@ -725,6 +725,26 @@ class Users(AbstractBaseUser, GlobalModel):
     def permission(self, value):
         return Roles.objects.find_permission_in_roles(roles=self.roles, permission=value)
 
+    # FO-123: new check to verify is any assigned role is productive and valid
+    @property
+    def verify_valid_roles(self):
+        # determine assigned roles by splitting string
+        assigned_roles = self.roles.split(',')
+        # parse roles
+        for assigned_role in assigned_roles:
+            # try to get productive versions of each role
+            try:
+                productive_roles = Roles.objects.get_by_natural_key_productive(assigned_role)
+            # in case no productive roles, do nothing
+            except Roles.DoesNotExist:
+                pass
+            # if productive role exists, parse if any of them is valid
+            else:
+                for role in productive_roles:
+                    if role.verify_validity_range:
+                        return True
+        # if no assigned roles is prod and valid, return none
+
     # references
     EMAIL_FIELD = 'email'
     USERNAME_FIELD = 'username'

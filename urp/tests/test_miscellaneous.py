@@ -20,9 +20,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from django.urls import reverse
 from django.utils import timezone
 from django.test import Client
+from rest_framework.serializers import ValidationError
 
 # rest framework imports
-from rest_framework import status
 from rest_framework.test import APITestCase
 
 # app imports
@@ -46,6 +46,7 @@ class Miscellaneous(APITestCase):
     def setUp(self):
         self.client = Client(enforce_csrf_checks=True)
         self.prerequisites.role_superuser()
+        self.prerequisites.role_superuser_two()
         self.prerequisites.role_past_valid_from()
 
     def test_403_invalid_range(self):
@@ -64,12 +65,14 @@ class Miscellaneous(APITestCase):
         # start circulation
         path = '{}/{}/{}/{}'.format(self.path, role.lifecycle_id, role.version + 1, 'circulation')
         self.client.patch(path, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        # auth with second user to avoid SoD
+        self.prerequisites.auth_two(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
         # set productive
         path = '{}/{}/{}/{}'.format(self.path, role.lifecycle_id, role.version + 1, 'productive')
         self.client.patch(path, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
-        # authenticate with user who has invalid roles
-        self.prerequisites.auth_not_valid_roles(self.client)
-        # get API response
-        path = reverse('status-list')
-        response = self.client.get(path, content_type='application/json')
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        # try to authenticate with user who has invalid roles
+        # FO-123: new test to verify that login with invalid role raises 400 error
+        with self.assertRaises(ValidationError):
+            self.prerequisites.auth_not_valid_roles(self.client)

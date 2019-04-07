@@ -103,7 +103,8 @@ class MyModelBackend(ModelBackend):
             # parse over each existing user in status productive
             for user in users:
                 # if user is valid (can only be one off all users in status productive)
-                if user.verify_validity_range:
+                # FO-123: added role valid check as additional criteria for password checks
+                if user.verify_validity_range and user.verify_valid_roles:
                     # check if ldap user
                     if not user.ldap:
                         # verify password
@@ -183,4 +184,5 @@ class MyModelBackend(ModelBackend):
             # Run the default password hasher once to reduce the timing
             # difference between an existing and a nonexistent user (#20760).
             UserModel().set_password(password)
-            raise serializers.ValidationError(ERROR_TEXT_VALID)
+            # FO-123: adapted error message to more general one
+            raise serializers.ValidationError(ERROR_TEXT_AUTH)
