@@ -52,17 +52,17 @@ class PostNewUsers(PostNew):
         self.base_path = BASE_PATH
         self.model = Users
         self.prerequisites = Prerequisites(base_path=self.base_path)
-        self.valid_payload = {'username': 'test123',
+        self.valid_payload = {'username': 'testtest',
                               'password': 'test12345test',
                               'roles': 'all',
                               'valid_from': timezone.now(),
                               'ldap': False}
         self.invalid_payloads = [dict(),
-                                 {'username': 'test123',
+                                 {'username': 'testtest',
                                   'roles': 'all',
                                   'password': '',
                                   'valid_from': timezone.now()},
-                                 {'username': 'test123',
+                                 {'username': 'testtest',
                                   'password': 'test12345test',
                                   'roles': '',
                                   'valid_from': timezone.now()}]
@@ -81,7 +81,7 @@ class GetOneUser(GetOne):
         self.model = Users
         self.prerequisites = Prerequisites(base_path=self.base_path)
         self.serializer = UsersReadSerializer
-        self.ok_object_data = {'username': 'test123',
+        self.ok_object_data = {'username': 'testtest',
                                'password': 'test12345test',
                                'roles': 'all',
                                'valid_from': timezone.now(),
@@ -97,17 +97,17 @@ class PostNewVersionUser(PostNewVersion):
         self.model = Users
         self.prerequisites = Prerequisites(base_path=self.base_path)
         self.serializer = UsersReadSerializer
-        self.ok_object_data = {'username': 'test123',
+        self.ok_object_data = {'username': 'testtest',
                                'password': 'test12345test',
                                'roles': 'all',
                                'valid_from': timezone.now(),
                                'ldap': False}
-        self.fail_object_draft_data = {'username': 'test123',
+        self.fail_object_draft_data = {'username': 'testtest',
                                        'password': 'test12345test',
                                        'roles': 'all',
                                        'valid_from': timezone.now(),
                                        'ldap': False}
-        self.fail_object_circulation_data = {'username': 'test123',
+        self.fail_object_circulation_data = {'username': 'testtest',
                                              'password': 'test12345test',
                                              'roles': 'all',
                                              'valid_from': timezone.now(),
@@ -123,7 +123,7 @@ class DeleteOneUser(DeleteOne):
         self.model = Users
         self.prerequisites = Prerequisites(base_path=self.base_path)
         self.serializer = UsersReadSerializer
-        self.ok_object_data = {'username': 'test123',
+        self.ok_object_data = {'username': 'testtest',
                                'password': 'test12345test',
                                'roles': 'all',
                                'valid_from': timezone.now(),
@@ -139,7 +139,7 @@ class PatchOneUser(PatchOne):
         self.model = Users
         self.prerequisites = Prerequisites(base_path=self.base_path)
         self.serializer = UsersReadSerializer
-        self.ok_object_data = {'username': 'test123',
+        self.ok_object_data = {'username': 'testtest',
                                'password': 'test12345test',
                                'roles': 'all',
                                'valid_from': timezone.now(),
@@ -169,7 +169,7 @@ class PatchOneStatusUser(PatchOneStatus):
         self.model = Users
         self.prerequisites = Prerequisites(base_path=self.base_path)
         self.serializer = UsersReadSerializer
-        self.ok_object_data = {'username': 'test123',
+        self.ok_object_data = {'username': 'testtest',
                                'password': 'test12345test',
                                'roles': 'all',
                                'valid_from': timezone.now(),

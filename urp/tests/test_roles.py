@@ -186,6 +186,7 @@ class RolesMiscellaneous(APITestCase):
     def setUp(self):
         self.client = Client(enforce_csrf_checks=True)
         self.prerequisites.role_superuser()
+        self.prerequisites.role_superuser_two()
 
     def test_life_cycle(self):
         # authenticate
@@ -230,6 +231,10 @@ class RolesMiscellaneous(APITestCase):
         self.assertEqual(serializer.data['status'], 'draft')
 
         # push first record to productive
+        # auth with second user to avoid SoD
+        self.prerequisites.auth_two(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
         _status = 'productive'
         path = '{}/{}/{}/{}'.format(self.base_path, response_first.data['lifecycle_id'], 1, _status)
         response_first_prod = self.client.patch(path, data=self.valid_payload, content_type='application/json',
@@ -314,6 +319,10 @@ class RolesMiscellaneous(APITestCase):
         self.assertEqual(response_circ.data['status'], _status)
 
         # push to productive
+        # auth with second user to avoid SoD
+        self.prerequisites.auth_two(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
         _status = 'productive'
         path = '{}/{}/{}/{}'.format(self.base_path, response.data['lifecycle_id'], 1, _status)
         response_prod = self.client.patch(path, data={}, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
@@ -352,6 +361,10 @@ class RolesMiscellaneous(APITestCase):
         self.assertEqual(response_circ.data['status'], _status)
 
         # push to productive of version 2
+        # auth with first user to avoid SoD
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
         _status = 'productive'
         path = '{}/{}/{}/{}'.format(self.base_path, response.data['lifecycle_id'], 2, _status)
         response_prod = self.client.patch(path, data={}, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
@@ -391,6 +404,10 @@ class RolesMiscellaneous(APITestCase):
         self.assertEqual(response_circ.data['status'], _status)
 
         # push to productive
+        # auth with second user to avoid SoD
+        self.prerequisites.auth_two(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
         _status = 'productive'
         path = '{}/{}/{}/{}'.format(self.base_path, response.data['lifecycle_id'], 1, _status)
         response_prod = self.client.patch(path, data=self.valid_payload, content_type='application/json',
@@ -451,6 +468,10 @@ class RolesMiscellaneous(APITestCase):
         self.assertEqual(response_circ.data['status'], _status)
 
         # push to productive of version 2
+        # auth with first user to avoid SoD
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
         _status = 'productive'
         path = '{}/{}/{}/{}'.format(self.base_path, response.data['lifecycle_id'], 2, _status)
         response_prod = self.client.patch(path, data=self.valid_payload, content_type='application/json',
@@ -481,6 +502,10 @@ class RolesMiscellaneous(APITestCase):
         self.client.patch(path, data={}, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
 
         # push to productive
+        # auth with second user to avoid SoD
+        self.prerequisites.auth_two(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
         path = '{}/{}/{}/{}'.format(self.base_path, response.data['lifecycle_id'], 1, 'productive')
         self.client.patch(path, data={}, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
         query = Roles.objects.filter(lifecycle_id=response.data['lifecycle_id'], version=1).get()
@@ -507,6 +532,10 @@ class RolesMiscellaneous(APITestCase):
         self.assertEqual(response_circ.data, serializer.data)
 
         # push to productive of version 2
+        # auth with first user to avoid SoD
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
         _status = 'productive'
         path = '{}/{}/{}/{}'.format(self.base_path, response.data['lifecycle_id'], 2, _status)
         response_prod = self.client.patch(path, data={}, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)

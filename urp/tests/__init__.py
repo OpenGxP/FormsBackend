@@ -55,7 +55,8 @@ class Prerequisites(object):
         # get csrf
         csrf_token = self.get_csrf(ext_client)
         # get API response
-        response = ext_client.post(self.base_path, data=data, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token,)
+        response = ext_client.post(self.base_path, data=data, content_type='application/json',
+                                   HTTP_X_CSRFTOKEN=csrf_token)
         if response.status_code == status.HTTP_201_CREATED:
             return response.data
         else:
@@ -116,6 +117,11 @@ class Prerequisites(object):
     def auth(self, ext_client):
         ext_client.logout()
         response = ext_client.login(username=self.username, password=self.password)
+        assert response is True
+
+    def auth_two(self, ext_client):
+        ext_client.logout()
+        response = ext_client.login(username=self.username_two, password=self.password_two)
         assert response is True
 
     def auth_no_perms(self, ext_client):
@@ -416,6 +422,7 @@ class PostNewVersion(APITestCase):
         if self.execute:
             self.client = Client(enforce_csrf_checks=True)
             self.prerequisites.role_superuser()
+            self.prerequisites.role_superuser_two()
             self.prerequisites.role_no_write_permissions()
             self.prerequisites.role_no_version_archived()
             # create ok object in status draft
@@ -428,6 +435,10 @@ class PostNewVersion(APITestCase):
             path = '{}/{}/{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], self.ok_object['version'],
                                         'circulation')
             self.client.patch(path, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+            # auth with second user to avoid SoD
+            self.prerequisites.auth_two(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
             path = '{}/{}/{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], self.ok_object['version'],
                                         'productive')
             self.client.patch(path, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
@@ -490,6 +501,10 @@ class PostNewVersion(APITestCase):
             # push to status archived
             self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), content_type='application/json',
                               HTTP_X_CSRFTOKEN=csrf_token)
+            # auth with second user to avoid SoD
+            self.prerequisites.auth_two(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
             self.client.patch('{}/{}'.format(self.ok_path, 'productive'), content_type='application/json',
                               HTTP_X_CSRFTOKEN=csrf_token)
             response = self.client.patch('{}/{}'.format(self.ok_path, 'archived'), content_type='application/json',
@@ -610,6 +625,7 @@ class DeleteOne(APITestCase):
         if self.execute:
             self.client = Client(enforce_csrf_checks=True)
             self.prerequisites.role_superuser()
+            self.prerequisites.role_superuser_two()
             self.prerequisites.role_no_write_permissions()
             # create ok object in status draft
             self.ok_object = self.prerequisites.create_record(self.client, self.ok_object_data)
@@ -724,6 +740,10 @@ class DeleteOne(APITestCase):
             csrf_token = self.prerequisites.get_csrf(self.client)
             self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), content_type='application/json',
                               HTTP_X_CSRFTOKEN=csrf_token)
+            # auth with second user to avoid SoD
+            self.prerequisites.auth_two(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
             # try in status productive
             response = self.client.patch('{}/{}'.format(self.ok_path, 'productive'), content_type='application/json',
                                          HTTP_X_CSRFTOKEN=csrf_token)
@@ -740,6 +760,10 @@ class DeleteOne(APITestCase):
             csrf_token = self.prerequisites.get_csrf(self.client)
             self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), content_type='application/json',
                               HTTP_X_CSRFTOKEN=csrf_token)
+            # auth with second user to avoid SoD
+            self.prerequisites.auth_two(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
             self.client.patch('{}/{}'.format(self.ok_path, 'productive'), content_type='application/json',
                               HTTP_X_CSRFTOKEN=csrf_token)
             # try in status blocked
@@ -758,6 +782,10 @@ class DeleteOne(APITestCase):
             csrf_token = self.prerequisites.get_csrf(self.client)
             self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), content_type='application/json',
                               HTTP_X_CSRFTOKEN=csrf_token)
+            # auth with second user to avoid SoD
+            self.prerequisites.auth_two(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
             self.client.patch('{}/{}'.format(self.ok_path, 'productive'), content_type='application/json',
                               HTTP_X_CSRFTOKEN=csrf_token)
             # try in status blocked
@@ -776,6 +804,10 @@ class DeleteOne(APITestCase):
             csrf_token = self.prerequisites.get_csrf(self.client)
             self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), content_type='application/json',
                               HTTP_X_CSRFTOKEN=csrf_token)
+            # auth with second user to avoid SoD
+            self.prerequisites.auth_two(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
             self.client.patch('{}/{}'.format(self.ok_path, 'productive'), content_type='application/json',
                               HTTP_X_CSRFTOKEN=csrf_token)
             # try in status blocked
@@ -808,6 +840,7 @@ class PatchOne(APITestCase):
         if self.execute:
             self.client = Client(enforce_csrf_checks=True)
             self.prerequisites.role_superuser()
+            self.prerequisites.role_superuser_two()
             self.prerequisites.role_no_write_permissions()
             # create ok object in status draft
             self.ok_object = self.prerequisites.create_record(self.client, self.ok_object_data)
@@ -903,6 +936,10 @@ class PatchOne(APITestCase):
             csrf_token = self.prerequisites.get_csrf(self.client)
             self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), content_type='application/json',
                               HTTP_X_CSRFTOKEN=csrf_token)
+            # auth with second user to avoid SoD
+            self.prerequisites.auth_two(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
             # try in status productive
             response = self.client.patch('{}/{}'.format(self.ok_path, 'productive'), content_type='application/json',
                                          HTTP_X_CSRFTOKEN=csrf_token)
@@ -920,6 +957,10 @@ class PatchOne(APITestCase):
             csrf_token = self.prerequisites.get_csrf(self.client)
             self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), content_type='application/json',
                               HTTP_X_CSRFTOKEN=csrf_token)
+            # auth with second user to avoid SoD
+            self.prerequisites.auth_two(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
             self.client.patch('{}/{}'.format(self.ok_path, 'productive'), content_type='application/json',
                               HTTP_X_CSRFTOKEN=csrf_token)
             # try in status blocked
@@ -939,6 +980,10 @@ class PatchOne(APITestCase):
             csrf_token = self.prerequisites.get_csrf(self.client)
             self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), content_type='application/json',
                               HTTP_X_CSRFTOKEN=csrf_token)
+            # auth with second user to avoid SoD
+            self.prerequisites.auth_two(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
             self.client.patch('{}/{}'.format(self.ok_path, 'productive'), content_type='application/json',
                               HTTP_X_CSRFTOKEN=csrf_token)
             # try in status blocked
@@ -958,6 +1003,10 @@ class PatchOne(APITestCase):
             csrf_token = self.prerequisites.get_csrf(self.client)
             self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), content_type='application/json',
                               HTTP_X_CSRFTOKEN=csrf_token)
+            # auth with second user to avoid SoD
+            self.prerequisites.auth_two(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
             self.client.patch('{}/{}'.format(self.ok_path, 'productive'), content_type='application/json',
                               HTTP_X_CSRFTOKEN=csrf_token)
             # try in status blocked
@@ -1029,6 +1078,7 @@ class PatchOneStatus(APITestCase):
         if self.execute:
             self.client = Client(enforce_csrf_checks=True)
             self.prerequisites.role_superuser()
+            self.prerequisites.role_superuser_two()
             self.prerequisites.role_no_write_permissions()
             # create ok object in status draft
             self.ok_object = self.prerequisites.create_record(self.client, self.ok_object_data)
@@ -1151,6 +1201,10 @@ class PatchOneStatus(APITestCase):
             # get API response
             self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), content_type='application/json',
                               HTTP_X_CSRFTOKEN=csrf_token)
+            # auth with second user to avoid SoD
+            self.prerequisites.auth_two(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
             response = self.client.patch('{}/{}'.format(self.ok_path, 'productive'), content_type='application/json',
                                          HTTP_X_CSRFTOKEN=csrf_token)
             self.assertEqual(response.data['status'], 'productive')
@@ -1169,6 +1223,10 @@ class PatchOneStatus(APITestCase):
             # get API response
             self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), content_type='application/json',
                               HTTP_X_CSRFTOKEN=csrf_token)
+            # auth with second user to avoid SoD
+            self.prerequisites.auth_two(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
             self.client.patch('{}/{}'.format(self.ok_path, 'productive'), content_type='application/json',
                               HTTP_X_CSRFTOKEN=csrf_token)
             response = self.client.patch('{}/{}'.format(self.ok_path, 'blocked'), content_type='application/json',
@@ -1189,6 +1247,10 @@ class PatchOneStatus(APITestCase):
             # get API response
             self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), content_type='application/json',
                               HTTP_X_CSRFTOKEN=csrf_token)
+            # auth with second user to avoid SoD
+            self.prerequisites.auth_two(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
             self.client.patch('{}/{}'.format(self.ok_path, 'productive'), content_type='application/json',
                               HTTP_X_CSRFTOKEN=csrf_token)
             response = self.client.patch('{}/{}'.format(self.ok_path, 'archived'), content_type='application/json',
@@ -1209,6 +1271,10 @@ class PatchOneStatus(APITestCase):
             # get API response
             self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), content_type='application/json',
                               HTTP_X_CSRFTOKEN=csrf_token)
+            # auth with second user to avoid SoD
+            self.prerequisites.auth_two(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
             self.client.patch('{}/{}'.format(self.ok_path, 'productive'), content_type='application/json',
                               HTTP_X_CSRFTOKEN=csrf_token)
             response = self.client.patch('{}/{}'.format(self.ok_path, 'inactive'), content_type='application/json',
@@ -1219,6 +1285,20 @@ class PatchOneStatus(APITestCase):
                 response = self.client.patch('{}/{}'.format(self.ok_path, _status), content_type='application/json',
                                              HTTP_X_CSRFTOKEN=csrf_token)
                 self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_400_sod(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            # get API response
+            self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), content_type='application/json',
+                              HTTP_X_CSRFTOKEN=csrf_token)
+            # perform sod protected status change with same user
+            response = self.client.patch('{}/{}'.format(self.ok_path, 'productive'), content_type='application/json',
+                                         HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_200(self):
         if self.execute:
@@ -1233,6 +1313,10 @@ class PatchOneStatus(APITestCase):
             self.status_life_cycle(csrf_token, 'draft')
             # start circulation again
             self.status_life_cycle(csrf_token, 'circulation')
+            # auth with second user to avoid SoD
+            self.prerequisites.auth_two(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
             # set productive
             self.status_life_cycle(csrf_token, 'productive')
             # block
