@@ -49,17 +49,22 @@ class PermissionsLogManager(GlobalManager):
     HAS_VERSION = False
     HAS_STATUS = False
 
+    # meta
+    GET_MODEL_ORDER = {'key': 0,
+                       'model': 1,
+                       'permission': 2}
+
 
 # log table
 class PermissionsLog(GlobalModel):
     # custom fields
-    key = models.CharField(_('key'), max_length=CHAR_DEFAULT)
-    model = models.CharField(_('model'), max_length=CHAR_DEFAULT)
-    permission = models.CharField(_('permission'), max_length=CHAR_DEFAULT)
+    key = models.CharField(_('Key'), max_length=CHAR_DEFAULT)
+    model = models.CharField(_('Model'), max_length=CHAR_DEFAULT)
+    permission = models.CharField(_('Permission'), max_length=CHAR_DEFAULT)
     # log specific fields
-    user = models.CharField(_('user'), max_length=CHAR_DEFAULT)
+    user = models.CharField(_('User'), max_length=CHAR_DEFAULT)
     timestamp = models.DateTimeField()
-    action = models.CharField(_('action'), max_length=CHAR_DEFAULT)
+    action = models.CharField(_('Action'), max_length=CHAR_DEFAULT)
 
     # manager
     objects = PermissionsLogManager()
@@ -79,6 +84,7 @@ class PermissionsLog(GlobalModel):
 
     # permissions
     MODEL_ID = '08'
+    MODEL_CONTEXT = 'PermissionsLog'
     perms = {
             '01': 'read',
         }
@@ -90,6 +96,9 @@ class PermissionsManager(GlobalManager):
     HAS_VERSION = False
     HAS_STATUS = False
     LOG_TABLE = PermissionsLog
+
+    # meta
+    GET_MODEL_ORDER = PermissionsLogManager.GET_MODEL_ORDER
 
     @property
     def all_comma_separated_list(self):
@@ -103,9 +112,9 @@ class PermissionsManager(GlobalManager):
 # table
 class Permissions(GlobalModel):
     # custom fields
-    key = models.CharField(_('key'), max_length=CHAR_DEFAULT, unique=True)
-    model = models.CharField(_('model'), max_length=CHAR_DEFAULT)
-    permission = models.CharField(_('permission'), max_length=CHAR_DEFAULT)
+    key = models.CharField(_('Key'), max_length=CHAR_DEFAULT, unique=True)
+    model = models.CharField(_('Model'), max_length=CHAR_DEFAULT)
+    permission = models.CharField(_('Permission'), max_length=CHAR_DEFAULT)
 
     # manager
     objects = PermissionsManager()
@@ -143,6 +152,15 @@ class AccessLogManager(GlobalManager):
     HAS_VERSION = False
     HAS_STATUS = False
 
+    # meta
+    GET_MODEL_ORDER = {'user': 0,
+                       'action': 1,
+                       'timestamp': 2,
+                       'mode': 100,
+                       'method': 101,
+                       'attempt': 102,
+                       'active': 103}
+
     def latest_record(self, username):
         try:
             return self.filter(user=username).filter(Q(action='attempt') | Q(action='login')).order_by('-timestamp')[0]
@@ -153,13 +171,13 @@ class AccessLogManager(GlobalManager):
 # table
 class AccessLog(GlobalModel):
     # custom fields
-    user = models.CharField(_('user'), max_length=CHAR_DEFAULT)
-    timestamp = models.DateTimeField()
-    action = models.CharField(_('action'), max_length=CHAR_DEFAULT)
-    mode = models.CharField(_('mode'), max_length=CHAR_DEFAULT)
-    method = models.CharField(_('method'), max_length=CHAR_DEFAULT)
-    attempt = models.CharField(_('attempt'), max_length=CHAR_DEFAULT)
-    active = models.CharField(_('mode'), max_length=CHAR_DEFAULT)
+    user = models.CharField(_('User'), max_length=CHAR_DEFAULT)
+    timestamp = models.DateTimeField(_('Timestamp'))
+    action = models.CharField(_('Action'), max_length=CHAR_DEFAULT)
+    mode = models.CharField(_('Mode'), max_length=CHAR_DEFAULT)
+    method = models.CharField(_('Method'), max_length=CHAR_DEFAULT)
+    attempt = models.CharField(_('Attempt'), max_length=CHAR_DEFAULT)
+    active = models.CharField(_('Active'), max_length=CHAR_DEFAULT)
 
     # manager
     objects = AccessLogManager()
@@ -179,7 +197,7 @@ class AccessLog(GlobalModel):
 
     # permissions
     MODEL_ID = '05'
-    MODEL_CONTEXT = 'Authentication'
+    MODEL_CONTEXT = 'AccessLog'
     perms = {
         '01': 'read',
     }
@@ -195,21 +213,25 @@ class RolesLogManager(GlobalManager):
     HAS_VERSION = False
     HAS_STATUS = False
 
+    # meta
+    GET_MODEL_ORDER = {'role': 0,
+                       'permissions': 1}
+
 
 # log table
 class RolesLog(GlobalModel):
     # id field
     lifecycle_id = models.UUIDField()
     # custom fields
-    role = models.CharField(_('role'), max_length=CHAR_DEFAULT)
-    permissions = models.CharField(_('permissions'), max_length=CHAR_MAX, blank=True)
+    role = models.CharField(_('Role'), max_length=CHAR_DEFAULT)
+    permissions = models.CharField(_('Permissions'), max_length=CHAR_MAX, blank=True)
     # defaults
     status = models.ForeignKey(Status, on_delete=models.PROTECT)
     version = FIELD_VERSION
     # log specific fields
-    user = models.CharField(_('user'), max_length=CHAR_DEFAULT)
-    timestamp = models.DateTimeField()
-    action = models.CharField(_('action'), max_length=CHAR_DEFAULT)
+    user = models.CharField(_('User'), max_length=CHAR_DEFAULT)
+    timestamp = models.DateTimeField(_('Timestamp'))
+    action = models.CharField(_('Action'), max_length=CHAR_DEFAULT)
 
     # manager
     objects = RolesLogManager()
@@ -231,6 +253,7 @@ class RolesLog(GlobalModel):
 
     # permissions
     MODEL_ID = '09'
+    MODEL_CONTEXT = 'RolesLog'
     perms = {
             '01': 'read',
         }
@@ -243,6 +266,9 @@ class RolesLog(GlobalModel):
 class RolesManager(GlobalManager):
     # flags
     LOG_TABLE = RolesLog
+
+    # meta
+    GET_MODEL_ORDER = RolesLogManager.GET_MODEL_ORDER
 
     def find_permission_in_roles(self, roles, permission):
         for role in roles.split(','):
@@ -342,36 +368,49 @@ class LDAPLogManager(GlobalManager):
     HAS_VERSION = False
     HAS_STATUS = False
 
+    # meta
+    GET_MODEL_ORDER = {'host': 0,
+                       'port': 1,
+                       'ssl_tls': 2,
+                       'bindDN': 3,
+                       'password': 4,
+                       'base': 5,
+                       'filter': 6,
+                       'attr_username': 7,
+                       'attr_email': 8,
+                       'attr_surname': 9,
+                       'attr_forename': 10,
+                       'priority': 11}
+
 
 # log table
 class LDAPLog(GlobalModel):
     # custom fields
-    host = models.CharField(_('host'), max_length=CHAR_DEFAULT)
-    port = models.IntegerField(_('port'))
-    ssl_tls = models.BooleanField(_('ssl_tls'))
-    bindDN = models.CharField(_('bindDN'), max_length=CHAR_DEFAULT)
-    password = models.CharField(_('password'), max_length=CHAR_MAX)
-    base = models.CharField(_('base'), max_length=CHAR_DEFAULT)
-    filter = models.CharField(_('filter'), max_length=CHAR_DEFAULT)
-    attr_username = models.CharField(_('attr_username'), max_length=CHAR_DEFAULT)
-    attr_email = models.CharField(_('attr_email'), max_length=CHAR_DEFAULT, blank=True)
-    attr_surname = models.CharField(_('attr_surname'), max_length=CHAR_DEFAULT, blank=True)
-    attr_forename = models.CharField(_('attr_forename'), max_length=CHAR_DEFAULT, blank=True)
-    priority = models.IntegerField(_('priority'), validators=[validate_only_positive_numbers])
+    host = models.CharField(_('Host'), max_length=CHAR_DEFAULT)
+    port = models.IntegerField(_('Port'))
+    ssl_tls = models.BooleanField(_('SSL'))
+    bindDN = models.CharField(_('BindDN'), max_length=CHAR_DEFAULT)
+    base = models.CharField(_('Base'), max_length=CHAR_DEFAULT)
+    filter = models.CharField(_('Filter'), max_length=CHAR_DEFAULT)
+    attr_username = models.CharField(_('Attr_username'), max_length=CHAR_DEFAULT)
+    attr_email = models.CharField(_('Attr_email'), max_length=CHAR_DEFAULT, blank=True)
+    attr_surname = models.CharField(_('Attr_surname'), max_length=CHAR_DEFAULT, blank=True)
+    attr_forename = models.CharField(_('Attr_forename'), max_length=CHAR_DEFAULT, blank=True)
+    priority = models.IntegerField(_('Priority'), validators=[validate_only_positive_numbers])
     # log specific fields
-    user = models.CharField(_('user'), max_length=CHAR_DEFAULT)
-    timestamp = models.DateTimeField()
-    action = models.CharField(_('action'), max_length=CHAR_DEFAULT)
+    user = models.CharField(_('User'), max_length=CHAR_DEFAULT)
+    timestamp = models.DateTimeField(_('Timestamp'))
+    action = models.CharField(_('Action'), max_length=CHAR_DEFAULT)
 
     # manager
     objects = LDAPLogManager()
 
     # integrity check
     def verify_checksum(self):
-        to_hash_payload = 'host:{};port:{};ssl_tls:{};bindDN:{};password:{};base:{};filter:{};attr_username:{};' \
+        to_hash_payload = 'host:{};port:{};ssl_tls:{};bindDN:{};base:{};filter:{};attr_username:{};' \
                           'attr_email:{};attr_surname:{};attr_forename:{};priority:{};' \
                           'user:{};timestamp:{};action:{};'. \
-            format(self.host, self.port, self.ssl_tls, self.bindDN, self.password, self.base, self.filter,
+            format(self.host, self.port, self.ssl_tls, self.bindDN, self.base, self.filter,
                    self.attr_username, self.attr_email, self.attr_surname, self.attr_forename, self.priority,
                    self.user, self.timestamp, self.action)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
@@ -381,11 +420,12 @@ class LDAPLog(GlobalModel):
     lifecycle_id = None
 
     # hashing
-    HASH_SEQUENCE = ['host', 'port', 'ssl_tls', 'bindDN', 'password', 'base', 'filter', 'attr_username',
+    HASH_SEQUENCE = ['host', 'port', 'ssl_tls', 'bindDN', 'base', 'filter', 'attr_username',
                      'attr_email', 'attr_surname', 'attr_forename', 'priority'] + LOG_HASH_SEQUENCE
 
     # permissions
     MODEL_ID = '12'
+    MODEL_CONTEXT = 'LDAPLog'
     perms = {
         '01': 'read',
     }
@@ -396,6 +436,10 @@ class LDAPManager(GlobalManager):
     HAS_VERSION = False
     HAS_STATUS = False
     LOG_TABLE = LDAPLog
+
+    # meta
+    GET_MODEL_EXCLUDE = ('password',)
+    GET_MODEL_ORDER = LDAPLogManager.GET_MODEL_ORDER
 
     def _server(self):
         query = self.order_by('-priority').all()
@@ -485,18 +529,18 @@ class LDAP(GlobalModel):
         _('Filter'),
         max_length=CHAR_DEFAULT)
     attr_username = models.CharField(
-        _('attr_username'),
+        _('Attr_username'),
         max_length=CHAR_DEFAULT)
     attr_email = models.CharField(
-        _('attr_email'),
+        _('Attr_email'),
         max_length=CHAR_DEFAULT,
         blank=True)
     attr_surname = models.CharField(
-        _('attr_surname'),
+        _('Attr_surname'),
         max_length=CHAR_DEFAULT,
         blank=True)
     attr_forename = models.CharField(
-        _('attr_forename'),
+        _('Attr_forename'),
         max_length=CHAR_DEFAULT,
         blank=True)
     priority = models.IntegerField(
@@ -547,27 +591,38 @@ class UsersLogManager(GlobalManager):
     HAS_VERSION = False
     HAS_STATUS = False
 
+    # meta
+    GET_MODEL_EXCLUDE = ('is_active',)
+    GET_MODEL_ORDER = {'username': 0,
+                       'first_name': 1,
+                       'last_name': 2,
+                       'email': 3,
+                       'roles': 4,
+                       'ldap': 5,
+                       'password': 6,
+                       'initial_password': 7}
+
 
 # log table
 class UsersLog(GlobalModel):
     # id field
     lifecycle_id = models.UUIDField()
     # custom fields
-    username = models.CharField(_('username'), max_length=CHAR_DEFAULT)
-    email = models.EmailField(_('email'), max_length=CHAR_MAX, blank=True)
-    first_name = models.CharField(_('first name'), max_length=CHAR_DEFAULT, blank=True)
-    last_name = models.CharField(_('last name'), max_length=CHAR_DEFAULT, blank=True)
-    initial_password = models.BooleanField(_('initial password'))
-    ldap = models.BooleanField(_('ldap'))
-    roles = models.CharField(_('roles'), max_length=CHAR_DEFAULT)
-    is_active = models.BooleanField(_('is_active'))
+    username = models.CharField(_('Username'), max_length=CHAR_DEFAULT)
+    email = models.EmailField(_('Email'), max_length=CHAR_MAX, blank=True)
+    first_name = models.CharField(_('First name'), max_length=CHAR_DEFAULT, blank=True)
+    last_name = models.CharField(_('Last name'), max_length=CHAR_DEFAULT, blank=True)
+    initial_password = models.BooleanField(_('Initial password'))
+    ldap = models.BooleanField(_('Ldap'))
+    roles = models.CharField(_('Roles'), max_length=CHAR_DEFAULT)
+    is_active = models.BooleanField(_('Is_active'))
     # defaults
     status = models.ForeignKey(Status, on_delete=models.PROTECT)
     version = FIELD_VERSION
     # log specific fields
-    user = models.CharField(_('user'), max_length=CHAR_DEFAULT)
-    timestamp = models.DateTimeField()
-    action = models.CharField(_('action'), max_length=CHAR_DEFAULT)
+    user = models.CharField(_('User'), max_length=CHAR_DEFAULT)
+    timestamp = models.DateTimeField(_('Timestamp'))
+    action = models.CharField(_('Action'), max_length=CHAR_DEFAULT)
 
     # manager
     objects = UsersLogManager()
@@ -592,6 +647,7 @@ class UsersLog(GlobalModel):
 
     # permissions
     MODEL_ID = '10'
+    MODEL_CONTEXT = 'UsersLog'
     perms = {
             '01': 'read',
         }
@@ -605,8 +661,10 @@ class UsersManager(BaseUserManager, GlobalManager):
     # flags
     LOG_TABLE = UsersLog
 
-    # form
-    MODEL_EXCLUDE = ('initial_password', 'is_active')
+    # meta
+    GET_MODEL_EXCLUDE = ('is_active', 'password')
+    GET_MODEL_ORDER = UsersLogManager.GET_MODEL_ORDER
+    POST_MODEL_EXCLUDE = ('initial_password', 'is_active')
 
     @property
     def existing_users(self):

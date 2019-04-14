@@ -40,7 +40,7 @@ CHAR_DEFAULT = 100
 CHAR_MAX = 255
 
 # default fields
-FIELD_VERSION = models.IntegerField()
+FIELD_VERSION = models.IntegerField(_('Version'))
 
 AVAILABLE_STATUS = ['draft', 'circulation', 'productive', 'blocked', 'inactive', 'archived']
 LOG_HASH_SEQUENCE = ['user', 'timestamp', 'action']
@@ -52,9 +52,24 @@ class GlobalManager(models.Manager):
     HAS_STATUS = True
     LOG_TABLE = None
 
-    # form
-    BASE_EXCLUDE = ('id', 'lifecycle_id', 'checksum', 'status', 'version')
-    MODEL_EXCLUDE = tuple()
+    # meta information for get and post
+    # get
+    GET_BASE_EXCLUDE = ('id', 'checksum')
+    GET_MODEL_EXCLUDE = tuple()
+    GET_BASE_NOT_RENDER = ('lifecycle_id', )
+    GET_MODEL_NOT_RENDER = tuple()
+    GET_BASE_ORDER_STATUS_MANAGED = {'valid_from': 76,
+                                     'valid_to': 77,
+                                     'status': 78,
+                                     'version': 79,
+                                     'lifecycle_id': 8000}
+    GET_BASE_ORDER_LOG = {'user': 97,
+                          'action': 98,
+                          'timestamp': 99}
+    GET_MODEL_ORDER = dict()
+    # post
+    POST_BASE_EXCLUDE = ('id', 'lifecycle_id', 'checksum', 'status', 'version')
+    POST_MODEL_EXCLUDE = tuple()
 
     def validate_unique(self, instance):
         model_unique = self.model.UNIQUE
@@ -166,15 +181,18 @@ class StatusLogManager(GlobalManager):
     HAS_VERSION = False
     HAS_STATUS = False
 
+    # meta
+    GET_MODEL_ORDER = {'status': 0}
+
 
 # log table
 class StatusLog(GlobalModel):
     # custom fields
-    status = models.CharField(_('status'), max_length=CHAR_DEFAULT)
+    status = models.CharField(_('Status'), max_length=CHAR_DEFAULT)
     # log specific fields
-    user = models.CharField(_('user'), max_length=CHAR_DEFAULT)
-    timestamp = models.DateTimeField()
-    action = models.CharField(_('action'), max_length=CHAR_DEFAULT)
+    user = models.CharField(_('User'), max_length=CHAR_DEFAULT)
+    timestamp = models.DateTimeField(_('Timestamp'))
+    action = models.CharField(_('Action'), max_length=CHAR_DEFAULT)
 
     # manager
     objects = StatusLogManager()
@@ -205,6 +223,9 @@ class StatusManager(GlobalManager):
     HAS_VERSION = False
     HAS_STATUS = False
     LOG_TABLE = StatusLog
+
+    # meta
+    GET_MODEL_ORDER = StatusLogManager.GET_MODEL_ORDER
 
     def status_by_text(self, value):
         try:
@@ -243,7 +264,7 @@ class StatusManager(GlobalManager):
 # table
 class Status(GlobalModel):
     # custom fields
-    status = models.CharField(_('status'), max_length=CHAR_DEFAULT, unique=True)
+    status = models.CharField(_('Status'), max_length=CHAR_DEFAULT, unique=True)
 
     # manager
     objects = StatusManager()
@@ -278,15 +299,23 @@ class CentralLogManager(GlobalManager):
     HAS_VERSION = False
     HAS_STATUS = False
 
+    # meta
+    GET_MODEL_NOT_RENDER = ('log_id',)
+    GET_MODEL_ORDER = {'log_id': 0,
+                       'context': 1}
+
 
 # table
 class CentralLog(GlobalModel):
     # custom fields
-    log_id = models.UUIDField()
-    user = models.CharField(_('user'), max_length=CHAR_DEFAULT)
-    timestamp = models.DateTimeField()
-    action = models.CharField(_('action'), max_length=CHAR_DEFAULT)
-    context = models.CharField(_('context'), max_length=CHAR_DEFAULT)
+    log_id = models.UUIDField(_('LogID'))
+    user = models.CharField(_('User'), max_length=CHAR_DEFAULT)
+    timestamp = models.DateTimeField(_('Timestamp'))
+    action = models.CharField(_('Action'), max_length=CHAR_DEFAULT)
+    context = models.CharField(_('Context'), max_length=CHAR_DEFAULT)
+
+    # manager
+    objects = CentralLogManager()
 
     # integrity check
     def verify_checksum(self):
@@ -303,6 +332,7 @@ class CentralLog(GlobalModel):
 
     # permissions
     MODEL_ID = '06'
+    MODEL_CONTEXT = 'CentralLog'
     perms = {
         '01': 'read',
     }

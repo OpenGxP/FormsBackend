@@ -33,7 +33,7 @@ from .serializers import StatusReadWriteSerializer, PermissionsReadWriteSerializ
     LDAPLogReadSerializer, LDAPReadWriteSerializer, LDAPDeleteSerializer
 from .decorators import perm_required, auth_required
 from basics.models import StatusLog, CentralLog
-from basics.custom import get_model_by_string, encrypt, decrypt
+from basics.custom import get_model_by_string
 from .backends import write_access_log
 
 # django imports
@@ -51,52 +51,25 @@ from django.middleware.csrf import get_token
 
 @api_view(['GET'])
 def api_root(request):
-    root = [{'subject': 'login',
-             'root': '/',
-             'url': reverse('login-view', request=request)},
-            {'subject': 'csrftoken',
-             'root': '/',
-             'url': reverse('get_csrf_token', request=request)},
-            {'subject': 'logout',
-             'root': '/',
-             'url': reverse('logout-view', request=request)},
-            {'subject': 'status',
-             'root': '/md/',
-             'url': reverse('status-list', request=request)},
-            {'subject': 'permissions',
-             'root': '/md/',
-             'url': reverse('permissions-list', request=request)},
-            {'subject': 'roles',
-             'root': '/md/',
-             'url': reverse('roles-list', request=request)},
-            {'subject': 'ldap',
-             'root': '/md/',
-             'url': reverse('ldap-list', request=request)},
-            {'subject': 'users',
-             'root': '/md/',
-             'url': reverse('users-list', request=request)},
-            {'subject': 'central',
-             'root': '/logs/',
-             'url': reverse('central-log-list', request=request)},
-            {'subject': 'access',
-             'root': '/logs/',
-             'url': reverse('access-log-list', request=request)},
-            {'subject': 'status',
-             'root': '/logs/',
-             'url': reverse('status-log-list', request=request)},
-            {'subject': 'permissions',
-             'root': '/logs/',
-             'url': reverse('permissions-log-list', request=request)},
-            {'subject': 'roles',
-             'root': '/logs/',
-             'url': reverse('roles-log-list', request=request)},
-            {'subject': 'ldap',
-             'root': '/logs/',
-             'url': reverse('ldap-log-list', request=request)},
-            {'subject': 'users',
-             'root': '/logs/',
-             'url': reverse('users-log-list', request=request)},
-            ]
+    root = {'base': {'root': '/',
+                     'subjects': {'login': {'url': reverse('login-view', request=request)},
+                                  'csrftoken': {'url': reverse('get_csrf_token', request=request)},
+                                  'logout': {'url': reverse('logout-view', request=request)}}},
+            'administration': {'root': '/admin/',
+                               'subjects': {'status': {'url': reverse('status-list', request=request)},
+                                            'permissions': {'url': reverse('permissions-list', request=request)},
+                                            'roles': {'url': reverse('roles-list', request=request)},
+                                            'ldap': {'url': reverse('ldap-list', request=request)},
+                                            'users': {'url': reverse('users-list', request=request)}}},
+            'logs': {'root': '/logs/',
+                     'subjects': {'central': {'url': reverse('central-log-list', request=request)},
+                                  'access': {'url': reverse('access-log-list', request=request)},
+                                  'status': {'url': reverse('status-log-list', request=request)},
+                                  'permissions': {'url': reverse('permissions-log-list', request=request)},
+                                  'roles': {'url': reverse('roles-log-list', request=request)},
+                                  'ldap': {'url': reverse('ldap-log-list', request=request)},
+                                  'users': {'url': reverse('users-log-list', request=request)}}}}
+
     return Response(root)
 
 
@@ -131,6 +104,10 @@ def get_csrf_token(request):
     token = {settings.CSRF_COOKIE_NAME: get_token(request)}
     return Response(data=token, status=http_status.HTTP_200_OK)
 
+
+##########
+# LOGOUT #
+##########
 
 @api_view(['GET'])
 @auth_required()
@@ -385,16 +362,17 @@ def audit_trail_list(request, dialog, lifecycle_id):
         return get(request)
 
 
-#########
-# FORMS #
-#########
+########
+# META #
+########
 
 @api_view(['GET'])
 @auth_required()
-def forms_list(request, dialog):
+def meta_list(request, dialog):
     # lower all inputs for dialog
     dialog = dialog.lower()
-    if dialog not in ['users', 'roles', 'ldap']:
+    # filter out status because no public dialog
+    if dialog in ['status']:
         return Response(status=http_status.HTTP_400_BAD_REQUEST)
     # determine the model instance from string parameter
     try:
@@ -403,16 +381,43 @@ def forms_list(request, dialog):
         return Response(status=http_status.HTTP_400_BAD_REQUEST)
 
     def get(_request):
-        data = dict()
-        exclude = model.objects.BASE_EXCLUDE + model.objects.MODEL_EXCLUDE
+        data = {'get': dict(),
+                'post': dict()}
+        # add get information
+        exclude = model.objects.GET_BASE_EXCLUDE + model.objects.GET_MODEL_EXCLUDE
         fields = [i for i in model._meta.get_fields() if i.name not in exclude]
+        order = {**model.objects.GET_BASE_ORDER_STATUS_MANAGED,
+                 **model.objects.GET_MODEL_ORDER,
+                 **model.objects.GET_BASE_ORDER_LOG}
+        not_render = model.objects.GET_BASE_NOT_RENDER + model.objects.GET_MODEL_NOT_RENDER
+        # add calculated field "valid"
+        data['get']['valid'] = {'verbose_name': 'Valid',
+                                'data_type': 'CharField',
+                                'render': False,
+                                'order': 99999}
         for f in fields:
-            data[f.name] = {'verbose_name': f.verbose_name,
-                            'help_text': f.help_text,
-                            'max_length': f.max_length,
-                            'data_type': f.get_internal_type(),
-                            'required': not f.blank,
-                            'unique': f.unique}
+            if f.name in not_render:
+                render = False
+            else:
+                render = True
+            data['get'][f.name] = {'verbose_name': f.verbose_name,
+                                   'data_type': f.get_internal_type(),
+                                   'render': render,
+                                   'order': order[f.name]}
+
+        # add post information
+        if dialog in ['users', 'roles', 'ldap']:
+            exclude = model.objects.POST_BASE_EXCLUDE + model.objects.POST_MODEL_EXCLUDE
+            fields = [i for i in model._meta.get_fields() if i.name not in exclude]
+            for f in fields:
+                data['post'][f.name] = {'verbose_name': f.verbose_name,
+                                        'help_text': f.help_text,
+                                        'max_length': f.max_length,
+                                        'data_type': f.get_internal_type(),
+                                        'required': not f.blank,
+                                        'unique': f.unique,
+                                        'order': order[f.name]}
+
         return Response(data=data, status=http_status.HTTP_200_OK)
 
     if request.method == 'GET':
