@@ -156,13 +156,14 @@ class Prerequisites(object):
         return response.cookies['csrftoken'].value
 
 
-def log_records(model, action, data, access_log=None):
+def log_records(model, action, data, access_log=None, _status=True):
     data['action'] = action
     # remove valid field, because its read only and not in db
     del data['valid']
     # human readable status is a read only field and not in db, but uuid
-    data['status_id'] = Status.objects.status_by_text(data['status'])
-    del data['status']
+    if _status:
+        data['status_id'] = Status.objects.status_by_text(data['status'])
+        del data['status']
     # get log model of tested model
     if not access_log:
         log_model = model.objects.LOG_TABLE
@@ -324,6 +325,77 @@ class GetOne(APITestCase):
             self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
 
+class GetOneNoStatus(APITestCase):
+    def __init__(self, *args, **kwargs):
+        super(GetOneNoStatus, self).__init__(*args, **kwargs)
+        # placeholders
+        self.base_path = None
+        self.model = None
+        self.prerequisites = None
+        self.serializer = None
+        self.ok_object_data = None
+        self.ok_object_data_unique = str()
+
+        # flag for execution
+        self.execute = False
+
+    def setUp(self):
+        if self.execute:
+            self.client = Client()
+            self.prerequisites.role_superuser()
+            self.prerequisites.role_no_permissions()
+            # create ok object
+            self.ok_object = self.prerequisites.create_record(self.client, self.ok_object_data)
+            # create ok path
+            self.ok_path = '{}/{}'.format(self.base_path, self.ok_object[self.ok_object_data_unique])
+            self.false_path = '{}/{}'.format(self.base_path, 'sadasuidhasdas')
+            self.query = {self.ok_object_data_unique: self.ok_object[self.ok_object_data_unique]}
+
+    def test_401(self):
+        if self.execute:
+            # reset auth
+            self.client.logout()
+            # get API response
+            response = self.client.get(self.ok_path, content_type='application/json')
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_403(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth_no_perms(self.client)
+            # get API response
+            response = self.client.get(self.ok_path, content_type='application/json')
+            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_200_csrf(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get API response
+            response = self.client.get(self.ok_path, content_type='application/json')
+            self.assertIsNotNone(self.prerequisites.verify_csrf(response))
+
+    def test_200(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get API response
+            response = self.client.get(self.ok_path, content_type='application/json')
+            # get data from db
+            query = self.model.objects.get(**self.query)
+            serializer = self.serializer(query)
+            self.assertEqual(response.data, serializer.data)
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_404(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get API response
+            response = self.client.get(self.false_path, content_type='application/json')
+            self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
 # post
 class PostNew(APITestCase):
     def __init__(self, *args, **kwargs):
@@ -337,6 +409,9 @@ class PostNew(APITestCase):
 
         # flag for execution
         self.execute = False
+
+        # flag for non-status managed objects
+        self.status = True
 
     def setUp(self):
         if self.execute:
@@ -394,11 +469,12 @@ class PostNew(APITestCase):
             response = self.client.post(self.ok_path, data=self.valid_payload, content_type='application/json',
                                         HTTP_X_CSRFTOKEN=csrf_token)
             self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-            self.assertEqual(response.data['version'], 1)
-            self.assertEqual(response.data['status'], 'draft')
+            if self.status:
+                self.assertEqual(response.data['version'], 1)
+                self.assertEqual(response.data['status'], 'draft')
             # verify log record
-            self.assertEqual(log_records(model=self.model, data=response.data, action=settings.DEFAULT_LOG_CREATE),
-                             True)
+            self.assertEqual(log_records(model=self.model, data=response.data, action=settings.DEFAULT_LOG_CREATE,
+                                         _status=self.status), True)
 
 
 # post
@@ -819,6 +895,91 @@ class DeleteOne(APITestCase):
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
 
+class DeleteOneNoStatus(APITestCase):
+    def __init__(self, *args, **kwargs):
+        super(DeleteOneNoStatus, self).__init__(*args, **kwargs)
+
+        # placeholders
+        self.base_path = None
+        self.model = None
+        self.serializer = None
+        self.ok_object_data = None
+        self.ok_object_data_unique = str()
+        self.prerequisites = None
+
+        # flag for execution
+        self.execute = False
+
+    def setUp(self):
+        if self.execute:
+            self.client = Client(enforce_csrf_checks=True)
+            self.prerequisites.role_superuser()
+            self.prerequisites.role_superuser_two()
+            self.prerequisites.role_no_write_permissions()
+            # create ok object in status draft
+            self.ok_object = self.prerequisites.create_record(self.client, self.ok_object_data)
+            # create ok path
+            self.ok_path = '{}/{}'.format(self.base_path, self.ok_object[self.ok_object_data_unique])
+            self.false_path = '{}/{}'.format(self.base_path, 'sadasuidhasdas')
+            self.query = {self.ok_object_data_unique: self.ok_object[self.ok_object_data_unique]}
+
+    def test_401(self):
+        if self.execute:
+            # reset auth
+            self.client.logout()
+            # get API response
+            response = self.client.delete(self.ok_path, content_type='application/json')
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_403_csrf(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get API response
+            response = self.client.delete(self.ok_path, content_type='application/json')
+            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_403_permission(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth_no_write_perms(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            # get API response
+            response = self.client.delete(self.ok_path, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_404(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            # get API response
+            response = self.client.delete(self.false_path, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_204(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            # get API response
+            response = self.client.delete(self.ok_path, content_type='application/json',
+                                          HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+            # verify that role is deleted
+            try:
+                self.model.objects.get(**self.query)
+                raise AssertionError('Object not deleted.')
+            except self.model.DoesNotExist:
+                pass
+            # verify log record
+            self.assertEqual(log_records(model=self.model, data=self.ok_object, action=settings.DEFAULT_LOG_DELETE,
+                                         _status=False), True)
+
+
 # patch
 class PatchOne(APITestCase):
     def __init__(self, *args, **kwargs):
@@ -1045,6 +1206,101 @@ class PatchOne(APITestCase):
             # verify log record
             self.assertEqual(log_records(model=self.model, data=response.data, action=settings.DEFAULT_LOG_UPDATE),
                              True)
+
+
+class PatchOneNoStatus(APITestCase):
+    def __init__(self, *args, **kwargs):
+        super(PatchOneNoStatus, self).__init__(*args, **kwargs)
+
+        # placeholders
+        self.base_path = None
+        self.model = None
+        self.serializer = None
+        self.ok_object_data = None
+        self.ok_object_data_unique = str()
+        self.prerequisites = None
+        self.valid_payload = None
+        self.invalid_payload = None
+
+        # flag for execution
+        self.execute = False
+
+    def setUp(self):
+        if self.execute:
+            self.client = Client(enforce_csrf_checks=True)
+            self.prerequisites.role_superuser()
+            self.prerequisites.role_superuser_two()
+            self.prerequisites.role_no_write_permissions()
+            # create ok object in status draft
+            self.ok_object = self.prerequisites.create_record(self.client, self.ok_object_data)
+            # create ok path
+            self.ok_path = '{}/{}'.format(self.base_path, self.ok_object[self.ok_object_data_unique])
+            self.false_path = '{}/{}'.format(self.base_path, 'sadasuidhasdas')
+            self.query = {self.ok_object_data_unique: self.ok_object[self.ok_object_data_unique]}
+
+    def test_401(self):
+        if self.execute:
+            # reset auth
+            self.client.logout()
+            # get API response
+            response = self.client.patch(self.ok_path, content_type='application/json')
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_403_csrf(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get API response
+            response = self.client.patch(self.ok_path, content_type='application/json')
+            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_403_permission(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth_no_write_perms(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            # get API response
+            response = self.client.patch(self.ok_path, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_404(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            # get API response
+            response = self.client.patch(self.false_path, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_400_data(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            # get API response
+            response = self.client.patch(self.ok_path, data=self.invalid_payload, content_type='application/json',
+                                         HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_200(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            # get API response
+            response = self.client.patch(self.ok_path, data=self.valid_payload, content_type='application/json',
+                                         HTTP_X_CSRFTOKEN=csrf_token)
+            query = self.model.objects.get(**self.query)
+            serializer = self.serializer(query)
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.assertEqual(response.data, serializer.data)
+            # verify log record
+            self.assertEqual(log_records(model=self.model, data=response.data, action=settings.DEFAULT_LOG_UPDATE,
+                                         _status=False), True)
 
 
 # patch status
