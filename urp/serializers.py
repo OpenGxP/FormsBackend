@@ -241,6 +241,20 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                                                               'the same user as set in circulation.')
 
             @require_STATUS_CHANGE
+            @require_USERS
+            def validate_users(self):
+                # check if used roles are productive
+                if self.context['status'] in ['circulation', 'productive']:
+                    query = Users.objects.filter(lifecycle_id=self.instance.lifecycle_id,
+                                                 version=self.instance.version).get()
+                    raw_roles = query.roles.split(',')
+                    for role in raw_roles:
+                        try:
+                            Roles.objects.get_by_natural_key_productive(role)
+                        except Roles.DoesNotExist:
+                            raise serializers.ValidationError('Role "{}" not in status productive.'.format(role))
+
+            @require_STATUS_CHANGE
             @require_productive
             def validate_productive(self):
                 if self.context['status'] not in ['blocked', 'inactive', 'archived']:
