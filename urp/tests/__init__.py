@@ -64,6 +64,7 @@ class Prerequisites(object):
                                  .format(response.status_code))
 
     def role_superuser(self):
+        call_command('initialize-settings')
         call_command('initialize-status')
         call_command('collect-permissions')
         role = 'all'
@@ -335,6 +336,8 @@ class GetOneNoStatus(APITestCase):
         self.serializer = None
         self.ok_object_data = None
         self.ok_object_data_unique = str()
+        self.data_available = False
+        self.test_data = str()
 
         # flag for execution
         self.execute = False
@@ -344,12 +347,16 @@ class GetOneNoStatus(APITestCase):
             self.client = Client()
             self.prerequisites.role_superuser()
             self.prerequisites.role_no_permissions()
-            # create ok object
-            self.ok_object = self.prerequisites.create_record(self.client, self.ok_object_data)
-            # create ok path
-            self.ok_path = '{}/{}'.format(self.base_path, self.ok_object[self.ok_object_data_unique])
+            if not self.data_available:
+                # create ok object
+                self.ok_object = self.prerequisites.create_record(self.client, self.ok_object_data)
+                # create ok path
+                self.ok_path = '{}/{}'.format(self.base_path, self.ok_object[self.ok_object_data_unique])
+                self.query = {self.ok_object_data_unique: self.ok_object[self.ok_object_data_unique]}
+            else:
+                self.ok_path = '{}/{}'.format(self.base_path, self.test_data)
+                self.query = {self.ok_object_data_unique: self.test_data}
             self.false_path = '{}/{}'.format(self.base_path, 'sadasuidhasdas')
-            self.query = {self.ok_object_data_unique: self.ok_object[self.ok_object_data_unique]}
 
     def test_401(self):
         if self.execute:
@@ -1221,6 +1228,8 @@ class PatchOneNoStatus(APITestCase):
         self.prerequisites = None
         self.valid_payload = None
         self.invalid_payload = None
+        self.data_available = False
+        self.test_data = str()
 
         # flag for execution
         self.execute = False
@@ -1231,12 +1240,16 @@ class PatchOneNoStatus(APITestCase):
             self.prerequisites.role_superuser()
             self.prerequisites.role_superuser_two()
             self.prerequisites.role_no_write_permissions()
-            # create ok object in status draft
-            self.ok_object = self.prerequisites.create_record(self.client, self.ok_object_data)
-            # create ok path
-            self.ok_path = '{}/{}'.format(self.base_path, self.ok_object[self.ok_object_data_unique])
+            if not self.data_available:
+                # create ok object in status draft
+                self.ok_object = self.prerequisites.create_record(self.client, self.ok_object_data)
+                # create ok path
+                self.ok_path = '{}/{}'.format(self.base_path, self.ok_object[self.ok_object_data_unique])
+                self.query = {self.ok_object_data_unique: self.ok_object[self.ok_object_data_unique]}
+            else:
+                self.ok_path = '{}/{}'.format(self.base_path, self.test_data)
+                self.query = {self.ok_object_data_unique: self.test_data}
             self.false_path = '{}/{}'.format(self.base_path, 'sadasuidhasdas')
-            self.query = {self.ok_object_data_unique: self.ok_object[self.ok_object_data_unique]}
 
     def test_401(self):
         if self.execute:

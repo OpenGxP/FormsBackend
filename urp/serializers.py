@@ -22,7 +22,7 @@ from rest_framework import serializers
 # custom imports
 from .models import Status, Permissions, Users, Roles, AccessLog, PermissionsLog, RolesLog, UsersLog, LDAP, LDAPLog
 from basics.custom import generate_checksum, generate_to_hash, encrypt
-from basics.models import AVAILABLE_STATUS, StatusLog, CentralLog
+from basics.models import AVAILABLE_STATUS, StatusLog, CentralLog, Settings, SettingsLog
 from .decorators import require_STATUS_CHANGE, require_POST, require_DELETE, require_PATCH, require_NONE, \
     require_NEW_VERSION, require_status, require_LDAP, require_USERS, require_NEW
 from .custom import create_log_record, create_central_log_record
@@ -396,6 +396,33 @@ class LDAPDeleteSerializer(GlobalReadWriteSerializer):
     class Meta:
         model = LDAP
         fields = ()
+
+
+############
+# SETTINGS #
+############
+
+# read/edit
+class SettingsReadWriteSerializer(GlobalReadWriteSerializer):
+    class Meta:
+        model = Settings
+        exclude = ('id', 'checksum',)
+        extra_kwargs = {'default': {'read_only': True},
+                        'key': {'read_only': True}}
+
+
+# initial write
+class SettingsInitialWriteSerializer(GlobalReadWriteSerializer):
+    class Meta:
+        model = Settings
+        exclude = ('id', 'checksum',)
+
+
+# read
+class SettingsLogReadSerializer(GlobalReadWriteSerializer):
+    class Meta:
+        model = SettingsLog
+        exclude = ('id', 'checksum', )
 
 
 ##############

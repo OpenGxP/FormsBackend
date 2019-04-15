@@ -336,3 +336,96 @@ class CentralLog(GlobalModel):
     perms = {
         '01': 'read',
     }
+
+
+############
+# SETTINGS #
+############
+
+# log manager
+class SettingsLogManager(GlobalManager):
+    # flags
+    HAS_VERSION = False
+    HAS_STATUS = False
+
+    # meta
+    GET_MODEL_ORDER = {'key': 0,
+                       'default': 1,
+                       'value': 2}
+
+
+# log table
+class SettingsLog(GlobalModel):
+    # custom fields
+    key = models.CharField(_('Key'), max_length=CHAR_DEFAULT)
+    default = models.CharField(_('Default'), max_length=CHAR_DEFAULT)
+    value = models.CharField(_('Value'), max_length=CHAR_DEFAULT)
+    # log specific fields
+    user = models.CharField(_('User'), max_length=CHAR_DEFAULT)
+    timestamp = models.DateTimeField(_('Timestamp'))
+    action = models.CharField(_('Action'), max_length=CHAR_DEFAULT)
+
+    # manager
+    objects = SettingsLogManager()
+
+    # integrity check
+    def verify_checksum(self):
+        to_hash_payload = 'key:{};default:{};value:{};user:{};timestamp:{};action:{};' \
+            .format(self.key, self.default, self.value, self.user, self.timestamp, self.action)
+        return self._verify_checksum(to_hash_payload=to_hash_payload)
+
+    valid_from = None
+    valid_to = None
+    lifecycle_id = None
+
+    # hashing
+    HASH_SEQUENCE = ['key', 'default', 'value'] + LOG_HASH_SEQUENCE
+
+    # permissions
+    MODEL_ID = '14'
+    perms = {
+            '01': 'read',
+        }
+
+
+# manager
+class SettingsManager(GlobalManager):
+    # flags
+    HAS_VERSION = False
+    HAS_STATUS = False
+    LOG_TABLE = SettingsLog
+
+    # meta
+    GET_MODEL_ORDER = SettingsLogManager.GET_MODEL_ORDER
+    POST_MODEL_EXCLUDE = ('key', 'default')
+
+
+# table
+class Settings(GlobalModel):
+    # custom fields
+    key = models.CharField(_('Key'), max_length=CHAR_DEFAULT, unique=True)
+    default = models.CharField(_('Default'), max_length=CHAR_DEFAULT)
+    value = models.CharField(_('Value'), max_length=CHAR_DEFAULT)
+
+    # manager
+    objects = SettingsManager()
+
+    # integrity check
+    def verify_checksum(self):
+        to_hash_payload = 'key:{};default:{};value:{};'.format(self.key, self.default, self.value)
+        return self._verify_checksum(to_hash_payload=to_hash_payload)
+
+    valid_from = None
+    valid_to = None
+    lifecycle_id = None
+
+    # hashing
+    HASH_SEQUENCE = ['key', 'default', 'value']
+
+    # permissions
+    MODEL_ID = '13'
+    MODEL_CONTEXT = 'Settings'
+    perms = {
+        '01': 'read',
+        '03': 'edit',
+    }

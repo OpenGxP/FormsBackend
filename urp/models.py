@@ -392,10 +392,10 @@ class LDAPLog(GlobalModel):
     bindDN = models.CharField(_('BindDN'), max_length=CHAR_DEFAULT)
     base = models.CharField(_('Base'), max_length=CHAR_DEFAULT)
     filter = models.CharField(_('Filter'), max_length=CHAR_DEFAULT)
-    attr_username = models.CharField(_('Attr_username'), max_length=CHAR_DEFAULT)
-    attr_email = models.CharField(_('Attr_email'), max_length=CHAR_DEFAULT, blank=True)
-    attr_surname = models.CharField(_('Attr_surname'), max_length=CHAR_DEFAULT, blank=True)
-    attr_forename = models.CharField(_('Attr_forename'), max_length=CHAR_DEFAULT, blank=True)
+    attr_username = models.CharField(_('Attr Username'), max_length=CHAR_DEFAULT)
+    attr_email = models.CharField(_('Attr Email'), max_length=CHAR_DEFAULT, blank=True)
+    attr_surname = models.CharField(_('Attr Surname'), max_length=CHAR_DEFAULT, blank=True)
+    attr_forename = models.CharField(_('Attr Forename'), max_length=CHAR_DEFAULT, blank=True)
     priority = models.IntegerField(_('Priority'), validators=[validate_only_positive_numbers])
     # log specific fields
     user = models.CharField(_('User'), max_length=CHAR_DEFAULT)
@@ -529,18 +529,18 @@ class LDAP(GlobalModel):
         _('Filter'),
         max_length=CHAR_DEFAULT)
     attr_username = models.CharField(
-        _('Attr_username'),
+        _('Attr Username'),
         max_length=CHAR_DEFAULT)
     attr_email = models.CharField(
-        _('Attr_email'),
+        _('Attr Email'),
         max_length=CHAR_DEFAULT,
         blank=True)
     attr_surname = models.CharField(
-        _('Attr_surname'),
+        _('Attr Surname'),
         max_length=CHAR_DEFAULT,
         blank=True)
     attr_forename = models.CharField(
-        _('Attr_forename'),
+        _('Attr Forename'),
         max_length=CHAR_DEFAULT,
         blank=True)
     priority = models.IntegerField(

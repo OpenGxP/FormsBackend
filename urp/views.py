@@ -30,9 +30,10 @@ from .serializers import StatusReadWriteSerializer, PermissionsReadWriteSerializ
     UsersWriteSerializer, UsersNewVersionSerializer, UsersDeleteStatusSerializer, \
     AccessLogReadWriteSerializer, CentralLogReadWriteSerializer, StatusLogReadSerializer, \
     PermissionsLogReadSerializer, RolesLogReadSerializer, UsersLogReadSerializer, AUDIT_TRAIL_SERIALIZERS, \
-    LDAPLogReadSerializer, LDAPReadWriteSerializer, LDAPDeleteSerializer
+    LDAPLogReadSerializer, LDAPReadWriteSerializer, LDAPDeleteSerializer, SettingsLogReadSerializer, \
+    SettingsReadWriteSerializer
 from .decorators import perm_required, auth_required
-from basics.models import StatusLog, CentralLog
+from basics.models import StatusLog, CentralLog, SettingsLog, Settings
 from basics.custom import get_model_by_string
 from .backends import write_access_log
 
@@ -60,7 +61,8 @@ def api_root(request):
                                             'permissions': {'url': reverse('permissions-list', request=request)},
                                             'roles': {'url': reverse('roles-list', request=request)},
                                             'ldap': {'url': reverse('ldap-list', request=request)},
-                                            'users': {'url': reverse('users-list', request=request)}}},
+                                            'users': {'url': reverse('users-list', request=request)},
+                                            'settings': {'url': reverse('settings-list', request=request)}}},
             'logs': {'root': '/logs/',
                      'subjects': {'central': {'url': reverse('central-log-list', request=request)},
                                   'access': {'url': reverse('access-log-list', request=request)},
@@ -68,7 +70,8 @@ def api_root(request):
                                   'permissions': {'url': reverse('permissions-log-list', request=request)},
                                   'roles': {'url': reverse('roles-log-list', request=request)},
                                   'ldap': {'url': reverse('ldap-log-list', request=request)},
-                                  'users': {'url': reverse('users-log-list', request=request)}}}}
+                                  'users': {'url': reverse('users-log-list', request=request)},
+                                  'settings': {'url': reverse('settings-log-list', request=request)}}}}
 
     return Response(root)
 
@@ -195,6 +198,76 @@ def permissions_log_list(request):
     logs = PermissionsLog.objects.all()
     serializer = PermissionsLogReadSerializer(logs, many=True)
     return Response(serializer.data)
+
+
+###############
+# SETTINGSLOG #
+###############
+
+# GET list
+@api_view(['GET'])
+@auth_required()
+@perm_required('{}.01'.format(SettingsLog.MODEL_ID))
+def settings_log_list(request):
+    """
+    List all settings log records.
+    """
+    logs = SettingsLog.objects.all()
+    serializer = SettingsLogReadSerializer(logs, many=True)
+    return Response(serializer.data)
+
+
+############
+# SETTINGS #
+############
+
+# GET list
+@api_view(['GET'])
+@auth_required()
+@ensure_csrf_cookie
+@perm_required('{}.01'.format(Settings.MODEL_ID))
+def settings_list(request):
+    """
+    List all settings records.
+    """
+    query = Settings.objects.all()
+    serializer = SettingsReadWriteSerializer(query, many=True)
+    return Response(serializer.data)
+
+
+# GET detail
+@api_view(['GET', 'PATCH'])
+@auth_required()
+def settings_detail(request, key):
+    @perm_required('{}.03'.format(Settings.MODEL_ID))
+    @csrf_protect
+    def patch(_request):
+        _serializer = SettingsReadWriteSerializer(query, data=_request.data, context={'method': 'PATCH',
+                                                                                      'function': '',
+                                                                                      'user': request.user.username})
+        if _serializer.is_valid():
+            _serializer.save()
+            return Response(_serializer.data)
+        return Response(_serializer.errors, status=http_status.HTTP_400_BAD_REQUEST)
+
+    @perm_required('{}.01'.format(Settings.MODEL_ID))
+    @ensure_csrf_cookie
+    def get(_request):
+        serializer = SettingsReadWriteSerializer(query)
+        return Response(serializer.data)
+
+    try:
+        query = Settings.objects.get(key=key)
+    except Settings.DoesNotExist:
+        return Response(status=http_status.HTTP_404_NOT_FOUND)
+    except ValidationError:
+        return Response(status=http_status.HTTP_400_BAD_REQUEST)
+
+    if request.method == 'GET':
+        return get(request)
+
+    elif request.method == 'PATCH':
+        return patch(request)
 
 
 ###########
@@ -406,7 +479,7 @@ def meta_list(request, dialog):
                                    'order': order[f.name]}
 
         # add post information
-        if dialog in ['users', 'roles', 'ldap']:
+        if dialog in ['users', 'roles', 'ldap', 'settings']:
             exclude = model.objects.POST_BASE_EXCLUDE + model.objects.POST_MODEL_EXCLUDE
             fields = [i for i in model._meta.get_fields() if i.name not in exclude]
             for f in fields:

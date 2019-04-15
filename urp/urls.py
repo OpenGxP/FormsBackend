@@ -24,7 +24,8 @@ from django.urls import path
 from .views import permissions_list, roles_list, roles_detail, status_list, \
     roles_status, users_list, users_detail, api_root, users_status, access_log_list, central_log_list, \
     permissions_log_list, users_log_list, roles_log_list, audit_trail_list, status_log_list, \
-    ldap_list, ldap_detail, ldap_log_list, login_view, logout_view, meta_list, get_csrf_token
+    ldap_list, ldap_detail, ldap_log_list, login_view, logout_view, meta_list, get_csrf_token, settings_list, \
+    settings_detail, settings_log_list
 
 
 urlpatterns = [
@@ -44,9 +45,13 @@ urlpatterns = [
     path('logs/roles', roles_log_list, name='roles-log-list'),
     path('logs/users', users_log_list, name='users-log-list'),
     path('logs/ldap', ldap_log_list, name='ldap-log-list'),
+    path('logs/settings', settings_log_list, name='settings-log-list'),
     # ldap
     path('admin/ldap', ldap_list, name='ldap-list'),
     path('admin/ldap/<str:host>', ldap_detail, name='ldap-detail'),
+    # settings
+    path('admin/settings', settings_list, name='settings-list'),
+    path('admin/settings/<str:key>', settings_detail, name='settings-detail'),
     # roles
     path('admin/roles', roles_list, name='roles-list'),
     path('admin/roles/<str:lifecycle_id>/<int:version>', roles_detail),

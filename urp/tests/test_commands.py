@@ -23,6 +23,7 @@ from io import StringIO
 # django imports
 from django.core.management import call_command
 from django.test import TestCase
+from django.conf import settings
 
 
 class InitializeStatus(TestCase):
@@ -35,6 +36,15 @@ class InitializeStatus(TestCase):
         self.assertIn('Successfully added status "blocked".', out.getvalue())
         self.assertIn('Successfully added status "inactive".', out.getvalue())
         self.assertIn('Successfully added status "archived".', out.getvalue())
+
+
+class InitializeSettings(TestCase):
+    def test_OK(self):
+        out = StringIO()
+        call_command('initialize-settings', stdout=out)
+        for key, value in settings.INITIALIZE_SETTINGS.items():
+            self.assertIn('Successfully added setting key: "{}", value: "{}".'
+                          .format(key, value), out.getvalue())
 
 
 class CollectPermissionsTest(TestCase):

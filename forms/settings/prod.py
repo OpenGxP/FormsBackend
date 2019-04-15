@@ -52,6 +52,7 @@ DEFAULT_LOG_STATUS = 'status'
 DEFAULT_LOG_ATTEMPT = 'attempt'
 DEFAULT_LOG_LOGIN = 'login'
 DEFAULT_LOG_LOGOUT = 'logout'
+DEFAULT_FRONT_TIMESTAMP = '%d-%b-%Y %H:%M:%S UTC%z'
 
 #########
 # PATHS #
@@ -265,6 +266,14 @@ CORS_ORIGIN_WHITELIST = (
     os.environ.get('CORS_ORIGIN_WHITELIST', '')
 )
 
+###################
+# CUSTOM SETTINGS #
+###################
+
+INITIALIZE_SETTINGS = {'auth.max_login_attempts': MAX_LOGIN_ATTEMPTS,
+                       'core.system.username': DEFAULT_SYSTEM_USER,
+                       'core.devalue': DEFAULT_SYSTEM_DEVALUE,
+                       'core.timestamp_format': DEFAULT_FRONT_TIMESTAMP}
 
 ###########
 # LOGGING #
