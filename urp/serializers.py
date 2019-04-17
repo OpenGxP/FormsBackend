@@ -21,10 +21,10 @@ from rest_framework import serializers
 
 # custom imports
 from .models import Status, Permissions, Users, Roles, AccessLog, PermissionsLog, RolesLog, UsersLog, LDAP, LDAPLog
-from basics.custom import generate_checksum, generate_to_hash, encrypt
+from basics.custom import generate_checksum, generate_to_hash, encrypt, value_to_int
 from basics.models import AVAILABLE_STATUS, StatusLog, CentralLog, Settings, SettingsLog
 from .decorators import require_STATUS_CHANGE, require_POST, require_DELETE, require_PATCH, require_NONE, \
-    require_NEW_VERSION, require_status, require_LDAP, require_USERS, require_NEW
+    require_NEW_VERSION, require_status, require_LDAP, require_USERS, require_NEW, require_SETTINGS
 from .custom import create_log_record, create_central_log_record
 from .ldap import server_check
 
@@ -296,6 +296,21 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                     # in case a password was passed, set to none
                     data['password'] = ''
                     LDAP.objects.search(data)
+
+            @require_NONE
+            @require_SETTINGS
+            def validate_settings(self):
+                # validate maximum login attempts
+                if self.instance.key == 'auth.max_login_attempts':
+                    try:
+                        # try to convert to integer
+                        data['value'] = value_to_int(data['value'])
+                        # verify that integer is positive
+                        if data['value'] < 1:
+                            raise ValueError
+                    except ValueError:
+                        raise serializers.ValidationError('Setting "auth.max_login_attempts" '
+                                                          'must be a positive integer.')
 
         @require_POST
         class Post(Validate):

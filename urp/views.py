@@ -119,10 +119,10 @@ def logout_view(request):
         'user': request.user.username,
         'timestamp': timezone.now(),
         'mode': 'manual',
-        'method': settings.DEFAULT_SYSTEM_DEVALUE,
+        'method': Settings.objects.core_devalue,
         'action': settings.DEFAULT_LOG_LOGOUT,
-        'attempt': settings.DEFAULT_SYSTEM_DEVALUE,
-        'active': settings.DEFAULT_SYSTEM_DEVALUE
+        'attempt': Settings.objects.core_devalue,
+        'active': Settings.objects.core_devalue
     }
     logout(request)
     if request.user.is_anonymous:

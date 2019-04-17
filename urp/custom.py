@@ -21,8 +21,7 @@ from django.utils import timezone
 from django.core.exceptions import ValidationError
 
 # app imports
-from django.conf import settings
-from basics.models import CentralLog
+from basics.models import CentralLog, Settings
 from basics.custom import generate_checksum, generate_to_hash
 
 
@@ -54,7 +53,7 @@ def create_log_record(model, context, obj, validated_data, action, now=None):
     log_obj = model.objects.LOG_TABLE()
     # add log related data
     if context['function'] == 'init':
-        validated_data['user'] = settings.DEFAULT_SYSTEM_USER
+        validated_data['user'] = Settings.objects.core_system_username
     else:
         validated_data['user'] = context['user']
     validated_data['timestamp'] = now

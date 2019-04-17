@@ -30,6 +30,7 @@ from django.utils.translation import ugettext_lazy as _
 # custom imports
 from .models import AccessLog, LDAP
 from .serializers import AccessLogReadWriteSerializer, UsersDeleteStatusSerializer
+from basics.models import Settings
 
 
 UserModel = get_user_model()
@@ -47,7 +48,7 @@ def block_user(user):
     _serializer = UsersDeleteStatusSerializer(user, data={}, context={'method': 'PATCH',
                                                                       'function': 'status_change',
                                                                       'status': 'blocked',
-                                                                      'user': settings.DEFAULT_SYSTEM_USER})
+                                                                      'user': Settings.objects.core_system_username})
     if _serializer.is_valid():
         _serializer.save()
 
@@ -76,7 +77,7 @@ class MyModelBackend(ModelBackend):
             'user': username,
             'timestamp': timezone.now(),
             'mode': 'manual',
-            'method': settings.DEFAULT_SYSTEM_DEVALUE
+            'method': Settings.objects.core_devalue
         }
 
         if username is None:
@@ -119,7 +120,7 @@ class MyModelBackend(ModelBackend):
                                 data['attempt'] = _attempt
                             # create log record
                             data['action'] = settings.DEFAULT_LOG_LOGIN
-                            data['active'] = settings.DEFAULT_SYSTEM_DEVALUE
+                            data['active'] = Settings.objects.core_devalue
                             data['method'] = 'local'
                             write_access_log(data)
                             return user
@@ -137,7 +138,7 @@ class MyModelBackend(ModelBackend):
                             data['action'] = settings.DEFAULT_LOG_ATTEMPT
                             data['active'] = 'yes'
                             data['method'] = 'local'
-                            if data['attempt'] >= settings.MAX_LOGIN_ATTEMPTS:
+                            if data['attempt'] >= Settings.objects.auth_maxloginattempts:
                                 block_user(user)
                             write_access_log(data)
                     else:
@@ -153,7 +154,7 @@ class MyModelBackend(ModelBackend):
                                 data['attempt'] = _attempt
                             # create log record
                             data['action'] = settings.DEFAULT_LOG_LOGIN
-                            data['active'] = settings.DEFAULT_SYSTEM_DEVALUE
+                            data['active'] = Settings.objects.core_devalue
                             data['method'] = 'ldap'
                             write_access_log(data)
                             return user
@@ -170,7 +171,7 @@ class MyModelBackend(ModelBackend):
                             data['action'] = settings.DEFAULT_LOG_ATTEMPT
                             data['active'] = 'yes'
                             data['method'] = 'local'
-                            if data['attempt'] >= settings.MAX_LOGIN_ATTEMPTS:
+                            if data['attempt'] >= Settings.objects.auth_maxloginattempts:
                                 block_user(user)
                             write_access_log(data)
                     raise serializers.ValidationError(ERROR_TEXT_AUTH)

@@ -26,6 +26,7 @@ from rest_framework import status
 
 # app imports
 from .models import Roles, LDAP, Users
+from basics.models import Settings
 
 
 def auth_required():
@@ -101,6 +102,7 @@ def require_model(model):
 require_ROLES = require_model(Roles)
 require_LDAP = require_model(LDAP)
 require_USERS = require_model(Users)
+require_SETTINGS = require_model(Settings)
 
 
 def require_status(_status):

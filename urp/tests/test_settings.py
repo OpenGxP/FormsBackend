@@ -84,7 +84,8 @@ class SettingsMiscellaneous(APITestCase):
         super(SettingsMiscellaneous, self).__init__(*args, **kwargs)
         self.base_path = BASE_PATH
         self.prerequisites = Prerequisites(base_path=self.base_path)
-        self.test_data = 'core.system_username'
+        self.test_data_username = 'core.system_username'
+        self.test_data_attempts = 'auth.max_login_attempts'
 
     def setUp(self):
         self.client = Client(enforce_csrf_checks=True)
@@ -99,7 +100,7 @@ class SettingsMiscellaneous(APITestCase):
         # get csrf
         csrf_token = self.prerequisites.get_csrf(self.client)
         # get API response
-        path = '{}/{}'.format(self.base_path, self.test_data)
+        path = '{}/{}'.format(self.base_path, self.test_data_username)
         response = self.client.delete(path, content_type='application/json',
                                       HTTP_X_CSRFTOKEN=csrf_token)
         self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
@@ -121,3 +122,35 @@ class SettingsMiscellaneous(APITestCase):
         response = self.client.post(self.base_path, data=data, content_type='application/json',
                                     HTTP_X_CSRFTOKEN=csrf_token)
         self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def test_400_max_attempts(self):
+        """
+        Test shall show that is not possible to edit max login attempts to anything other than positive integers.
+        """
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get API response
+        path = '{}/{}'.format(self.base_path, self.test_data_attempts)
+        data = {'value': 'test'}
+        response = self.client.patch(path, data=data, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        data = {'value': '0'}
+        response = self.client.patch(path, data=data, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_200_max_attempts(self):
+        """
+                Test shall show that is not possible to edit max login attempts to anything other than positive integers.
+                """
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get API response
+        path = '{}/{}'.format(self.base_path, self.test_data_attempts)
+        data = {'value': '10'}
+        response = self.client.patch(path, data=data, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)

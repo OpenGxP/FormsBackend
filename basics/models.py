@@ -399,6 +399,27 @@ class SettingsManager(GlobalManager):
     GET_MODEL_ORDER = SettingsLogManager.GET_MODEL_ORDER
     POST_MODEL_EXCLUDE = ('key', 'default')
 
+    @property
+    def auth_maxloginattempts(self):
+        try:
+            return int(self.filter(key='auth.max_login_attempts').get().value)
+        except self.model.DoesNotExist:
+            return settings.MAX_LOGIN_ATTEMPTS
+
+    @property
+    def core_devalue(self):
+        try:
+            return self.filter(key='core.devalue').get().value
+        except self.model.DoesNotExist:
+            return settings.DEFAULT_SYSTEM_DEVALUE
+
+    @property
+    def core_system_username(self):
+        try:
+            return self.filter(key='core.system_username').get().value
+        except self.model.DoesNotExist:
+            return settings.DEFAULT_SYSTEM_USER
+
 
 # table
 class Settings(GlobalModel):
