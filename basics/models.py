@@ -420,6 +420,13 @@ class SettingsManager(GlobalManager):
         except self.model.DoesNotExist:
             return settings.DEFAULT_SYSTEM_USER
 
+    @property
+    def core_timestamp_format(self):
+        try:
+            return self.filter(key='core.timestamp_format').get().value
+        except self.model.DoesNotExist:
+            return settings.DEFAULT_FRONT_TIMESTAMP
+
 
 # table
 class Settings(GlobalModel):

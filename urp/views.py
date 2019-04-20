@@ -467,16 +467,23 @@ def meta_list(request, dialog):
         data['get']['valid'] = {'verbose_name': 'Valid',
                                 'data_type': 'CharField',
                                 'render': False,
-                                'order': 99999}
+                                'order': 99999,
+                                'format': None}
         for f in fields:
             if f.name in not_render:
                 render = False
             else:
                 render = True
+            # add format for timestamp
+            if f.name in ['timtestamp', 'valid_from', 'valid_to']:
+                _format = Settings.objects.core_timestamp_format
+            else:
+                _format = None
             data['get'][f.name] = {'verbose_name': f.verbose_name,
                                    'data_type': f.get_internal_type(),
                                    'render': render,
-                                   'order': order[f.name]}
+                                   'order': order[f.name],
+                                   'format': _format}
 
         # add post information
         if dialog in ['users', 'roles', 'ldap', 'settings']:
