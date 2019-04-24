@@ -107,12 +107,12 @@ class PostNewVersionUser(PostNewVersion):
                                'roles': 'all',
                                'valid_from': timezone.now(),
                                'ldap': False}
-        self.fail_object_draft_data = {'username': 'testtest',
+        self.fail_object_draft_data = {'username': 'testtestzwei',
                                        'password': 'test12345test',
                                        'roles': 'all',
                                        'valid_from': timezone.now(),
                                        'ldap': False}
-        self.fail_object_circulation_data = {'username': 'testtest',
+        self.fail_object_circulation_data = {'username': 'testtestdrei',
                                              'password': 'test12345test',
                                              'roles': 'all',
                                              'valid_from': timezone.now(),
@@ -159,6 +159,11 @@ class PatchOneUser(PatchOne):
                                 'roles': 'all',
                                 'valid_from': timezone.now(),
                                 'ldap': False}
+        self.unique_invalid_payload = self.ok_object_data = {'username': 'anders',
+                                                             'password': 'test12345test',
+                                                             'roles': 'all',
+                                                             'valid_from': timezone.now(),
+                                                             'ldap': False}
         self.execute = True
 
 

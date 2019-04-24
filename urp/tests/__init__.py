@@ -483,6 +483,18 @@ class PostNew(APITestCase):
             self.assertEqual(log_records(model=self.model, data=response.data, action=settings.DEFAULT_LOG_CREATE,
                                          _status=self.status), True)
 
+    def test_400_second(self):
+        if self.execute:
+            self.test_201()
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            # get API response
+            response = self.client.post(self.ok_path, data=self.valid_payload, content_type='application/json',
+                                        HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
 
 # post
 class PostNewVersion(APITestCase):
@@ -1000,6 +1012,7 @@ class PatchOne(APITestCase):
         self.prerequisites = None
         self.valid_payload = None
         self.invalid_payload = None
+        self.unique_invalid_payload = None
 
         # flag for execution
         self.execute = False
@@ -1213,6 +1226,38 @@ class PatchOne(APITestCase):
             # verify log record
             self.assertEqual(log_records(model=self.model, data=response.data, action=settings.DEFAULT_LOG_UPDATE),
                              True)
+
+    def test_400_change_unique(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+
+            # start circulation
+            path = '{}/{}'.format(self.ok_path, 'circulation')
+            response_circ = self.client.patch(path, data=self.valid_payload, content_type='application/json',
+                                              HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response_circ.status_code, status.HTTP_200_OK)
+
+            # push to productive
+            # auth with second user to avoid SoD
+            self.prerequisites.auth_two(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            path = '{}/{}'.format(self.ok_path, 'productive')
+            response_prod = self.client.patch(path, data=self.valid_payload, content_type='application/json',
+                                              HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response_prod.status_code, status.HTTP_200_OK)
+
+            # create new version
+            response = self.client.post(self.ok_path, content_type='application/json',
+                                        HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+            # try to change unique data
+            response = self.client.patch(self.ok_path, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token,
+                                         data=self.unique_invalid_payload)
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
 
 class PatchOneNoStatus(APITestCase):

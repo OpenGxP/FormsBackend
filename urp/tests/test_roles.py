@@ -128,6 +128,7 @@ class PatchOneRole(PatchOne):
         self.invalid_payload = {
             'role': ''
         }
+        self.unique_invalid_payload = self.ok_object_data = {'role': 'anders'}
         self.execute = True
 
 
@@ -202,12 +203,10 @@ class RolesMiscellaneous(APITestCase):
         self.assertEqual(response_first.data['version'], 1)
         self.assertEqual(response_first.data['status'], 'draft')
 
-        # create second record in status draft and version 1
+        # try to create second record in status draft and version 1
         response_second = self.client.post(path, data=self.valid_payload, content_type='application/json',
                                            HTTP_X_CSRFTOKEN=csrf_token)
-        self.assertEqual(response_second.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response_second.data['version'], 1)
-        self.assertEqual(response_second.data['status'], 'draft')
+        self.assertEqual(response_second.status_code, status.HTTP_400_BAD_REQUEST)
 
         # start circulation of first record
         _status = 'circulation'
@@ -219,16 +218,6 @@ class RolesMiscellaneous(APITestCase):
         self.assertEqual(response_first_circ.status_code, status.HTTP_200_OK)
         self.assertEqual(response_first_circ.data, serializer.data)
         self.assertEqual(response_first_circ.data['status'], _status)
-
-        # try start circulation of second record
-        _status = 'circulation'
-        path = '{}/{}/{}/{}'.format(self.base_path, response_second.data['lifecycle_id'], 1, _status)
-        response_second_circ = self.client.patch(path, data=self.valid_payload, content_type='application/json',
-                                                 HTTP_X_CSRFTOKEN=csrf_token)
-        query = Roles.objects.filter(lifecycle_id=response_second.data['lifecycle_id'], version=1).get()
-        serializer = RolesReadSerializer(query)
-        self.assertEqual(response_second_circ.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(serializer.data['status'], 'draft')
 
         # push first record to productive
         # auth with second user to avoid SoD
@@ -245,16 +234,6 @@ class RolesMiscellaneous(APITestCase):
         self.assertEqual(response_first_prod.data, serializer.data)
         self.assertEqual(response_first_prod.data['status'], _status)
 
-        # try again to start circulation of second record
-        _status = 'circulation'
-        path = '{}/{}/{}/{}'.format(self.base_path, response_second.data['lifecycle_id'], 1, _status)
-        response_second_circ = self.client.patch(path, data=self.valid_payload, content_type='application/json',
-                                                 HTTP_X_CSRFTOKEN=csrf_token)
-        query = Roles.objects.filter(lifecycle_id=response_second.data['lifecycle_id'], version=1).get()
-        serializer = RolesReadSerializer(query)
-        self.assertEqual(response_second_circ.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(serializer.data['status'], 'draft')
-
         # create new version of first record
         path = '{}/{}/{}'.format(self.base_path, response_first.data['lifecycle_id'], 1)
         response_first_two = self.client.post(path, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
@@ -262,16 +241,6 @@ class RolesMiscellaneous(APITestCase):
         self.assertEqual(response_first_two.data['version'], 2)
         self.assertEqual(response_first_two.data['lifecycle_id'], str(response_first.data['lifecycle_id']))
         self.assertEqual(response_first_two.data['status'], 'draft')
-
-        # try again to # try again to start circulation of second record
-        _status = 'circulation'
-        path = '{}/{}/{}/{}'.format(self.base_path, response_second.data['lifecycle_id'], 1, _status)
-        response_second_circ = self.client.patch(path, data=self.valid_payload, content_type='application/json',
-                                                 HTTP_X_CSRFTOKEN=csrf_token)
-        query = Roles.objects.filter(lifecycle_id=response_second.data['lifecycle_id'], version=1).get()
-        serializer = RolesReadSerializer(query)
-        self.assertEqual(response_second_circ.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(serializer.data['status'], 'draft')
 
         # start circulation of first record
         _status = 'circulation'
@@ -283,16 +252,6 @@ class RolesMiscellaneous(APITestCase):
         self.assertEqual(response_first_two_circ.status_code, status.HTTP_200_OK)
         self.assertEqual(response_first_two_circ.data, serializer.data)
         self.assertEqual(response_first_two_circ.data['status'], _status)
-
-        # try again to start circulation of second record
-        _status = 'circulation'
-        path = '{}/{}/{}/{}'.format(self.base_path, response_second.data['lifecycle_id'], 1, _status)
-        response_second_circ = self.client.patch(path, data=self.valid_payload, content_type='application/json',
-                                                 HTTP_X_CSRFTOKEN=csrf_token)
-        query = Roles.objects.filter(lifecycle_id=response_second.data['lifecycle_id'], version=1).get()
-        serializer = RolesReadSerializer(query)
-        self.assertEqual(response_second_circ.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(serializer.data['status'], 'draft')
 
     def test_version_one_updated_time(self):
         # authenticate

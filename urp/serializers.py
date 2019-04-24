@@ -284,6 +284,18 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                     if self.instance.status.id != Status.objects.draft:
                         raise serializers.ValidationError('Updates are only permitted in status draft.')
 
+                    # verify that record remains unique
+                    if self.instance.version > 1:
+                        if getattr(self.instance, self.model.UNIQUE) != data[self.model.UNIQUE]:
+                            raise serializers.ValidationError('Attribute "{}" is unique and can not be changed.'
+                                                              .format(self.model.UNIQUE))
+                    else:
+                        _filter = {self.model.UNIQUE: data[self.model.UNIQUE]}
+                        query = self.model.objects.filter(**_filter).exists()
+                        if query:
+                            raise serializers.ValidationError('Record(s) with attribute "{}" = "{}" already exist.'
+                                                              .format(self.model.UNIQUE, data[self.model.UNIQUE]))
+
             @require_NONE
             @require_LDAP
             def validate_server_check(self):
@@ -314,6 +326,15 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
 
         @require_POST
         class Post(Validate):
+            @require_NEW
+            def validate_unique(self):
+                if self.model.objects.HAS_STATUS:
+                    _filter = {self.model.UNIQUE: data[self.model.UNIQUE]}
+                    query = self.model.objects.filter(**_filter).exists()
+                    if query:
+                        raise serializers.ValidationError('Record(s) with attribute "{}" = "{}" already exist.'
+                                                          .format(self.model.UNIQUE, data[self.model.UNIQUE]))
+
             @require_NEW_VERSION
             def validate_only_draft_or_circulation(self):
                 if self.instance.status.id == Status.objects.draft or \
