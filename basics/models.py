@@ -38,6 +38,7 @@ from .custom import HASH_ALGORITHM
 # char lengths
 CHAR_DEFAULT = 100
 CHAR_MAX = 255
+CHAR_BIG = 1000
 
 # default fields
 FIELD_VERSION = models.IntegerField(_('Version'))

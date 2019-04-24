@@ -35,7 +35,8 @@ from .validators import validate_no_space, validate_no_specials, validate_no_spe
     validate_no_numbers, validate_only_ascii, validate_only_positive_numbers
 from .custom import create_log_record
 from basics.custom import generate_checksum, generate_to_hash, decrypt
-from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, CHAR_MAX, FIELD_VERSION, Status, LOG_HASH_SEQUENCE
+from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, CHAR_MAX, FIELD_VERSION, Status, \
+    LOG_HASH_SEQUENCE, CHAR_BIG
 from .ldap import init_server, connect, search
 
 
@@ -224,7 +225,7 @@ class RolesLog(GlobalModel):
     lifecycle_id = models.UUIDField()
     # custom fields
     role = models.CharField(_('Role'), max_length=CHAR_DEFAULT)
-    permissions = models.CharField(_('Permissions'), max_length=CHAR_MAX, blank=True)
+    permissions = models.CharField(_('Permissions'), max_length=CHAR_BIG, blank=True)
     # defaults
     status = models.ForeignKey(Status, on_delete=models.PROTECT)
     version = FIELD_VERSION
@@ -325,7 +326,7 @@ class Roles(GlobalModel):
     permissions = models.CharField(
         _('Permissions'),
         help_text='Provide comma separated permission keys.',
-        max_length=CHAR_MAX,
+        max_length=CHAR_BIG,
         blank=True)
     # defaults
     status = models.ForeignKey(Status, on_delete=models.PROTECT)

@@ -42,6 +42,7 @@ LDAP_SEARCH_SCOPE = SUBTREE
 # APP SETTINGS DEFAULT #
 ########################
 
+BASE_URL = 'api/'
 MAX_LOGIN_ATTEMPTS = 5
 DEFAULT_SYSTEM_USER = 'system'
 DEFAULT_SYSTEM_DEVALUE = '--'
@@ -86,7 +87,6 @@ POSTGRES_PASSWORD = require_file(path=SECURITY_DIR + '/credentials/', file_name=
 
 # Application definition
 INSTALLED_APPS = [
-    # 'django.contrib.admin',
     'basics.apps.BasicsConfig',
     'urp.apps.UrpConfig',
     'django.contrib.auth',
@@ -94,13 +94,11 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.staticfiles',
     'rest_framework',
-    'corsheaders'
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -191,8 +189,7 @@ SESSION_CACHE_ALIAS = "default"
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 SESSION_COOKIE_HTTPONLY = value_to_bool(os.environ.get('SESSION_COOKIE_HTTPONLY', 1))
 SESSION_COOKIE_SECURE = value_to_bool(os.environ.get('SESSION_COOKIE_SECURE', 0))
-# SESSION_COOKIE_DOMAIN
-SESSION_COOKIE_SAMESITE = None
+SESSION_COOKIE_SAMESITE = 'Strict'
 
 
 ############
@@ -237,7 +234,7 @@ SILENCED_SYSTEM_CHECKS = ['auth.W004']  # disable warning that username is not u
 CSRF_COOKIE_SECURE = value_to_bool(os.environ.get('CSRF_COOKIE_SECURE', 0))
 CSRF_USE_SESSIONS = value_to_bool(os.environ.get('CSRF_USE_SESSIONS', 0))
 # CSRF_COOKIE_DOMAIN
-CSRF_COOKIE_SAMESITE = None
+CSRF_COOKIE_SAMESITE = 'Strict'
 CSRF_TRUSTED_ORIGINS = ['{}'.format(os.environ.get('CSRF_TRUSTED_ORIGINS', ''))]
 
 # security
@@ -259,12 +256,6 @@ if os.environ.get('SECURE_PROXY_SSL_HEADER', 0):
 # security settings of type string
 X_FRAME_OPTIONS = os.environ.get('X_FRAME_OPTIONS', 'SAMEORIGIN')
 
-# cors
-CORS_ORIGIN_ALLOW_ALL = False
-CORS_ALLOW_CREDENTIALS = True
-CORS_ORIGIN_WHITELIST = (
-    os.environ.get('CORS_ORIGIN_WHITELIST', '')
-)
 
 ###################
 # CUSTOM SETTINGS #
