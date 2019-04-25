@@ -18,6 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # django imports
 from django.urls import reverse
+from django.conf import settings
 
 # app imports
 from ..models import LDAP
@@ -26,8 +27,12 @@ from ..serializers import LDAPReadWriteSerializer
 # test imports
 from . import Prerequisites, GetAll, PostNew, DeleteOneNoStatus, PatchOneNoStatus, GetOneNoStatus
 
+# basic imports
+from basics.custom import require_file
+
 
 BASE_PATH = reverse('ldap-list')
+LDAP_PASSWORD = require_file(path=settings.SECURITY_DIR + '/credentials/', file_name='LDAP_PASSWORD')
 
 
 #############
@@ -52,14 +57,17 @@ class GetOneNoStatusLdap(GetOneNoStatus):
         self.model = LDAP
         self.serializer = LDAPReadWriteSerializer
         self.execute = True
-        self.ok_object_data = {"host": "ldap.forumsys.com",
+        self.ok_object_data = {"host": "opengxp.com",
                                "port": 389,
                                "ssl_tls": False,
-                               "bindDN": "cn=read-only-admin,dc=example,dc=com",
-                               "password": "password",
-                               "base": "dc=example,dc=com",
-                               "filter": "(objectClass=person)",
+                               "bindDN": "cn=readonly,dc=opengxp,dc=com",
+                               "password": LDAP_PASSWORD,
+                               "base": "dc=opengxp,dc=com",
+                               "filter": "(objectClass=inetOrgPerson)",
                                "attr_username": "uid",
+                               "attr_email": "mail",
+                               "attr_surname": "sn",
+                               "attr_forename": "givenName",
                                "priority": 1}
         self.ok_object_data_unique = 'host'
 
@@ -71,32 +79,29 @@ class PostNewLdap(PostNew):
         self.base_path = BASE_PATH
         self.model = LDAP
         self.prerequisites = Prerequisites(base_path=self.base_path)
-        self.valid_payload = {"host": "ldap.forumsys.com",
+        self.valid_payload = {"host": "opengxp.com",
                               "port": 389,
                               "ssl_tls": False,
-                              "bindDN": "cn=read-only-admin,dc=example,dc=com",
-                              "password": "password",
-                              "base": "dc=example,dc=com",
-                              "filter": "(objectClass=person)",
+                              "bindDN": "cn=readonly,dc=opengxp,dc=com",
+                              "password": LDAP_PASSWORD,
+                              "base": "dc=opengxp,dc=com",
+                              "filter": "(objectClass=inetOrgPerson)",
                               "attr_username": "uid",
+                              "attr_email": "mail",
+                              "attr_surname": "sn",
+                              "attr_forename": "givenName",
                               "priority": 1}
         self.invalid_payloads = [dict(),
                                  {"port": 389,
                                   "ssl_tls": False,
-                                  "bindDN": "cn=read-only-admin,dc=example,dc=com",
-                                  "password": "password",
-                                  "base": "dc=example,dc=com",
-                                  "filter": "(objectClass=person)",
+                                  "bindDN": "cn=readonly,dc=opengxp,dc=com",
+                                  "password": LDAP_PASSWORD,
+                                  "base": "dc=opengxp,dc=com",
+                                  "filter": "(objectClass=inetOrgPerson)",
                                   "attr_username": "uid",
-                                  "priority": 1},
-                                 {"host": "ldap.forumsys.com",
-                                  "port": 'test',
-                                  "ssl_tls": False,
-                                  "bindDN": "cn=read-only-admin,dc=example,dc=com",
-                                  "password": "password",
-                                  "base": "dc=example,dc=com",
-                                  "filter": "(objectClass=person)",
-                                  "attr_username": "uid",
+                                  "attr_email": "mail",
+                                  "attr_surname": "sn",
+                                  "attr_forename": "givenName",
                                   "priority": 1}
                                  ]
         self.execute = True
@@ -111,14 +116,17 @@ class DeleteOneLdap(DeleteOneNoStatus):
         self.model = LDAP
         self.prerequisites = Prerequisites(base_path=self.base_path)
         self.serializer = LDAPReadWriteSerializer
-        self.ok_object_data = {"host": "ldap.forumsys.com",
+        self.ok_object_data = {"host": "opengxp.com",
                                "port": 389,
                                "ssl_tls": False,
-                               "bindDN": "cn=read-only-admin,dc=example,dc=com",
-                               "password": "password",
-                               "base": "dc=example,dc=com",
-                               "filter": "(objectClass=person)",
+                               "bindDN": "cn=readonly,dc=opengxp,dc=com",
+                               "password": LDAP_PASSWORD,
+                               "base": "dc=opengxp,dc=com",
+                               "filter": "(objectClass=inetOrgPerson)",
                                "attr_username": "uid",
+                               "attr_email": "mail",
+                               "attr_surname": "sn",
+                               "attr_forename": "givenName",
                                "priority": 1}
         self.ok_object_data_unique = 'host'
         self.execute = True
@@ -133,30 +141,39 @@ class PatchOneLdap(PatchOneNoStatus):
         self.prerequisites = Prerequisites(base_path=self.base_path)
         self.serializer = LDAPReadWriteSerializer
         self.ok_object_data_unique = 'host'
-        self.ok_object_data = {"host": "ldap.forumsys.com",
+        self.ok_object_data = {"host": "opengxp.com",
                                "port": 389,
                                "ssl_tls": False,
-                               "bindDN": "cn=read-only-admin,dc=example,dc=com",
-                               "password": "password",
-                               "base": "dc=example,dc=com",
-                               "filter": "(objectClass=person)",
+                               "bindDN": "cn=readonly,dc=opengxp,dc=com",
+                               "password": LDAP_PASSWORD,
+                               "base": "dc=opengxp,dc=com",
+                               "filter": "(objectClass=inetOrgPerson)",
                                "attr_username": "uid",
+                               "attr_email": "mail",
+                               "attr_surname": "sn",
+                               "attr_forename": "givenName",
                                "priority": 1}
-        self.valid_payload = {"host": "ldap.forumsys.com",
+        self.valid_payload = {"host": "opengxp.com",
                               "port": 389,
                               "ssl_tls": False,
-                              "bindDN": "cn=read-only-admin,dc=example,dc=com",
-                              "password": "password",
-                              "base": "dc=example,dc=com",
-                              "filter": "(objectClass=person)",
+                              "bindDN": "cn=readonly,dc=opengxp,dc=com",
+                              "password": LDAP_PASSWORD,
+                              "base": "dc=opengxp,dc=com",
+                              "filter": "(objectClass=inetOrgPerson)",
                               "attr_username": "uid",
+                              "attr_email": "mail",
+                              "attr_surname": "sn",
+                              "attr_forename": "givenName",
                               "priority": 2}
         self.invalid_payload = {"port": 389,
                                 "ssl_tls": False,
-                                "bindDN": "cn=read-only-admin,dc=example,dc=com",
-                                "password": "password",
-                                "base": "dc=example,dc=com",
-                                "filter": "(objectClass=person)",
+                                "bindDN": "cn=readonly,dc=opengxp,dc=com",
+                                "password": LDAP_PASSWORD,
+                                "base": "dc=opengxp,dc=com",
+                                "filter": "(objectClass=inetOrgPerson)",
                                 "attr_username": "uid",
+                                "attr_email": "mail",
+                                "attr_surname": "sn",
+                                "attr_forename": "givenName",
                                 "priority": 1}
         self.execute = True
