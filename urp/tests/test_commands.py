@@ -72,10 +72,9 @@ class CreateRole(TestCase):
         self.assertIn('Role "all" created successfully in status "draft".', out.getvalue())
         self.assertIn('Role "all" successfully changed to status "circulation".', out.getvalue())
         self.assertIn('Role "all" successfully changed to status "productive".', out.getvalue())
-        # second call to verify that not a second can be created in status productive
+        # FO-131: second call to verify that not a second can be created in status draft
         call_command('create-role', name='all', stdout=out, stderr=err)
-        self.assertIn('Role "all" created successfully in status "draft".', out.getvalue())
-        self.assertIn('Error: Role "all" does already exist in status "productive"', err.getvalue())
+        self.assertIn('Error: Role "all" already exists.', err.getvalue())
 
 
 class CreateSuperuser(TestCase):

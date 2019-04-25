@@ -81,40 +81,44 @@ class Command(BaseCommand):
         }
         serializer = RolesWriteSerializer(data=data, context={'method': 'POST', 'function': 'init'})
         if serializer.is_valid():
-            serializer.save()
-            self.stdout.write(self.style.SUCCESS('Role "{}" created successfully in status "draft".'.format(role)))
-
-            # change status to in circulation
-            role = Roles.objects.get(lifecycle_id=serializer.data['lifecycle_id'], version=version)
-            serializer_circulation = RolesDeleteStatusSerializer(role, data={},
-                                                                 context={'method': 'PATCH',
-                                                                          'function': 'status_change',
-                                                                          'status': 'circulation',
-                                                                          'user': settings.DEFAULT_SYSTEM_USER,
-                                                                          'disable-sod': True})
-            if serializer_circulation.is_valid():
-                serializer_circulation.save()
-                self.stdout.write(self.style.SUCCESS('Role "{}" successfully changed to status "circulation".'
-                                                     .format(role.role)))
-
-                # change status to in productive
-                serializer_productive = RolesDeleteStatusSerializer(role, data={},
-                                                                    context={'method': 'PATCH',
-                                                                             'function': 'status_change',
-                                                                             'status': 'productive',
-                                                                             'user': settings.DEFAULT_SYSTEM_USER,
-                                                                             'disable-sod': True})
-                if serializer_productive.is_valid():
-                    serializer_productive.save()
-                    self.stdout.write(self.style.SUCCESS('Role "{}" successfully changed to status "productive".'
-                                                         .format(role.role)))
-                else:
-                    for error in serializer_productive.errors:
-                        self.stderr.write('Error: {}'.format(serializer_productive.errors[error][0]))
+            # FO-131: add check if a role with any record already exists
+            _filter = {Roles.UNIQUE: role}
+            if Roles.objects.filter(**_filter).exists():
+                self.stderr.write('Error: Role "{}" already exists.'.format(role))
             else:
-                for error in serializer_circulation.errors:
-                    self.stderr.write('Error: {}'.format(serializer_circulation.errors[error][0]))
+                serializer.save()
+                self.stdout.write(self.style.SUCCESS('Role "{}" created successfully in status "draft".'.format(role)))
 
+                # change status to in circulation
+                role = Roles.objects.get(lifecycle_id=serializer.data['lifecycle_id'], version=version)
+                serializer_circulation = RolesDeleteStatusSerializer(role, data={},
+                                                                     context={'method': 'PATCH',
+                                                                              'function': 'status_change',
+                                                                              'status': 'circulation',
+                                                                              'user': settings.DEFAULT_SYSTEM_USER,
+                                                                              'disable-sod': True})
+                if serializer_circulation.is_valid():
+                    serializer_circulation.save()
+                    self.stdout.write(self.style.SUCCESS('Role "{}" successfully changed to status "circulation".'
+                                                         .format(role.role)))
+
+                    # change status to in productive
+                    serializer_productive = RolesDeleteStatusSerializer(role, data={},
+                                                                        context={'method': 'PATCH',
+                                                                                 'function': 'status_change',
+                                                                                 'status': 'productive',
+                                                                                 'user': settings.DEFAULT_SYSTEM_USER,
+                                                                                 'disable-sod': True})
+                    if serializer_productive.is_valid():
+                        serializer_productive.save()
+                        self.stdout.write(self.style.SUCCESS('Role "{}" successfully changed to status "productive".'
+                                                             .format(role.role)))
+                    else:
+                        for error in serializer_productive.errors:
+                            self.stderr.write('Error: {}'.format(serializer_productive.errors[error][0]))
+                else:
+                    for error in serializer_circulation.errors:
+                        self.stderr.write('Error: {}'.format(serializer_circulation.errors[error][0]))
         else:
             for error in serializer.errors:
                 self.stderr.write('Error: {}'.format(serializer.errors[error][0]))
