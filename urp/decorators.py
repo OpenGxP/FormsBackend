@@ -34,7 +34,8 @@ def auth_required():
     def decorator(view_func):
         @wraps(view_func)
         def wrapper(request, *args, **kwargs):
-            if request.user.is_authenticated:
+            # FO-121: add second requirement, user must be prod and valid
+            if request.user.is_authenticated and Users.objects.verify_prod_valid(key=request.user.username):
                 return view_func(request, *args, **kwargs)
             return Response(status=status.HTTP_401_UNAUTHORIZED)
         return wrapper

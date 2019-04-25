@@ -21,6 +21,8 @@ from django.apps import apps
 from django.conf import settings
 from django.core.management import call_command
 from django.test import Client
+from django.urls import reverse
+from django.utils import timezone
 
 # rest framework imports
 from rest_framework import status
@@ -156,6 +158,50 @@ class Prerequisites(object):
         assert response.status_code == status.HTTP_200_OK
         return response.cookies['csrftoken'].value
 
+    # FO-121: method to block the logged in superuser
+    def block_auth_user(self, ext_client):
+        # get csrf
+        csrf_token = self.get_csrf(ext_client, path=reverse('users-list'))
+        user = Users.objects.filter(username=self.username, status=Status.objects.productive, version=1).get()
+        # block superuser
+        path = '{}/{}/1/blocked'.format(reverse('users-list'), user.lifecycle_id)
+        response = ext_client.patch(path, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        assert response.status_code == status.HTTP_200_OK
+
+    # FO-121: method to make the logged in superuser invalid
+    def invalid_auth_user(self, ext_client):
+        # get csrf
+        csrf_token = self.get_csrf(ext_client, path=reverse('users-list'))
+        user = Users.objects.filter(username=self.username, status=Status.objects.productive, version=1).get()
+        # new version
+        path = '{}/{}/1'.format(reverse('users-list'), user.lifecycle_id)
+        response = ext_client.post(path, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        assert response.status_code == status.HTTP_201_CREATED
+        # update draft of second version to be invalid
+        path = '{}/{}/2'.format(reverse('users-list'), user.lifecycle_id)
+        data = {'username': self.username,
+                'password': self.password,
+                'roles': 'all',
+                'valid_from': timezone.now(),
+                'valid_to': timezone.now(),
+                'ldap': False}
+        response = ext_client.patch(path, data=data, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        assert response.status_code == status.HTTP_200_OK
+        # auth with second user to avoid SoD and set set in circulation
+        self.role_superuser_two()
+        self.auth_two(ext_client)
+        csrf_token = self.get_csrf(ext_client, path=reverse('users-list'))
+        path = '{}/{}/2/circulation'.format(reverse('users-list'), user.lifecycle_id)
+        response = ext_client.patch(path, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        assert response.status_code == status.HTTP_200_OK
+        # auth again with user to be invalid
+        self.auth(ext_client)
+        csrf_token = self.get_csrf(ext_client, path=reverse('users-list'))
+        path = '{}/{}/2/productive'.format(reverse('users-list'), user.lifecycle_id)
+        response = ext_client.patch(path, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        assert response.status_code == status.HTTP_200_OK
+        return csrf_token
+
 
 def log_records(model, action, data, access_log=None, _status=True):
     data['action'] = action
@@ -235,6 +281,28 @@ class GetAll(APITestCase):
             self.assertEqual(response.data, serializer.data)
             self.assertEqual(response.status_code, status.HTTP_200_OK)
 
+    # FO-121: new test to verify user cannot proceed when blocked
+    def test_401_blocked(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # block authenticated user
+            self.prerequisites.block_auth_user(self.client)
+            # get API response
+            response = self.client.get(self.ok_path, content_type='application/json')
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    # FO-121: new test to verify user cannot proceed when not valid anymore
+    def test_401_invalid(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # block authenticated user
+            self.prerequisites.invalid_auth_user(self.client)
+            # get API response
+            response = self.client.get(self.ok_path, content_type='application/json')
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
 
 class GetOne(APITestCase):
     def __init__(self, *args, **kwargs):
@@ -300,6 +368,28 @@ class GetOne(APITestCase):
             serializer = self.serializer(query)
             self.assertEqual(response.data, serializer.data)
             self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    # FO-121: new test to verify user cannot proceed when blocked
+    def test_401_blocked(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # block authenticated user
+            self.prerequisites.block_auth_user(self.client)
+            # get API response
+            response = self.client.get(self.ok_path, content_type='application/json')
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    # FO-121: new test to verify user cannot proceed when not valid anymore
+    def test_401_invalid(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # block authenticated user
+            self.prerequisites.invalid_auth_user(self.client)
+            # get API response
+            response = self.client.get(self.ok_path, content_type='application/json')
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_404_both(self):
         if self.execute:
@@ -394,6 +484,28 @@ class GetOneNoStatus(APITestCase):
             self.assertEqual(response.data, serializer.data)
             self.assertEqual(response.status_code, status.HTTP_200_OK)
 
+    # FO-121: new test to verify user cannot proceed when blocked
+    def test_401_blocked(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # block authenticated user
+            self.prerequisites.block_auth_user(self.client)
+            # get API response
+            response = self.client.get(self.ok_path, content_type='application/json')
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    # FO-121: new test to verify user cannot proceed when not valid anymore
+    def test_401_invalid(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # block authenticated user
+            self.prerequisites.invalid_auth_user(self.client)
+            # get API response
+            response = self.client.get(self.ok_path, content_type='application/json')
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
     def test_404(self):
         if self.execute:
             # authenticate
@@ -482,6 +594,32 @@ class PostNew(APITestCase):
             # verify log record
             self.assertEqual(log_records(model=self.model, data=response.data, action=settings.DEFAULT_LOG_CREATE,
                                          _status=self.status), True)
+
+    # FO-121: new test to verify user cannot proceed when blocked
+    def test_401_blocked(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            # block authenticated user
+            self.prerequisites.block_auth_user(self.client)
+            # get API response
+            response = self.client.post(self.ok_path, data=self.valid_payload, content_type='application/json',
+                                        HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    # FO-121: new test to verify user cannot proceed when not valid anymore
+    def test_401_invalid(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # block authenticated user
+            csrf_token = self.prerequisites.invalid_auth_user(self.client)
+            # get API response
+            response = self.client.post(self.ok_path, data=self.valid_payload, content_type='application/json',
+                                        HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_400_second(self):
         if self.execute:
@@ -666,6 +804,30 @@ class PostNewVersion(APITestCase):
             self.assertEqual(log_records(model=self.model, data=response.data, action=settings.DEFAULT_LOG_CREATE),
                              True)
 
+    # FO-121: new test to verify user cannot proceed when blocked
+    def test_401_blocked(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            # block authenticated user
+            self.prerequisites.block_auth_user(self.client)
+            # get API response
+            response = self.client.post(self.ok_path, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    # FO-121: new test to verify user cannot proceed when not valid anymore
+    def test_401_invalid(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # block authenticated user
+            csrf_token = self.prerequisites.invalid_auth_user(self.client)
+            # get API response
+            response = self.client.post(self.ok_path, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
     def test_400_second(self):
         if self.execute:
             # first add a new version
@@ -812,6 +974,30 @@ class DeleteOne(APITestCase):
             # verify log record
             self.assertEqual(log_records(model=self.model, data=self.ok_object, action=settings.DEFAULT_LOG_DELETE),
                              True)
+
+    # FO-121: new test to verify user cannot proceed when blocked
+    def test_401_blocked(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            # block authenticated user
+            self.prerequisites.block_auth_user(self.client)
+            # get API response
+            response = self.client.delete(self.ok_path, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    # FO-121: new test to verify user cannot proceed when not valid anymore
+    def test_401_invalid(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # block authenticated user
+            csrf_token = self.prerequisites.invalid_auth_user(self.client)
+            # get API response
+            response = self.client.delete(self.ok_path, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_400_circulation(self):
         if self.execute:
@@ -997,6 +1183,30 @@ class DeleteOneNoStatus(APITestCase):
             # verify log record
             self.assertEqual(log_records(model=self.model, data=self.ok_object, action=settings.DEFAULT_LOG_DELETE,
                                          _status=False), True)
+
+    # FO-121: new test to verify user cannot proceed when blocked
+    def test_401_blocked(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            # block authenticated user
+            self.prerequisites.block_auth_user(self.client)
+            # get API response
+            response = self.client.delete(self.ok_path, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    # FO-121: new test to verify user cannot proceed when not valid anymore
+    def test_401_invalid(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # block authenticated user
+            csrf_token = self.prerequisites.invalid_auth_user(self.client)
+            # get API response
+            response = self.client.delete(self.ok_path, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
 
 # patch
@@ -1226,6 +1436,32 @@ class PatchOne(APITestCase):
             # verify log record
             self.assertEqual(log_records(model=self.model, data=response.data, action=settings.DEFAULT_LOG_UPDATE),
                              True)
+    
+    # FO-121: new test to verify user cannot proceed when blocked
+    def test_401_blocked(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            # block authenticated user
+            self.prerequisites.block_auth_user(self.client)
+            # get API response
+            response = self.client.patch(self.ok_path, data=self.valid_payload, content_type='application/json',
+                                         HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    # FO-121: new test to verify user cannot proceed when not valid anymore
+    def test_401_invalid(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # block authenticated user
+            csrf_token = self.prerequisites.invalid_auth_user(self.client)
+            # get API response
+            response = self.client.patch(self.ok_path, data=self.valid_payload, content_type='application/json',
+                                         HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_400_change_unique(self):
         if self.execute:
@@ -1359,6 +1595,32 @@ class PatchOneNoStatus(APITestCase):
             # verify log record
             self.assertEqual(log_records(model=self.model, data=response.data, action=settings.DEFAULT_LOG_UPDATE,
                                          _status=False), True)
+    
+    # FO-121: new test to verify user cannot proceed when blocked
+    def test_401_blocked(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            # block authenticated user
+            self.prerequisites.block_auth_user(self.client)
+            # get API response
+            response = self.client.patch(self.ok_path, data=self.valid_payload, content_type='application/json',
+                                         HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    # FO-121: new test to verify user cannot proceed when not valid anymore
+    def test_401_invalid(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # block authenticated user
+            csrf_token = self.prerequisites.invalid_auth_user(self.client)
+            # get API response
+            response = self.client.patch(self.ok_path, data=self.valid_payload, content_type='application/json',
+                                         HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
 
 # patch status
@@ -1645,3 +1907,29 @@ class PatchOneStatus(APITestCase):
             self.status_life_cycle(csrf_token, 'productive')
             # finally to archive
             self.status_life_cycle(csrf_token, 'archived')
+    
+    # FO-121: new test to verify user cannot proceed when blocked
+    def test_401_blocked(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            # block authenticated user
+            self.prerequisites.block_auth_user(self.client)
+            # get API response
+            response = self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), content_type='application/json',
+                                         HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    # FO-121: new test to verify user cannot proceed when not valid anymore
+    def test_401_invalid(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # block authenticated user
+            csrf_token = self.prerequisites.invalid_auth_user(self.client)
+            # get API response
+            response = self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), content_type='application/json', 
+                                         HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)

@@ -110,6 +110,16 @@ class GlobalManager(models.Manager):
         except self.model.DoesNotExist:
             return None
 
+    # FO-121: new method to determine status and validity at the same time
+    def verify_prod_valid(self, key):
+        try:
+            query = self.get_by_natural_key_productive(key=key)
+        except self.model.DoesNotExist:
+            return
+        for record in query:
+            if record.verify_validity_range:
+                return True
+
 
 class GlobalModel(models.Model):
     # id
