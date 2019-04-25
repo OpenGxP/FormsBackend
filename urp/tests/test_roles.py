@@ -122,13 +122,13 @@ class PatchOneRole(PatchOne):
         self.ok_object_data = {'role': 'test',
                                'valid_from': timezone.now()}
         self.valid_payload = {
-            'role': 'new_role',
-            'valid_from': timezone.now()
+            'role': 'test',
+            'valid_to': timezone.now()
         }
         self.invalid_payload = {
             'role': ''
         }
-        self.unique_invalid_payload = self.ok_object_data = {'role': 'anders'}
+        self.unique_invalid_payload = {'role': 'anders'}
         self.execute = True
 
 

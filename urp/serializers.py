@@ -32,6 +32,7 @@ from .ldap import server_check
 from django.utils import timezone
 from django.db import IntegrityError
 from django.conf import settings
+from django.contrib.auth.hashers import make_password
 
 
 ##########
@@ -71,6 +72,9 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                     validated_data['initial_password'] = True
                 else:
                     validated_data['initial_password'] = False
+                # FO-132: hash password before saving
+                raw_pw = validated_data['password']
+                validated_data['password'] = make_password(raw_pw)
             # for access log
             if obj.MODEL_ID == '05':
                 create_central_log_record(log_id=obj.id, now=validated_data['timestamp'], context=model.MODEL_CONTEXT,
@@ -136,6 +140,16 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                         # only overlapping validity ranges
                         if getattr(instance, 'valid_from') < valid_to_prev_version:
                             self.update(instance=prev_instance, validated_data=data, self_call=True, now=now)
+            else:
+                # FO-132: hash password before saving
+                if model.MODEL_ID == '04':
+                    # only set initial password and password for non-ldap managed users
+                    if not validated_data['ldap']:
+                        # only do something in case password was updated
+                        if 'password' in validated_data.keys():
+                            raw_pw = validated_data['password']
+                            validated_data['password'] = make_password(raw_pw)
+                            validated_data['initial_password'] = True
 
         hash_sequence = instance.HASH_SEQUENCE
         fields = dict()
@@ -291,8 +305,12 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                                                               .format(self.model.UNIQUE))
                     else:
                         _filter = {self.model.UNIQUE: data[self.model.UNIQUE]}
-                        query = self.model.objects.filter(**_filter).exists()
-                        if query:
+                        # FO-134: allow update of status-managed object in version 1
+                        _list = list()
+                        query = self.model.objects.filter(**_filter).all()
+                        for record in query:
+                            _list.append(record.lifecycle_id)
+                        if self.instance.lifecycle_id not in _list:
                             raise serializers.ValidationError('Record(s) with attribute "{}" = "{}" already exist.'
                                                               .format(self.model.UNIQUE, data[self.model.UNIQUE]))
 

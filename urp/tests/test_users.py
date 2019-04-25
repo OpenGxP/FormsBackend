@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from django.urls import reverse
 from django.utils import timezone
 from django.test import Client
+from django.contrib.auth.hashers import check_password
 
 # rest framework imports
 from rest_framework import status
@@ -149,21 +150,21 @@ class PatchOneUser(PatchOne):
                                'roles': 'all',
                                'valid_from': timezone.now(),
                                'ldap': False}
-        self.valid_payload = {'username': 'dasddasd',
+        self.valid_payload = {'username': 'testtest',
                               'password': 'test12345test',
                               'roles': 'all',
-                              'valid_from': timezone.now(),
+                              'valid_to': timezone.now(),
                               'ldap': False}
         self.invalid_payload = {'username': '',
                                 'password': 'test12345test',
                                 'roles': 'all',
                                 'valid_from': timezone.now(),
                                 'ldap': False}
-        self.unique_invalid_payload = self.ok_object_data = {'username': 'anders',
-                                                             'password': 'test12345test',
-                                                             'roles': 'all',
-                                                             'valid_from': timezone.now(),
-                                                             'ldap': False}
+        self.unique_invalid_payload = {'username': 'anders',
+                                       'password': 'test12345test',
+                                       'roles': 'all',
+                                       'valid_from': timezone.now(),
+                                       'ldap': False}
         self.execute = True
 
 
@@ -196,8 +197,10 @@ class UsersMiscellaneous(APITestCase):
         super(UsersMiscellaneous, self).__init__(*args, **kwargs)
         self.base_path = BASE_PATH
         self.prerequisites = Prerequisites(base_path=self.base_path)
-        self.ok_object_data = {'username': 'testtest',
-                               'password': 'test12345test',
+        self.username = 'testtest'
+        self.password = 'asdad2qa3dad2'
+        self.ok_object_data = {'username': self.username,
+                               'password': self.password,
                                'roles': 'all',
                                'ldap': False}
         self.draft_role_id = 'newrole'
@@ -325,3 +328,87 @@ class UsersMiscellaneous(APITestCase):
         response_prod = self.client.patch(path, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
         self.assertEqual(response_prod.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response_prod.data['validation_errors'][0], 'Role "all" not in status productive.')
+
+    # FO-132: test for hash password at adding
+    def test_200_new(self):
+        """
+        This test shall verify that a new added non-ldap managed user can login and its password is stored secure.
+        """
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+
+        # add new non-ldap managed user
+        response = self.client.post(self.base_path, data=self.ok_object_data, content_type='application/json',
+                                    HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        # start circulation
+        path = '{}/{}/{}/{}'.format(self.base_path, response.data['lifecycle_id'], 1, 'circulation')
+        response_circ = self.client.patch(path, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response_circ.status_code, status.HTTP_200_OK)
+
+        # auth with second user to avoid SoD
+        self.prerequisites.auth_two(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # set prod
+        path = '{}/{}/{}/{}'.format(self.base_path, response.data['lifecycle_id'], 1, 'productive')
+        response_prod = self.client.patch(path, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response_prod.status_code, status.HTTP_200_OK)
+        # verify if password was stored secure
+        query = Users.objects.filter(lifecycle_id=response.data['lifecycle_id']).get()
+        self.assertTrue(check_password(self.password, query.password))
+
+        # login with new user
+        self.client.logout()
+        response = self.client.login(username=self.username, password=self.password)
+        self.assertTrue(response)
+
+    # FO-132: test for hash password during edit
+    def test_200_edit(self):
+        """
+        This test shall verify that an updated non-ldap managed user can login and its password is stored secure.
+        """
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+
+        # add new non-ldap managed user
+        response = self.client.post(self.base_path, data=self.ok_object_data, content_type='application/json',
+                                    HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        # update draft record before validation
+        new_password = '32hai82dhaks8da'
+        data = {'username': self.username,
+                'password': new_password,
+                'roles': 'all',
+                'ldap': False}
+        path = '{}/{}/{}'.format(self.base_path, response.data['lifecycle_id'], 1)
+        response_update = self.client.patch(path, data=data, content_type='application/json',
+                                            HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response_update.status_code, status.HTTP_200_OK)
+        # verify if password was stored secure
+        query = Users.objects.filter(lifecycle_id=response.data['lifecycle_id']).get()
+        self.assertTrue(check_password(new_password, query.password))
+
+        # start circulation
+        path = '{}/{}/{}/{}'.format(self.base_path, response.data['lifecycle_id'], 1, 'circulation')
+        response_circ = self.client.patch(path, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response_circ.status_code, status.HTTP_200_OK)
+
+        # auth with second user to avoid SoD
+        self.prerequisites.auth_two(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # set prod
+        path = '{}/{}/{}/{}'.format(self.base_path, response.data['lifecycle_id'], 1, 'productive')
+        response_prod = self.client.patch(path, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response_prod.status_code, status.HTTP_200_OK)
+
+        # login with new user
+        self.client.logout()
+        response = self.client.login(username=self.username, password=new_password)
+        self.assertTrue(response)
