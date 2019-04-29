@@ -231,6 +231,7 @@ def log_records(model, action, data, access_log=None, _status=True):
     data['action'] = action
     # remove valid field, because its read only and not in db
     del data['valid']
+    del data['unique']
     # human readable status is a read only field and not in db, but uuid
     if _status:
         data['status_id'] = Status.objects.status_by_text(data['status'])
