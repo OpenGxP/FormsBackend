@@ -121,31 +121,55 @@ class Prerequisites(object):
         ext_client.logout()
         response = ext_client.login(username=self.username, password=self.password)
         assert response is True
+        # save last touch now timestamp to session to prevent auto logout error
+        session = ext_client.session
+        session['last_touch'] = timezone.now()
+        session.save()
 
     def auth_two(self, ext_client):
         ext_client.logout()
         response = ext_client.login(username=self.username_two, password=self.password_two)
         assert response is True
+        # save last touch now timestamp to session to prevent auto logout error
+        session = ext_client.session
+        session['last_touch'] = timezone.now()
+        session.save()
 
     def auth_no_perms(self, ext_client):
         ext_client.logout()
         response = ext_client.login(username=self.username_no_perm, password=self.password)
         assert response is True
+        # save last touch now timestamp to session to prevent auto logout error
+        session = ext_client.session
+        session['last_touch'] = timezone.now()
+        session.save()
 
     def auth_not_valid_roles(self, ext_client):
         ext_client.logout()
         response = ext_client.login(username=self.username_valid_from, password=self.password)
         assert response is True
+        # save last touch now timestamp to session to prevent auto logout error
+        session = ext_client.session
+        session['last_touch'] = timezone.now()
+        session.save()
 
     def auth_no_write_perms(self, ext_client):
         ext_client.logout()
         response = ext_client.login(username=self.username_no_write_perm, password=self.password)
         assert response is True
+        # save last touch now timestamp to session to prevent auto logout error
+        session = ext_client.session
+        session['last_touch'] = timezone.now()
+        session.save()
 
     def auth_no_version_archived(self, ext_client):
         ext_client.logout()
         response = ext_client.login(username=self.username_no_version_archived, password=self.password)
         assert response is True
+        # save last touch now timestamp to session to prevent auto logout error
+        session = ext_client.session
+        session['last_touch'] = timezone.now()
+        session.save()
 
     @staticmethod
     def verify_csrf(response):
