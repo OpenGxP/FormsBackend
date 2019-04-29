@@ -518,6 +518,12 @@ def meta_list(request, dialog):
                                 'render': False,
                                 'order': 99999,
                                 'format': None}
+        # add calculated field "unique"
+        data['get']['unique'] = {'verbose_name': 'Unique',
+                                 'data_type': 'CharField',
+                                 'render': False,
+                                 'order': 99998,
+                                 'format': None}
         for f in fields:
             if f.name in not_render:
                 render = False

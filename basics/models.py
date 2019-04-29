@@ -143,6 +143,14 @@ class GlobalModel(models.Model):
     HASH_SEQUENCE = []
     UNIQUE = None
 
+    def unique_id(self):
+        if self.lifecycle_id:
+            return '{}_{}'.format(self.lifecycle_id, self.version)
+        else:
+            if self.UNIQUE:
+                return getattr(self, self.UNIQUE)
+        return
+
     def _verify_checksum(self, to_hash_payload):
         if not self.lifecycle_id:
             to_hash = 'id:{};'.format(self.id)
@@ -475,3 +483,5 @@ class Settings(GlobalModel):
         '01': 'read',
         '03': 'edit',
     }
+
+    UNIQUE = 'key'

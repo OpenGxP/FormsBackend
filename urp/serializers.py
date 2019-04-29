@@ -41,6 +41,8 @@ from django.contrib.auth.hashers import make_password
 
 class GlobalReadWriteSerializer(serializers.ModelSerializer):
     valid = serializers.BooleanField(source='verify_checksum', read_only=True)
+    # unique attribute for frontend selection
+    unique = serializers.CharField(source='unique_id', read_only=True)
 
     @staticmethod
     def new_version_check(data):
