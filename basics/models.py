@@ -438,6 +438,13 @@ class SettingsManager(GlobalManager):
         except self.model.DoesNotExist:
             return settings.DEFAULT_FRONT_TIMESTAMP
 
+    @property
+    def core_auto_logout(self):
+        try:
+            return int(self.filter(key='core.auto_logout').get().value)
+        except self.model.DoesNotExist:
+            return settings.DEFAULT_AUTO_LOGOUT
+
 
 # table
 class Settings(GlobalModel):

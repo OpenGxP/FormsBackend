@@ -54,6 +54,7 @@ DEFAULT_LOG_ATTEMPT = 'attempt'
 DEFAULT_LOG_LOGIN = 'login'
 DEFAULT_LOG_LOGOUT = 'logout'
 DEFAULT_FRONT_TIMESTAMP = 'DD-MM-YYYYTHH:MM:SS Z'
+DEFAULT_AUTO_LOGOUT = 60  # in seconds
 
 #########
 # PATHS #
@@ -263,9 +264,10 @@ X_FRAME_OPTIONS = os.environ.get('X_FRAME_OPTIONS', 'SAMEORIGIN')
 ###################
 
 INITIALIZE_SETTINGS = {'auth.max_login_attempts': MAX_LOGIN_ATTEMPTS,
-                       'core.system.username': DEFAULT_SYSTEM_USER,
+                       'core.system_username': DEFAULT_SYSTEM_USER,
                        'core.devalue': DEFAULT_SYSTEM_DEVALUE,
-                       'core.timestamp_format': DEFAULT_FRONT_TIMESTAMP}
+                       'core.timestamp_format': DEFAULT_FRONT_TIMESTAMP,
+                       'core.auto_logout': DEFAULT_AUTO_LOGOUT}
 
 ###########
 # LOGGING #

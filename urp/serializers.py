@@ -331,7 +331,7 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
             @require_SETTINGS
             def validate_settings(self):
                 # validate maximum login attempts
-                if self.instance.key == 'auth.max_login_attempts':
+                if self.instance.key == 'auth.max_login_attempts' or self.instance.key == 'core.auto_logout':
                     try:
                         # try to convert to integer
                         data['value'] = value_to_int(data['value'])
@@ -339,8 +339,8 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                         if data['value'] < 1:
                             raise ValueError
                     except ValueError:
-                        raise serializers.ValidationError('Setting "auth.max_login_attempts" '
-                                                          'must be a positive integer.')
+                        raise serializers.ValidationError('Setting "{}" must be a positive integer.'
+                                                          .format(self.instance.key))
 
         @require_POST
         class Post(Validate):

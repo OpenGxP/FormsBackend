@@ -16,6 +16,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+# python imports
+from functools import wraps
 
 # rest imports
 from rest_framework.response import Response
@@ -44,6 +46,39 @@ from django.utils import timezone
 from django.conf import settings
 from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie, csrf_exempt
 from django.middleware.csrf import get_token
+
+
+###############
+# AUTO_LOGOUT #
+###############
+
+
+def auto_logout():
+    def decorator(view_func):
+        @wraps(view_func)
+        def wrapper(request, *args, **kwargs):
+            now = timezone.now()
+            if now - request.session['last_touch'] > timezone.timedelta(seconds=Settings.objects.core_auto_logout):
+                data = {
+                    'user': request.user.username,
+                    'timestamp': now,
+                    'mode': 'automatic',
+                    'method': Settings.objects.core_devalue,
+                    'action': settings.DEFAULT_LOG_LOGOUT,
+                    'attempt': Settings.objects.core_devalue,
+                    'active': Settings.objects.core_devalue
+                }
+                logout(request)
+                if request.user.is_anonymous:
+                    write_access_log(data)
+                    return Response(status=http_status.HTTP_401_UNAUTHORIZED)
+                else:
+                    return Response(status=http_status.HTTP_400_BAD_REQUEST)
+            else:
+                request.session['last_touch'] = now
+            return view_func(request, *args, **kwargs)
+        return wrapper
+    return decorator
 
 
 ########
@@ -90,6 +125,7 @@ def login_view(request):
         raise ValidationError('Fields "{}" and "password are required.'.format(Users.USERNAME_FIELD))
     if user:
         login(request, user)
+        request.session['last_touch'] = timezone.now()
         # pass authenticated user roles to casl method, split to parse
         casl = Roles.objects.casl(user.roles.split(','))
         return Response(casl, status=http_status.HTTP_200_OK)
@@ -127,7 +163,7 @@ def logout_view(request):
     logout(request)
     if request.user.is_anonymous:
         write_access_log(data)
-        return Response(status=http_status.HTTP_200_OK)
+        return Response(status=http_status.HTTP_401_UNAUTHORIZED)
     else:
         return Response(status=http_status.HTTP_400_BAD_REQUEST)
 
@@ -139,6 +175,7 @@ def logout_view(request):
 # GET list
 @api_view(['GET'])
 @auth_required()
+@auto_logout()
 @perm_required('01.01')
 def status_list(request):
     """
@@ -156,6 +193,7 @@ def status_list(request):
 # GET list
 @api_view(['GET'])
 @auth_required()
+@auto_logout()
 @perm_required('07.01')
 def status_log_list(request):
     """
@@ -173,6 +211,7 @@ def status_log_list(request):
 # GET list
 @api_view(['GET'])
 @auth_required()
+@auto_logout()
 @perm_required('02.01')
 def permissions_list(request):
     """
@@ -190,6 +229,7 @@ def permissions_list(request):
 # GET list
 @api_view(['GET'])
 @auth_required()
+@auto_logout()
 @perm_required('08.01')
 def permissions_log_list(request):
     """
@@ -207,6 +247,7 @@ def permissions_log_list(request):
 # GET list
 @api_view(['GET'])
 @auth_required()
+@auto_logout()
 @perm_required('{}.01'.format(SettingsLog.MODEL_ID))
 def settings_log_list(request):
     """
@@ -224,6 +265,7 @@ def settings_log_list(request):
 # GET list
 @api_view(['GET'])
 @auth_required()
+@auto_logout()
 @ensure_csrf_cookie
 @perm_required('{}.01'.format(Settings.MODEL_ID))
 def settings_list(request):
@@ -238,6 +280,7 @@ def settings_list(request):
 # GET detail
 @api_view(['GET', 'PATCH'])
 @auth_required()
+@auto_logout()
 def settings_detail(request, key):
     @perm_required('{}.03'.format(Settings.MODEL_ID))
     @csrf_protect
@@ -277,6 +320,7 @@ def settings_detail(request, key):
 # GET list
 @api_view(['GET'])
 @auth_required()
+@auto_logout()
 @perm_required('{}.01'.format(LDAPLog.MODEL_ID))
 def ldap_log_list(request):
     """
@@ -294,6 +338,7 @@ def ldap_log_list(request):
 # GET list
 @api_view(['GET', 'POST'])
 @auth_required()
+@auto_logout()
 def ldap_list(request):
     @perm_required('{}.02'.format(LDAP.MODEL_ID))
     @csrf_protect
@@ -323,6 +368,7 @@ def ldap_list(request):
 # GET detail
 @api_view(['GET', 'PATCH', 'DELETE'])
 @auth_required()
+@auto_logout()
 def ldap_detail(request, host):
     @perm_required('{}.03'.format(LDAP.MODEL_ID))
     @csrf_protect
@@ -376,6 +422,7 @@ def ldap_detail(request, host):
 # GET list
 @api_view(['GET'])
 @auth_required()
+@auto_logout()
 @perm_required('06.01')
 def central_log_list(request):
     logs = CentralLog.objects.all()
@@ -390,6 +437,7 @@ def central_log_list(request):
 # GET list
 @api_view(['GET'])
 @auth_required()
+@auto_logout()
 @perm_required('05.01')
 def access_log_list(request):
     logs = AccessLog.objects.all()
@@ -404,6 +452,7 @@ def access_log_list(request):
 # GET list
 @api_view(['GET'])
 @auth_required()
+@auto_logout()
 def audit_trail_list(request, dialog, lifecycle_id):
     # lower all inputs for dialog
     dialog = dialog.lower()
@@ -511,6 +560,7 @@ def meta_list(request, dialog):
 # GET list
 @api_view(['GET', 'POST'])
 @auth_required()
+@auto_logout()
 def roles_list(request):
     """
     List all roles.
@@ -545,6 +595,7 @@ def roles_list(request):
 # GET detail
 @api_view(['GET', 'PATCH', 'POST', 'DELETE'])
 @auth_required()
+@auto_logout()
 def roles_detail(request, lifecycle_id, version):
     """
     Retrieve roles.
@@ -621,6 +672,7 @@ def roles_detail(request, lifecycle_id, version):
 
 @api_view(['PATCH'])
 @auth_required()
+@auto_logout()
 def roles_status(request, lifecycle_id, version, status):
     @csrf_protect
     def patch_base(_request):
@@ -687,6 +739,7 @@ def roles_status(request, lifecycle_id, version, status):
 # GET list
 @api_view(['GET'])
 @auth_required()
+@auto_logout()
 @perm_required('09.01')
 def roles_log_list(request):
     """
@@ -704,6 +757,7 @@ def roles_log_list(request):
 # GET list
 @api_view(['GET', 'POST'])
 @auth_required()
+@auto_logout()
 def users_list(request):
     @perm_required('04.02')
     @csrf_protect
@@ -734,6 +788,7 @@ def users_list(request):
 # GET detail
 @api_view(['GET', 'PATCH', 'POST', 'DELETE'])
 @auth_required()
+@auto_logout()
 def users_detail(request, lifecycle_id, version):
     @perm_required('04.03')
     @csrf_protect
@@ -806,6 +861,7 @@ def users_detail(request, lifecycle_id, version):
 
 @api_view(['PATCH'])
 @auth_required()
+@auto_logout()
 def users_status(request, lifecycle_id, version, status):
     @csrf_protect
     def patch_base(_request):
@@ -872,6 +928,7 @@ def users_status(request, lifecycle_id, version, status):
 # GET list
 @api_view(['GET'])
 @auth_required()
+@auto_logout()
 @perm_required('10.01')
 def users_log_list(request):
     """
