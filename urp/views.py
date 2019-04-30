@@ -52,33 +52,56 @@ from django.middleware.csrf import get_token
 # AUTO_LOGOUT #
 ###############
 
+def refresh_time(request, active=True):
+    now = timezone.now()
+    if now - request.session['last_touch'] > timezone.timedelta(seconds=Settings.objects.core_auto_logout):
+        data = {
+            'user': request.user.username,
+            'timestamp': now,
+            'mode': 'automatic',
+            'method': Settings.objects.core_devalue,
+            'action': settings.DEFAULT_LOG_LOGOUT,
+            'attempt': Settings.objects.core_devalue,
+            'active': Settings.objects.core_devalue
+        }
+        logout(request)
+        if request.user.is_anonymous:
+            write_access_log(data)
+            return Response(status=http_status.HTTP_401_UNAUTHORIZED)
+        else:
+            return Response(status=http_status.HTTP_400_BAD_REQUEST)
+    else:
+        # only refresh if user was active (default for request)
+        if active:
+            request.session['last_touch'] = now
+
 
 def auto_logout():
     def decorator(view_func):
         @wraps(view_func)
         def wrapper(request, *args, **kwargs):
-            now = timezone.now()
-            if now - request.session['last_touch'] > timezone.timedelta(seconds=Settings.objects.core_auto_logout):
-                data = {
-                    'user': request.user.username,
-                    'timestamp': now,
-                    'mode': 'automatic',
-                    'method': Settings.objects.core_devalue,
-                    'action': settings.DEFAULT_LOG_LOGOUT,
-                    'attempt': Settings.objects.core_devalue,
-                    'active': Settings.objects.core_devalue
-                }
-                logout(request)
-                if request.user.is_anonymous:
-                    write_access_log(data)
-                    return Response(status=http_status.HTTP_401_UNAUTHORIZED)
-                else:
-                    return Response(status=http_status.HTTP_400_BAD_REQUEST)
-            else:
-                request.session['last_touch'] = now
+            # use method
+            refresh_time(request=request)
             return view_func(request, *args, **kwargs)
         return wrapper
     return decorator
+
+
+@api_view(['GET'])
+@auth_required()
+def logout_auto_view(request):
+    try:
+        if not hasattr(request, 'data'):
+            raise ValidationError('Field "active" required.')
+        if 'active' not in request.data:
+            raise ValidationError('Field "active" required.')
+        active = request.data['active']
+        if not isinstance(active, bool):
+            raise ValidationError('Data type bool required for field "active".')
+    except ValidationError as error:
+        return Response(data=error, status=http_status.HTTP_400_BAD_REQUEST)
+    refresh_time(request=request, active=active)
+    return Response(status=http_status.HTTP_200_OK)
 
 
 ########

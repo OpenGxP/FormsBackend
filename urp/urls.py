@@ -26,7 +26,7 @@ from .views import permissions_list, roles_list, roles_detail, status_list, \
     roles_status, users_list, users_detail, api_root, users_status, access_log_list, central_log_list, \
     permissions_log_list, users_log_list, roles_log_list, audit_trail_list, status_log_list, \
     ldap_list, ldap_detail, ldap_log_list, login_view, logout_view, meta_list, get_csrf_token, settings_list, \
-    settings_detail, settings_log_list
+    settings_detail, settings_log_list, logout_auto_view
 
 
 urlpatterns = [
@@ -34,6 +34,7 @@ urlpatterns = [
     path('{}login'.format(settings.BASE_URL), login_view, name='login-view'),
     path('{}csrftoken'.format(settings.BASE_URL), get_csrf_token, name='get_csrf_token'),
     path('{}logout'.format(settings.BASE_URL), logout_view, name='logout-view'),
+    path('{}logout_auto'.format(settings.BASE_URL), logout_auto_view, name='logout-auto-view'),
     # status
     path('{}admin/status'.format(settings.BASE_URL), status_list, name='status-list'),
     # permissions
