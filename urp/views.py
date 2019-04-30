@@ -91,16 +91,13 @@ def auto_logout():
 @api_view(['GET'])
 @auth_required()
 def logout_auto_view(request):
-    try:
-        if not hasattr(request, 'data'):
-            raise ValidationError('Field "active" required.')
-        if 'active' not in request.data:
-            raise ValidationError('Field "active" required.')
-        active = request.data['active']
-        if not isinstance(active, bool):
-            raise ValidationError('Data type bool required for field "active".')
-    except ValidationError as error:
-        return Response(data=error, status=http_status.HTTP_400_BAD_REQUEST)
+    if not hasattr(request, 'data'):
+        raise serializers.ValidationError('Field "active" required.')
+    if 'active' not in request.data:
+        raise serializers.ValidationError('Field "active" required.')
+    active = request.data['active']
+    if not isinstance(active, bool):
+        raise serializers.ValidationError('Data type bool required for field "active".')
     refresh_time(request=request, active=active)
     return Response(status=http_status.HTTP_200_OK)
 
