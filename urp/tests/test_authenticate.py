@@ -59,6 +59,26 @@ class Authenticate(APITestCase):
         response = self.client.post(self.path, data=data, content_type='application/json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    # FO-137: check for 400 response at missing payload
+    def test_400_missing_password(self):
+        # get API response
+        data = {'username': self.prerequisites.username}
+        response = self.client.post(self.path, data=data, content_type='application/json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    # FO-137: check for 400 response at missing payload
+    def test_400_missing_username(self):
+        # get API response
+        data = {'password': 'sadasdasd'}
+        response = self.client.post(self.path, data=data, content_type='application/json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    # FO-137: check for 400 response at missing payload
+    def test_400_missing_both(self):
+        # get API response
+        response = self.client.post(self.path, content_type='application/json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
     def test_200(self):
         # get API response
         data = {'username': self.prerequisites.username, 'password': self.prerequisites.password}

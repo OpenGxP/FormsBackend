@@ -24,6 +24,7 @@ from rest_framework.response import Response
 from rest_framework import status as http_status
 from rest_framework.decorators import api_view
 from rest_framework.reverse import reverse
+from rest_framework import serializers
 
 # custom imports
 from .models import Status, Roles, Permissions, Users, AccessLog, PermissionsLog, RolesLog, UsersLog, LDAP, LDAPLog
@@ -141,11 +142,19 @@ def api_root(request):
 @api_view(['POST'])
 @csrf_exempt
 def login_view(request):
+    # FO-137: adapted validation properly and raise serializer validation error (including 400 response)
+    if not hasattr(request, 'data'):
+        raise serializers.ValidationError('Fields "{}" and "password" are required.'.format(Users.USERNAME_FIELD))
     if Users.USERNAME_FIELD in request.data and 'password' in request.data:
+        # FO-137: adapted validation properly and raise serializer validation error (including 400 response)
+        if not isinstance(request.data['username'], str) or not isinstance(request.data['password'], str):
+            raise serializers.ValidationError('Fields "{}" and "password" must be strings.'
+                                              .format(Users.USERNAME_FIELD))
         # authenticate user
         user = authenticate(request=request, username=request.data['username'], password=request.data['password'])
     else:
-        raise ValidationError('Fields "{}" and "password are required.'.format(Users.USERNAME_FIELD))
+        # FO-137: raise serializer validation error (including 400 response)
+        raise serializers.ValidationError('Fields "{}" and "password" are required.'.format(Users.USERNAME_FIELD))
     if user:
         login(request, user)
         request.session['last_touch'] = timezone.now()
