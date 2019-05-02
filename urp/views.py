@@ -192,7 +192,7 @@ def logout_view(request):
     logout(request)
     if request.user.is_anonymous:
         write_access_log(data)
-        return Response(status=http_status.HTTP_401_UNAUTHORIZED)
+        return Response(status=http_status.HTTP_200_OK)
     else:
         return Response(status=http_status.HTTP_400_BAD_REQUEST)
 
