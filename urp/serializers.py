@@ -675,7 +675,7 @@ class UsersLogReadSerializer(GlobalReadWriteSerializer):
         model = UsersLog
         # exclude = ('id', 'checksum', 'is_active')
         # to control field order in response
-        fields = UsersLog.objects.GET_MODEL_ORDER + Users.objects.GET_BASE_ORDER_STATUS_MANAGED + \
+        fields = UsersLog.objects.GET_MODEL_ORDER_NO_PW + Users.objects.GET_BASE_ORDER_STATUS_MANAGED + \
             UsersLog.objects.GET_BASE_ORDER_LOG + UsersLog.objects.GET_BASE_CALCULATED
 
 
