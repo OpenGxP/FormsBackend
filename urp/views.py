@@ -68,13 +68,11 @@ def refresh_time(request, active=True):
         logout(request)
         if request.user.is_anonymous:
             write_access_log(data)
-            return Response(status=http_status.HTTP_401_UNAUTHORIZED)
-        else:
-            return Response(status=http_status.HTTP_400_BAD_REQUEST)
     else:
         # only refresh if user was active (default for request)
         if active:
             request.session['last_touch'] = now
+        return True
 
 
 def auto_logout():
@@ -82,8 +80,10 @@ def auto_logout():
         @wraps(view_func)
         def wrapper(request, *args, **kwargs):
             # use method
-            refresh_time(request=request)
-            return view_func(request, *args, **kwargs)
+            if refresh_time(request=request):
+                return view_func(request, *args, **kwargs)
+            else:
+                return Response(status=http_status.HTTP_401_UNAUTHORIZED)
         return wrapper
     return decorator
 
@@ -98,8 +98,10 @@ def logout_auto_view(request):
     active = request.data['active']
     if not isinstance(active, bool):
         raise serializers.ValidationError('Data type bool required for field "active".')
-    refresh_time(request=request, active=active)
-    return Response(status=http_status.HTTP_200_OK)
+    if refresh_time(request=request, active=active):
+        return Response(status=http_status.HTTP_200_OK)
+    else:
+        return Response(status=http_status.HTTP_401_UNAUTHORIZED)
 
 
 ########
