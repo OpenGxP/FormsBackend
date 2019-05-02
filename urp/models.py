@@ -51,9 +51,9 @@ class PermissionsLogManager(GlobalManager):
     HAS_STATUS = False
 
     # meta
-    GET_MODEL_ORDER = {'key': 0,
-                       'model': 1,
-                       'permission': 2}
+    GET_MODEL_ORDER = ('key',
+                       'model',
+                       'permission',)
 
 
 # log table
@@ -154,13 +154,13 @@ class AccessLogManager(GlobalManager):
     HAS_STATUS = False
 
     # meta
-    GET_MODEL_ORDER = {'user': 0,
-                       'action': 1,
-                       'timestamp': 2,
-                       'mode': 100,
-                       'method': 101,
-                       'attempt': 102,
-                       'active': 103}
+    GET_MODEL_ORDER = ('user',
+                       'action',
+                       'timestamp',
+                       'mode',
+                       'method',
+                       'attempt',
+                       'active',)
 
     def latest_record(self, username):
         try:
@@ -215,8 +215,8 @@ class RolesLogManager(GlobalManager):
     HAS_STATUS = False
 
     # meta
-    GET_MODEL_ORDER = {'role': 0,
-                       'permissions': 1}
+    GET_MODEL_ORDER = ('role',
+                       'permissions')
 
 
 # log table
@@ -370,18 +370,18 @@ class LDAPLogManager(GlobalManager):
     HAS_STATUS = False
 
     # meta
-    GET_MODEL_ORDER = {'host': 0,
-                       'port': 1,
-                       'ssl_tls': 2,
-                       'bindDN': 3,
-                       'password': 4,
-                       'base': 5,
-                       'filter': 6,
-                       'attr_username': 7,
-                       'attr_email': 8,
-                       'attr_surname': 9,
-                       'attr_forename': 10,
-                       'priority': 11}
+    GET_MODEL_ORDER = ('host',
+                       'port',
+                       'ssl_tls',
+                       'bindDN',
+                       'password',
+                       'base',
+                       'filter',
+                       'attr_username',
+                       'attr_email',
+                       'attr_surname',
+                       'attr_forename',
+                       'priority',)
 
 
 # log table
@@ -594,14 +594,21 @@ class UsersLogManager(GlobalManager):
 
     # meta
     GET_MODEL_EXCLUDE = ('is_active',)
-    GET_MODEL_ORDER = {'username': 0,
-                       'first_name': 1,
-                       'last_name': 2,
-                       'email': 3,
-                       'roles': 4,
-                       'ldap': 5,
-                       'password': 6,
-                       'initial_password': 7}
+    GET_MODEL_ORDER = ('username',
+                       'first_name',
+                       'last_name',
+                       'password',
+                       'email',
+                       'roles',
+                       'ldap',
+                       'initial_password',)
+    GET_MODEL_ORDER_NO_PW = ('username',
+                             'first_name',
+                             'last_name',
+                             'email',
+                             'roles',
+                             'ldap',
+                             'initial_password',)
 
 
 # log table
@@ -665,6 +672,7 @@ class UsersManager(BaseUserManager, GlobalManager):
     # meta
     GET_MODEL_EXCLUDE = ('is_active', 'password')
     GET_MODEL_ORDER = UsersLogManager.GET_MODEL_ORDER
+    GET_MODEL_ORDER_NO_PW = UsersLogManager.GET_MODEL_ORDER_NO_PW
     POST_MODEL_EXCLUDE = ('initial_password', 'is_active')
 
     @property

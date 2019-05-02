@@ -537,21 +537,16 @@ def meta_list(request, dialog):
         # add get information
         exclude = model.objects.GET_BASE_EXCLUDE + model.objects.GET_MODEL_EXCLUDE
         fields = [i for i in model._meta.get_fields() if i.name not in exclude]
-        order = {**model.objects.GET_BASE_ORDER_STATUS_MANAGED,
-                 **model.objects.GET_MODEL_ORDER,
-                 **model.objects.GET_BASE_ORDER_LOG}
         not_render = model.objects.GET_BASE_NOT_RENDER + model.objects.GET_MODEL_NOT_RENDER
         # add calculated field "valid"
         data['get']['valid'] = {'verbose_name': 'Valid',
                                 'data_type': 'CharField',
                                 'render': False,
-                                'order': 99999,
                                 'format': None}
         # add calculated field "unique"
         data['get']['unique'] = {'verbose_name': 'Unique',
                                  'data_type': 'CharField',
                                  'render': False,
-                                 'order': 99998,
                                  'format': None}
         for f in fields:
             if f.name in not_render:
@@ -566,7 +561,6 @@ def meta_list(request, dialog):
             data['get'][f.name] = {'verbose_name': f.verbose_name,
                                    'data_type': f.get_internal_type(),
                                    'render': render,
-                                   'order': order[f.name],
                                    'format': _format}
 
         # add post information
@@ -579,8 +573,7 @@ def meta_list(request, dialog):
                                         'max_length': f.max_length,
                                         'data_type': f.get_internal_type(),
                                         'required': not f.blank,
-                                        'unique': f.unique,
-                                        'order': order[f.name]}
+                                        'unique': f.unique}
 
         return Response(data=data, status=http_status.HTTP_200_OK)
 

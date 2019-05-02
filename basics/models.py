@@ -59,14 +59,16 @@ class GlobalManager(models.Manager):
     GET_MODEL_EXCLUDE = tuple()
     GET_BASE_NOT_RENDER = ('lifecycle_id', )
     GET_MODEL_NOT_RENDER = tuple()
-    GET_BASE_ORDER_STATUS_MANAGED = {'valid_from': 76,
-                                     'valid_to': 77,
-                                     'status': 78,
-                                     'version': 79,
-                                     'lifecycle_id': 8000}
-    GET_BASE_ORDER_LOG = {'user': 97,
-                          'action': 98,
-                          'timestamp': 99}
+    GET_BASE_ORDER_STATUS_MANAGED = ('valid_from',
+                                     'valid_to',
+                                     'status',
+                                     'version',
+                                     'lifecycle_id',)
+    GET_BASE_ORDER_LOG = ('user',
+                          'action',
+                          'timestamp',)
+    GET_BASE_CALCULATED = ('valid',
+                           'unique',)
     GET_MODEL_ORDER = dict()
     # post
     POST_BASE_EXCLUDE = ('id', 'lifecycle_id', 'checksum', 'status', 'version')
@@ -201,7 +203,7 @@ class StatusLogManager(GlobalManager):
     HAS_STATUS = False
 
     # meta
-    GET_MODEL_ORDER = {'status': 0}
+    GET_MODEL_ORDER = ('status',)
 
 
 # log table
@@ -320,8 +322,8 @@ class CentralLogManager(GlobalManager):
 
     # meta
     GET_MODEL_NOT_RENDER = ('log_id',)
-    GET_MODEL_ORDER = {'log_id': 0,
-                       'context': 1}
+    GET_MODEL_ORDER = ('log_id',
+                       'context',)
 
 
 # table
@@ -368,9 +370,9 @@ class SettingsLogManager(GlobalManager):
     HAS_STATUS = False
 
     # meta
-    GET_MODEL_ORDER = {'key': 0,
-                       'default': 1,
-                       'value': 2}
+    GET_MODEL_ORDER = ('key',
+                       'default',
+                       'value',)
 
 
 # log table

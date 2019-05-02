@@ -400,14 +400,18 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
 class StatusReadWriteSerializer(GlobalReadWriteSerializer):
     class Meta:
         model = Status
-        exclude = ('id', 'checksum', )
+        # exclude = ('id', 'checksum', )
+        # to control field order in response
+        fields = Status.objects.GET_MODEL_ORDER + Status.objects.GET_BASE_CALCULATED
 
 
 # read
 class StatusLogReadSerializer(GlobalReadWriteSerializer):
     class Meta:
         model = StatusLog
-        exclude = ('id', 'checksum', )
+        # exclude = ('id', 'checksum', )
+        # to control field order in response
+        fields = Status.objects.GET_MODEL_ORDER + Status.objects.GET_BASE_ORDER_LOG + Status.objects.GET_BASE_CALCULATED
 
 
 ###############
@@ -418,14 +422,19 @@ class StatusLogReadSerializer(GlobalReadWriteSerializer):
 class PermissionsReadWriteSerializer(GlobalReadWriteSerializer):
     class Meta:
         model = Permissions
-        exclude = ('id', 'checksum',)
+        # exclude = ('id', 'checksum',)
+        # to control field order in response
+        fields = Permissions.objects.GET_MODEL_ORDER + Permissions.objects.GET_BASE_CALCULATED
 
 
 # read
 class PermissionsLogReadSerializer(GlobalReadWriteSerializer):
     class Meta:
         model = PermissionsLog
-        exclude = ('id', 'checksum', )
+        # exclude = ('id', 'checksum', )
+        # to control field order in response
+        fields = PermissionsLog.objects.GET_MODEL_ORDER + PermissionsLog.objects.GET_BASE_ORDER_LOG + \
+            PermissionsLog.objects.GET_BASE_CALCULATED
 
 
 ########
@@ -436,15 +445,19 @@ class PermissionsLogReadSerializer(GlobalReadWriteSerializer):
 class LDAPReadWriteSerializer(GlobalReadWriteSerializer):
     class Meta:
         model = LDAP
-        exclude = ('id', 'checksum',)
+        # exclude = ('id', 'checksum',)
         extra_kwargs = {'password': {'write_only': True}}
+        # to control field order in response
+        fields = LDAP.objects.GET_MODEL_ORDER + LDAP.objects.GET_BASE_CALCULATED
 
 
 # read
 class LDAPLogReadSerializer(GlobalReadWriteSerializer):
     class Meta:
         model = LDAPLog
-        exclude = ('id', 'checksum', )
+        # exclude = ('id', 'checksum', )
+        # to control field order in response
+        fields = LDAP.objects.GET_MODEL_ORDER + LDAP.objects.GET_BASE_ORDER_LOG + LDAP.objects.GET_BASE_CALCULATED
 
 
 # delete
@@ -462,9 +475,11 @@ class LDAPDeleteSerializer(GlobalReadWriteSerializer):
 class SettingsReadWriteSerializer(GlobalReadWriteSerializer):
     class Meta:
         model = Settings
-        exclude = ('id', 'checksum',)
+        # exclude = ('id', 'checksum',)
         extra_kwargs = {'default': {'read_only': True},
                         'key': {'read_only': True}}
+        # to control field order in response
+        fields = Settings.objects.GET_MODEL_ORDER + Settings.objects.GET_BASE_CALCULATED
 
 
 # initial write
@@ -478,7 +493,10 @@ class SettingsInitialWriteSerializer(GlobalReadWriteSerializer):
 class SettingsLogReadSerializer(GlobalReadWriteSerializer):
     class Meta:
         model = SettingsLog
-        exclude = ('id', 'checksum', )
+        # exclude = ('id', 'checksum', )
+        # to control field order in response
+        fields = Settings.objects.GET_MODEL_ORDER + Settings.objects.GET_BASE_ORDER_LOG + \
+            Settings.objects.GET_BASE_CALCULATED
 
 
 ##############
@@ -489,7 +507,10 @@ class SettingsLogReadSerializer(GlobalReadWriteSerializer):
 class CentralLogReadWriteSerializer(GlobalReadWriteSerializer):
     class Meta:
         model = CentralLog
-        exclude = ('id', 'checksum',)
+        # exclude = ('id', 'checksum',)
+        # to control field order in response
+        fields = CentralLog.objects.GET_MODEL_ORDER + CentralLog.objects.GET_BASE_ORDER_LOG + \
+            CentralLog.objects.GET_BASE_CALCULATED
 
 
 #############
@@ -500,7 +521,9 @@ class CentralLogReadWriteSerializer(GlobalReadWriteSerializer):
 class AccessLogReadWriteSerializer(GlobalReadWriteSerializer):
     class Meta:
         model = AccessLog
-        exclude = ('id', 'checksum',)
+        # exclude = ('id', 'checksum',)
+        # to control field order in response
+        fields = AccessLog.objects.GET_MODEL_ORDER + AccessLog.objects.GET_BASE_CALCULATED
 
 
 #########
@@ -513,7 +536,10 @@ class RolesReadSerializer(GlobalReadWriteSerializer):
 
     class Meta:
         model = Roles
-        exclude = ('id', 'checksum',)
+        # exclude = ('id', 'checksum',)
+        # to control field order in response
+        fields = Roles.objects.GET_MODEL_ORDER + Roles.objects.GET_BASE_ORDER_STATUS_MANAGED + \
+            Roles.objects.GET_BASE_CALCULATED
 
 
 # write
@@ -522,8 +548,11 @@ class RolesWriteSerializer(GlobalReadWriteSerializer):
 
     class Meta:
         model = Roles
-        exclude = ('id', 'checksum', )
+        # exclude = ('id', 'checksum', )
         extra_kwargs = {'version': {'required': False}}
+        # to control field order in response
+        fields = Roles.objects.GET_MODEL_ORDER + Roles.objects.GET_BASE_ORDER_STATUS_MANAGED + \
+            Roles.objects.GET_BASE_CALCULATED
 
 
 class RolesDeleteStatusSerializer(GlobalReadWriteSerializer):
@@ -531,10 +560,13 @@ class RolesDeleteStatusSerializer(GlobalReadWriteSerializer):
 
     class Meta:
         model = Roles
-        exclude = ('id', 'checksum', )
+        # exclude = ('id', 'checksum', )
         extra_kwargs = {'version': {'required': False},
                         'role': {'required': False},
                         'valid_from': {'required': False}}
+        # to control field order in response
+        fields = Roles.objects.GET_MODEL_ORDER + Roles.objects.GET_BASE_ORDER_STATUS_MANAGED + \
+            Roles.objects.GET_BASE_CALCULATED
 
 
 class RolesNewVersionSerializer(GlobalReadWriteSerializer):
@@ -542,10 +574,13 @@ class RolesNewVersionSerializer(GlobalReadWriteSerializer):
 
     class Meta:
         model = Roles
-        exclude = ('id', 'checksum', )
+        # exclude = ('id', 'checksum', )
         extra_kwargs = {'version': {'required': False},
                         'role': {'required': False},
                         'valid_from': {'required': False}}
+        # to control field order in response
+        fields = Roles.objects.GET_MODEL_ORDER + Roles.objects.GET_BASE_ORDER_STATUS_MANAGED + \
+            Roles.objects.GET_BASE_CALCULATED
 
 
 # log
@@ -554,7 +589,10 @@ class RolesLogReadSerializer(GlobalReadWriteSerializer):
 
     class Meta:
         model = RolesLog
-        exclude = ('id', 'checksum', )
+        # exclude = ('id', 'checksum', )
+        # to control field order in response
+        fields = Roles.objects.GET_MODEL_ORDER + Roles.objects.GET_BASE_ORDER_STATUS_MANAGED + \
+            Roles.objects.GET_BASE_ORDER_LOG + Roles.objects.GET_BASE_CALCULATED
 
 
 #########
@@ -567,7 +605,10 @@ class UsersReadSerializer(GlobalReadWriteSerializer):
 
     class Meta:
         model = Users
-        exclude = ('id', 'checksum', 'password', 'is_active')
+        # exclude = ('id', 'checksum', 'password', 'is_active')
+        # to control field order in response
+        fields = Users.objects.GET_MODEL_ORDER_NO_PW + Users.objects.GET_BASE_ORDER_STATUS_MANAGED + \
+            Users.objects.GET_BASE_CALCULATED
 
 
 # write
@@ -576,13 +617,16 @@ class UsersWriteSerializer(GlobalReadWriteSerializer):
 
     class Meta:
         model = Users
-        exclude = ('id', 'checksum', 'is_active')
+        # exclude = ('id', 'checksum', 'is_active')
         extra_kwargs = {'version': {'required': False},
                         'username': {'required': False},
                         'email': {'required': False},
                         'initial_password': {'read_only': True},
                         'password': {'write_only': True,
                                      'required': False}}
+        # to control field order in response
+        fields = Users.objects.GET_MODEL_ORDER + Users.objects.GET_BASE_ORDER_STATUS_MANAGED + \
+            Users.objects.GET_BASE_CALCULATED
 
 
 class UsersNewVersionSerializer(GlobalReadWriteSerializer):
@@ -590,7 +634,7 @@ class UsersNewVersionSerializer(GlobalReadWriteSerializer):
 
     class Meta:
         model = Users
-        exclude = ('id', 'checksum', 'is_active', 'password')
+        # exclude = ('id', 'checksum', 'is_active', 'password')
         extra_kwargs = {'version': {'required': False},
                         'username': {'required': False},
                         'first_name': {'required': False},
@@ -599,6 +643,9 @@ class UsersNewVersionSerializer(GlobalReadWriteSerializer):
                         'roles': {'required': False},
                         'valid_from': {'required': False},
                         'ldap': {'required': False}}
+        # to control field order in response
+        fields = Users.objects.GET_MODEL_ORDER_NO_PW + Users.objects.GET_BASE_ORDER_STATUS_MANAGED + \
+            Users.objects.GET_BASE_CALCULATED
 
 
 class UsersDeleteStatusSerializer(GlobalReadWriteSerializer):
@@ -606,7 +653,7 @@ class UsersDeleteStatusSerializer(GlobalReadWriteSerializer):
 
     class Meta:
         model = Users
-        exclude = ('id', 'checksum', 'is_active', 'password')
+        # exclude = ('id', 'checksum', 'is_active', 'password')
         extra_kwargs = {'version': {'required': False},
                         'username': {'required': False},
                         'first_name': {'required': False},
@@ -615,6 +662,9 @@ class UsersDeleteStatusSerializer(GlobalReadWriteSerializer):
                         'roles': {'required': False},
                         'valid_from': {'required': False},
                         'ldap': {'required': False}}
+        # to control field order in response
+        fields = Users.objects.GET_MODEL_ORDER_NO_PW + Users.objects.GET_BASE_ORDER_STATUS_MANAGED + \
+            Users.objects.GET_BASE_CALCULATED
 
 
 # log
@@ -623,7 +673,10 @@ class UsersLogReadSerializer(GlobalReadWriteSerializer):
 
     class Meta:
         model = UsersLog
-        exclude = ('id', 'checksum', 'is_active')
+        # exclude = ('id', 'checksum', 'is_active')
+        # to control field order in response
+        fields = UsersLog.objects.GET_MODEL_ORDER + Users.objects.GET_BASE_ORDER_STATUS_MANAGED + \
+            UsersLog.objects.GET_BASE_ORDER_LOG + UsersLog.objects.GET_BASE_CALCULATED
 
 
 AUDIT_TRAIL_SERIALIZERS = {
