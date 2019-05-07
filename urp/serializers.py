@@ -333,7 +333,7 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
             @require_SETTINGS
             def validate_settings(self):
                 # validate maximum login attempts
-                if self.instance.key == 'auth.max_login_attempts' or self.instance.key == 'core.auto_logout':
+                if self.instance.key == 'auth.max_login_attempts':
                     try:
                         # try to convert to integer
                         data['value'] = value_to_int(data['value'])
@@ -343,6 +343,18 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                     except ValueError:
                         raise serializers.ValidationError('Setting "{}" must be a positive integer.'
                                                           .format(self.instance.key))
+                # validate maximum inactive time
+                if self.instance.key == 'core.auto_logout':
+                    try:
+                        # try to convert to integer
+                        data['value'] = value_to_int(data['value'])
+                        # verify that integer is positive greater setting
+                        if data['value'] < settings.FRONTEND_AUTO_LOGOUT_REFRESH:
+                            raise ValueError
+                    except ValueError:
+                        raise serializers.ValidationError('Setting "{}" must be a positive integer greater {} seconds.'
+                                                          .format(self.instance.key,
+                                                                  settings.FRONTEND_AUTO_LOGOUT_REFRESH))
 
         @require_POST
         class Post(Validate):

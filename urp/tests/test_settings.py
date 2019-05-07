@@ -86,6 +86,7 @@ class SettingsMiscellaneous(APITestCase):
         self.prerequisites = Prerequisites(base_path=self.base_path)
         self.test_data_username = 'core.system_username'
         self.test_data_attempts = 'auth.max_login_attempts'
+        self.test_data_logout = 'core.auto_logout'
 
     def setUp(self):
         self.client = Client(enforce_csrf_checks=True)
@@ -141,6 +142,20 @@ class SettingsMiscellaneous(APITestCase):
         response = self.client.patch(path, data=data, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_400_logout_interval(self):
+        """
+        Test shall show that is not possible to edit auto logout time lower than configured on backend.
+        """
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get API response
+        path = '{}/{}'.format(self.base_path, self.test_data_logout)
+        data = {'value': '8'}
+        response = self.client.patch(path, data=data, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
     def test_200_max_attempts(self):
         """
                 Test shall show that is not possible to edit max login attempts to anything other than positive integers.
@@ -152,5 +167,19 @@ class SettingsMiscellaneous(APITestCase):
         # get API response
         path = '{}/{}'.format(self.base_path, self.test_data_attempts)
         data = {'value': '10'}
+        response = self.client.patch(path, data=data, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_200_auto_logout(self):
+        """
+                Test shall show that is not possible to edit max login attempts to anything other than positive integers.
+                """
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get API response
+        path = '{}/{}'.format(self.base_path, self.test_data_logout)
+        data = {'value': '300'}
         response = self.client.patch(path, data=data, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
