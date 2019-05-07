@@ -88,7 +88,7 @@ def auto_logout():
     return decorator
 
 
-@api_view(['GET'])
+@api_view(['PATCH'])
 @auth_required()
 def logout_auto_view(request):
     if not hasattr(request, 'data'):
