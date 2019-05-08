@@ -192,6 +192,7 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 SESSION_COOKIE_HTTPONLY = value_to_bool(os.environ.get('SESSION_COOKIE_HTTPONLY', 1))
 SESSION_COOKIE_SECURE = value_to_bool(os.environ.get('SESSION_COOKIE_SECURE', 0))
 SESSION_COOKIE_SAMESITE = 'Strict'
+SESSION_COOKIE_DOMAIN = '{}'.format(require_env('SESSION_COOKIE_DOMAIN'))
 
 
 ############
