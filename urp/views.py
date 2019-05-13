@@ -55,7 +55,7 @@ from django.middleware.csrf import get_token
 
 def refresh_time(request, active=True):
     now = timezone.now()
-    if now - request.session['last_touch'] > timezone.timedelta(seconds=Settings.objects.core_auto_logout):
+    if now - request.session['last_touch'] > timezone.timedelta(minutes=Settings.objects.core_auto_logout):
         data = {
             'user': request.user.username,
             'timestamp': now,

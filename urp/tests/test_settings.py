@@ -152,7 +152,7 @@ class SettingsMiscellaneous(APITestCase):
         csrf_token = self.prerequisites.get_csrf(self.client)
         # get API response
         path = '{}/{}'.format(self.base_path, self.test_data_logout)
-        data = {'value': '8'}
+        data = {'value': '0.5'}
         response = self.client.patch(path, data=data, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
