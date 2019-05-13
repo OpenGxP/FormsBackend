@@ -170,7 +170,8 @@ class MyModelBackend(ModelBackend):
                             # create log record
                             data['action'] = settings.DEFAULT_LOG_ATTEMPT
                             data['active'] = 'yes'
-                            data['method'] = 'local'
+                            # FO-139: changed method to ldap
+                            data['method'] = 'ldap'
                             if data['attempt'] >= Settings.objects.auth_maxloginattempts:
                                 block_user(user)
                             write_access_log(data)
