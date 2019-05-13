@@ -404,6 +404,7 @@ class SettingsLog(GlobalModel):
 
     # permissions
     MODEL_ID = '14'
+    MODEL_CONTEXT = 'SettingsLog'
     perms = {
             '01': 'read',
         }
