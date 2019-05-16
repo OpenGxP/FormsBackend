@@ -25,6 +25,8 @@ from ldap3 import SIMPLE, AUTO_BIND_DEFAULT, SUBTREE
 # python imports
 import os
 
+# import base settings
+from .base import *
 
 #################
 # LDAP SETTINGS #

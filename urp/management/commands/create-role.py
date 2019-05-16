@@ -22,7 +22,7 @@ import sys
 
 # app imports
 from urp.serializers import RolesWriteSerializer, RolesDeleteStatusSerializer
-from urp.models import Roles, Permissions
+from urp.models import Roles
 
 # django imports
 from django.core import exceptions
@@ -59,7 +59,7 @@ class Command(BaseCommand):
             sys.exit(1)
         if not permissions:
             # get all perms in a comma separated list
-            permissions = Permissions.objects.all_comma_separated_list
+            permissions = settings.ALL_PERMISSIONS
         else:
             permissions = self.clean_input(self.permissions_field, permissions)
 

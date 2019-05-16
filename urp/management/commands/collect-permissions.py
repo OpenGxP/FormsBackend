@@ -23,12 +23,22 @@ from urp.serializers import PermissionsReadWriteSerializer
 # django imports
 from django.core.management.base import BaseCommand, CommandError
 from django.apps import apps
+from django.conf import settings
 
 
 class Command(BaseCommand):
     help = 'Collect permissions from models.'
 
     def handle(self, *args, **options):
+        # add all permission
+        data = {'model': 'global',
+                'permission': 'all',
+                'key': '{}'.format(settings.ALL_PERMISSIONS)}
+        serializer = PermissionsReadWriteSerializer(data=data, context={'method': 'POST', 'function': 'init'})
+        if serializer.is_valid():
+            serializer.save()
+        else:
+            raise CommandError('Data is not valid ({}). Error: {}.'.format(data, serializer.errors))
         models = apps.all_models['urp']
         models.update(apps.all_models['basics'])
         for model in models:

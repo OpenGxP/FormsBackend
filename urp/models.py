@@ -101,14 +101,6 @@ class PermissionsManager(GlobalManager):
     # meta
     GET_MODEL_ORDER = PermissionsLogManager.GET_MODEL_ORDER
 
-    @property
-    def all_comma_separated_list(self):
-        comma_list = ''
-        query = self.all()
-        for perm in query:
-            comma_list += '{},'.format(perm.key)
-        return comma_list[:-1]
-
 
 # table
 class Permissions(GlobalModel):
@@ -280,7 +272,7 @@ class RolesManager(GlobalManager):
                 # get the valid role (only one version of all returned versions can be valid!)
                 if obj.verify_validity_range:
                     # check each role for the requested permission
-                    if permission in obj.permissions.split(','):
+                    if any(perm in obj.permissions.split(',') for perm in [permission, settings.ALL_PERMISSIONS]):
                         return True
 
     def casl(self, roles):
