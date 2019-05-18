@@ -40,6 +40,9 @@ class Authenticate(APITestCase):
     def setUp(self):
         self.client = Client()
         self.prerequisites.role_superuser()
+        self.prerequisites.role_superuser_two()
+        Users.objects.create_superuser(username='soduser', password=self.prerequisites.password, role='all,all_two',
+                                       email=self.prerequisites.email)
 
     def test_400_both(self):
         # get API response
@@ -187,3 +190,55 @@ class AuthenticateLogging(APITestCase):
         self.assertEqual(record.action, central_record.action)
         self.assertEqual(record.user, central_record.user)
         self.assertEqual(AccessLog.MODEL_CONTEXT, central_record.context)
+
+
+class AuthenticateSoD(APITestCase):
+    def __init__(self, *args, **kwargs):
+        super(AuthenticateSoD, self).__init__(*args, **kwargs)
+        self.prerequisites = Prerequisites()
+        self.path = reverse('login-view')
+
+    def setUp(self):
+        self.client = Client()
+        self.prerequisites.role_superuser()
+        self.prerequisites.role_superuser_two()
+        Users.objects.create_superuser(username='soduser', password=self.prerequisites.password, role='all,all_two',
+                                       email=self.prerequisites.email)
+
+    def test_200_no_sod(self):
+        # get API response
+        data = {'username': 'soduser', 'password': self.prerequisites.password}
+        response = self.client.post(self.path, data=data, content_type='application/json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_400_sod(self):
+        # add conflict and push to prod
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        base_path = reverse('sod-list')
+        csrf_token = self.prerequisites.get_csrf(self.client, path=base_path)
+        # get API response
+        response = self.client.post(base_path, data={'base': 'all', 'conflict': 'all_two'},
+                                    content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        # start circulation
+        _status = 'circulation'
+        path = '{}/{}/{}/{}'.format(base_path, response.data['lifecycle_id'], 1, _status)
+        response_circ = self.client.patch(path, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response_circ.status_code, status.HTTP_200_OK)
+
+        # push to productive
+        # auth with second user to avoid SoD
+        self.prerequisites.auth_two(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client, path=base_path)
+        _status = 'productive'
+        path = '{}/{}/{}/{}'.format(base_path, response.data['lifecycle_id'], 1, _status)
+        response_prod = self.client.patch(path, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response_prod.status_code, status.HTTP_200_OK)
+
+        # try to log in again
+        data = {'username': 'soduser', 'password': self.prerequisites.password}
+        response = self.client.post(self.path, data=data, content_type='application/json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

@@ -25,7 +25,7 @@ from .models import Status, Permissions, Users, Roles, AccessLog, PermissionsLog
 from basics.custom import generate_checksum, generate_to_hash, encrypt, value_to_int
 from basics.models import AVAILABLE_STATUS, StatusLog, CentralLog, Settings, SettingsLog
 from .decorators import require_STATUS_CHANGE, require_POST, require_DELETE, require_PATCH, require_NONE, \
-    require_NEW_VERSION, require_status, require_LDAP, require_USERS, require_NEW, require_SETTINGS
+    require_NEW_VERSION, require_status, require_LDAP, require_USERS, require_NEW, require_SETTINGS, require_SOD
 from .custom import create_log_record, create_central_log_record
 from .ldap import server_check
 
@@ -351,6 +351,15 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                         raise serializers.ValidationError('Setting "{}" must be a positive integer.'
                                                           .format(self.instance.key))
 
+            @require_NONE
+            @require_SOD
+            def validate_roles(self):
+                if data['base'] == data['conflict']:
+                    raise serializers.ValidationError('Role "{}" cannot be in self-conflict.'.format(data['base']))
+                for field in self.model.UNIQUE:
+                    if not Roles.objects.filter(role=data[field]).exists():
+                        raise serializers.ValidationError('Role "{}" does not exist.'.format(data[field]))
+
         @require_POST
         class Post(Validate):
             @require_NEW
@@ -389,6 +398,16 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 else:
                     if 'password' not in data:
                         raise serializers.ValidationError({'password': ['This filed is required.']})
+
+            @require_NEW
+            @require_SOD
+            def validate_roles(self):
+                if data['base'] == data['conflict']:
+                    raise serializers.ValidationError('Role "{}" cannot be in self-conflict.'.format(data['base']))
+
+                for field in self.model.UNIQUE:
+                    if not Roles.objects.filter(role=data[field]).exists():
+                        raise serializers.ValidationError('Role "{}" does not exist.'.format(data[field]))
 
         @require_DELETE
         class Delete(Validate):

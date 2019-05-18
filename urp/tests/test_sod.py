@@ -18,10 +18,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # django imports
 from django.urls import reverse
-from django.test import Client
-
-# rest framework imports
-from rest_framework.test import APITestCase
 
 # app imports
 from ..models import SoD
@@ -55,13 +51,14 @@ class PostNewSoD(PostNew):
         self.base_path = BASE_PATH
         self.model = SoD
         self.prerequisites = Prerequisites(base_path=self.base_path)
-        self.valid_payload = {'base': 'test',
-                              'conflict': 'test'}
+        self.valid_payload = {'base': 'all',
+                              'conflict': 'no_write_perms'}
         self.invalid_payloads = [dict(),
                                  {'base': ''},
                                  {'conflict': ''},
                                  {'base': 'test', 'conflict': ''},
-                                 {'base': '', 'conflict': 'test'}]
+                                 {'base': '', 'conflict': 'test'},
+                                 {'base': 'test', 'conflict': 'test'}]
         self.execute = True
 
 
@@ -77,8 +74,8 @@ class GetOneSoD(GetOne):
         self.model = SoD
         self.prerequisites = Prerequisites(base_path=self.base_path)
         self.serializer = SoDReadSerializer
-        self.ok_object_data = {'base': 'test',
-                               'conflict': 'test'}
+        self.ok_object_data = {'base': 'all',
+                               'conflict': 'no_perms'}
         self.execute = True
 
 
@@ -90,12 +87,12 @@ class PostNewVersionSoD(PostNewVersion):
         self.model = SoD
         self.prerequisites = Prerequisites(base_path=self.base_path)
         self.serializer = SoDReadSerializer
-        self.ok_object_data = {'base': 'test',
-                               'conflict': 'test'}
-        self.fail_object_draft_data = {'base': 'test_draft',
-                                       'conflict': 'test'}
-        self.fail_object_circulation_data = {'base': 'test_circ',
-                                             'conflict': 'test'}
+        self.ok_object_data = {'base': 'all',
+                               'conflict': 'all_two'}
+        self.fail_object_draft_data = {'base': 'no_version_archived',
+                                       'conflict': 'all_two'}
+        self.fail_object_circulation_data = {'base': 'all_two',
+                                             'conflict': 'no_version_archived'}
         self.execute = True
 
 
@@ -107,8 +104,8 @@ class DeleteOneSoD(DeleteOne):
         self.model = SoD
         self.prerequisites = Prerequisites(base_path=self.base_path)
         self.serializer = SoDReadSerializer
-        self.ok_object_data = {'base': 'test',
-                               'conflict': 'test'}
+        self.ok_object_data = {'base': 'all',
+                               'conflict': 'all_two'}
         self.execute = True
 
 
@@ -120,11 +117,11 @@ class PatchOneSoD(PatchOne):
         self.model = SoD
         self.prerequisites = Prerequisites(base_path=self.base_path)
         self.serializer = SoDReadSerializer
-        self.ok_object_data = {'base': 'test',
-                               'conflict': 'test'}
+        self.ok_object_data = {'base': 'all',
+                               'conflict': 'all_two'}
         self.valid_payload = {
-            'base': 'test',
-            'conflict': 'anders'
+            'base': 'all',
+            'conflict': 'no_write_perms'
         }
         self.invalid_payload = {
             'base': 'testeu',
@@ -146,19 +143,6 @@ class PatchOneStatusSoD(PatchOneStatus):
         self.model = SoD
         self.prerequisites = Prerequisites(base_path=self.base_path)
         self.serializer = SoDReadSerializer
-        self.ok_object_data = {'base': 'test',
-                               'conflict': 'test'}
+        self.ok_object_data = {'base': 'all',
+                               'conflict': 'all_two'}
         self.execute = True
-
-
-# patch
-class SoDMiscellaneous(APITestCase):
-    def __init__(self, *args, **kwargs):
-        super(SoDMiscellaneous, self).__init__(*args, **kwargs)
-        self.base_path = BASE_PATH
-        self.prerequisites = Prerequisites(base_path=self.base_path)
-
-    def setUp(self):
-        self.client = Client(enforce_csrf_checks=True)
-        self.prerequisites.role_superuser()
-        self.prerequisites.role_superuser_two()

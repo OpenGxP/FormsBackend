@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # python import
 import string
+import itertools
 
 # django imports
 from django.db import models
@@ -803,6 +804,22 @@ class Users(AbstractBaseUser, GlobalModel):
                     if role.verify_validity_range:
                         return True
         # if no assigned roles is prod and valid, return none
+
+    @property
+    def verify_sod(self):
+        # determine pairs of assigned roles
+        combinations = itertools.combinations(self.roles.split(','), 2)
+        status_effective_id = Status.objects.productive
+        # parse combinations
+        for a, b in combinations:
+            # look for productive sod records
+            query = SoD.objects.filter(Q(base=a, conflict=b, status__id=status_effective_id) |
+                                       Q(base=b, conflict=a, status__id=status_effective_id)).all()
+            # check if records are valid
+            for record in query:
+                if record.verify_validity_range:
+                    return False
+        return True
 
     # references
     EMAIL_FIELD = 'email'

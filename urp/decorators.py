@@ -25,7 +25,7 @@ from rest_framework.response import Response
 from rest_framework import status
 
 # app imports
-from .models import Roles, LDAP, Users
+from .models import Roles, LDAP, Users, SoD
 from basics.models import Settings
 
 
@@ -35,7 +35,8 @@ def auth_required():
         @wraps(view_func)
         def wrapper(request, *args, **kwargs):
             # FO-121: add second requirement, user must be prod and valid
-            if request.user.is_authenticated and Users.objects.verify_prod_valid(key=request.user.username):
+            if request.user.is_authenticated and Users.objects.verify_prod_valid(key=request.user.username) \
+                    and request.user.verify_sod:
                 return view_func(request, *args, **kwargs)
             return Response(status=status.HTTP_401_UNAUTHORIZED)
         return wrapper
@@ -104,6 +105,7 @@ require_ROLES = require_model(Roles)
 require_LDAP = require_model(LDAP)
 require_USERS = require_model(Users)
 require_SETTINGS = require_model(Settings)
+require_SOD = require_model(SoD)
 
 
 def require_status(_status):

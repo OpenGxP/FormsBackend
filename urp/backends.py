@@ -105,7 +105,7 @@ class MyModelBackend(ModelBackend):
             for user in users:
                 # if user is valid (can only be one off all users in status productive)
                 # FO-123: added role valid check as additional criteria for password checks
-                if user.verify_validity_range and user.verify_valid_roles:
+                if user.verify_validity_range and user.verify_valid_roles and user.verify_sod:
                     # check if ldap user
                     if not user.ldap:
                         # verify password
