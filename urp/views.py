@@ -27,14 +27,16 @@ from rest_framework.reverse import reverse
 from rest_framework import serializers
 
 # custom imports
-from .models import Status, Roles, Permissions, Users, AccessLog, PermissionsLog, RolesLog, UsersLog, LDAP, LDAPLog
+from .models import Status, Roles, Permissions, Users, AccessLog, PermissionsLog, RolesLog, UsersLog, LDAP, LDAPLog, \
+    SoD, SoDLog
 from .serializers import StatusReadWriteSerializer, PermissionsReadWriteSerializer, RolesReadSerializer, \
     RolesWriteSerializer, UsersReadSerializer, RolesDeleteStatusSerializer, RolesNewVersionSerializer, \
     UsersWriteSerializer, UsersNewVersionSerializer, UsersDeleteStatusSerializer, \
     AccessLogReadWriteSerializer, CentralLogReadWriteSerializer, StatusLogReadSerializer, \
     PermissionsLogReadSerializer, RolesLogReadSerializer, UsersLogReadSerializer, AUDIT_TRAIL_SERIALIZERS, \
     LDAPLogReadSerializer, LDAPReadWriteSerializer, LDAPDeleteSerializer, SettingsLogReadSerializer, \
-    SettingsReadWriteSerializer
+    SettingsReadWriteSerializer, SoDLogReadSerializer, SoDDeleteStatusNewVersionSerializer, SoDWriteSerializer, \
+    SoDReadSerializer
 from .decorators import perm_required, auth_required
 from basics.models import StatusLog, CentralLog, SettingsLog, Settings
 from basics.custom import get_model_by_string
@@ -120,6 +122,7 @@ def api_root(request):
                                             'roles': {'url': reverse('roles-list', request=request)},
                                             'ldap': {'url': reverse('ldap-list', request=request)},
                                             'users': {'url': reverse('users-list', request=request)},
+                                            'sod': {'url': reverse('sod-list', request=request)},
                                             'settings': {'url': reverse('settings-list', request=request)}}},
             'logs': {'root': '/logs/',
                      'subjects': {'central': {'url': reverse('central-log-list', request=request)},
@@ -129,6 +132,7 @@ def api_root(request):
                                   'roles': {'url': reverse('roles-log-list', request=request)},
                                   'ldap': {'url': reverse('ldap-log-list', request=request)},
                                   'users': {'url': reverse('users-log-list', request=request)},
+                                  'sod': {'url': reverse('sod-log-list', request=request)},
                                   'settings': {'url': reverse('settings-log-list', request=request)}}}}
 
     return Response(root)
@@ -966,4 +970,191 @@ def users_log_list(request):
     """
     logs = UsersLog.objects.all()
     serializer = UsersLogReadSerializer(logs, many=True)
+    return Response(serializer.data)
+
+
+#######
+# SOD #
+#######
+
+# GET list
+@api_view(['GET', 'POST'])
+@auth_required()
+@auto_logout()
+def sod_list(request):
+    @perm_required('{}.02'.format(SoD.MODEL_ID))
+    @csrf_protect
+    def post(_request):
+        # add version for new objects because of combined unique constraint
+        _request.data['version'] = 1
+        _serializer = SoDWriteSerializer(data=_request.data, context={'method': 'POST',
+                                                                      'function': 'new',
+                                                                      'user': request.user.username})
+        if _serializer.is_valid():
+            _serializer.save()
+            return Response(_serializer.data, status=http_status.HTTP_201_CREATED)
+        return Response(_serializer.errors, status=http_status.HTTP_400_BAD_REQUEST)
+
+    @perm_required('{}.01'.format(SoD.MODEL_ID))
+    @ensure_csrf_cookie
+    def get(_request):
+        roles = SoD.objects.all()
+        serializer = SoDReadSerializer(roles, many=True)
+        return Response(serializer.data)
+
+    if request.method == 'GET':
+        return get(request)
+    if request.method == 'POST':
+        return post(request)
+
+
+# GET detail
+@api_view(['GET', 'PATCH', 'POST', 'DELETE'])
+@auth_required()
+@auto_logout()
+def sod_detail(request, lifecycle_id, version):
+    @perm_required('{}.03'.format(SoD.MODEL_ID))
+    @csrf_protect
+    def patch(_request):
+        _serializer = SoDWriteSerializer(role, data=_request.data, context={'method': 'PATCH',
+                                                                            'function': '',
+                                                                            'user': request.user.username})
+        if _serializer.is_valid():
+            _serializer.save()
+            return Response(_serializer.data)
+        return Response(_serializer.errors, status=http_status.HTTP_400_BAD_REQUEST)
+
+    @csrf_protect
+    def post_base(_request):
+        _serializer = SoDDeleteStatusNewVersionSerializer(role, data=_request.data,
+                                                          context={'method': 'POST',
+                                                                   'function': 'new_version',
+                                                                   'user': request.user.username})
+        if _serializer.is_valid():
+            _serializer.create(validated_data=_serializer.validated_data)
+            return Response(_serializer.data, status=http_status.HTTP_201_CREATED)
+        return Response(_serializer.errors, status=http_status.HTTP_400_BAD_REQUEST)
+
+    @perm_required('{}.11'.format(SoD.MODEL_ID))
+    def post(_request):
+        return post_base(_request)
+
+    @perm_required('{}.12'.format(SoD.MODEL_ID))
+    def post_archived(_request):
+        return post_base(_request)
+
+    @perm_required('{}.04'.format(SoD.MODEL_ID))
+    @csrf_protect
+    def delete(_request):
+        _serializer = SoDDeleteStatusNewVersionSerializer(role, data={}, context={'method': 'DELETE',
+                                                                                  'function': '',
+                                                                                  'user': request.user.username})
+        if _serializer.is_valid():
+            _serializer.delete()
+            return Response(status=http_status.HTTP_204_NO_CONTENT)
+        return Response(_serializer.errors, status=http_status.HTTP_400_BAD_REQUEST)
+
+    @perm_required('{}.01'.format(SoD.MODEL_ID))
+    @ensure_csrf_cookie
+    def get(_request):
+        serializer = SoDReadSerializer(role)
+        return Response(serializer.data)
+
+    try:
+        role = SoD.objects.get(lifecycle_id=lifecycle_id, version=version)
+    except SoD.DoesNotExist:
+        return Response(status=http_status.HTTP_404_NOT_FOUND)
+    except ValidationError:
+        return Response(status=http_status.HTTP_400_BAD_REQUEST)
+
+    if request.method == 'GET':
+        return get(request)
+
+    elif request.method == 'PATCH':
+        return patch(request)
+
+    elif request.method == 'POST':
+        if role.status.id == Status.objects.archived:
+            return post_archived(request)
+        else:
+            return post(request)
+
+    elif request.method == 'DELETE':
+        return delete(request)
+
+
+@api_view(['PATCH'])
+@auth_required()
+@auto_logout()
+def sod_status(request, lifecycle_id, version, status):
+    @csrf_protect
+    def patch_base(_request):
+        _serializer = SoDDeleteStatusNewVersionSerializer(role, data={}, context={'method': 'PATCH',
+                                                                                  'function': 'status_change',
+                                                                                  'status': status,
+                                                                                  'user': request.user.username})
+        if _serializer.is_valid():
+            _serializer.save()
+            return Response(_serializer.data)
+        return Response(_serializer.errors, status=http_status.HTTP_400_BAD_REQUEST)
+
+    @perm_required('{}.05'.format(SoD.MODEL_ID))
+    def patch_circulation(_request):
+        return patch_base(_request)
+
+    @perm_required('{}.06'.format(SoD.MODEL_ID))
+    def patch_draft(_request):
+        return patch_base(_request)
+
+    @perm_required('{}.07'.format(SoD.MODEL_ID))
+    def patch_productive(_request):
+        return patch_base(_request)
+
+    @perm_required('{}.08'.format(SoD.MODEL_ID))
+    def patch_blocked(_request):
+        return patch_base(_request)
+
+    @perm_required('{}.09'.format(SoD.MODEL_ID))
+    def patch_archived(_request):
+        return patch_base(_request)
+
+    @perm_required('{}.10'.format(SoD.MODEL_ID))
+    def patch_inactive(_request):
+        return patch_base(_request)
+
+    try:
+        role = SoD.objects.get(lifecycle_id=lifecycle_id, version=version)
+    except SoD.DoesNotExist:
+        return Response(status=http_status.HTTP_404_NOT_FOUND)
+    except ValidationError:
+        return Response(status=http_status.HTTP_400_BAD_REQUEST)
+
+    if request.method == 'PATCH':
+        if status == 'circulation':
+            return patch_circulation(request)
+        if status == 'draft':
+            return patch_draft(request)
+        if status == 'productive':
+            return patch_productive(request)
+        if status == 'blocked':
+            return patch_blocked(request)
+        if status == 'archived':
+            return patch_archived(request)
+        if status == 'inactive':
+            return patch_inactive(request)
+        return patch_base(request)
+
+
+##########
+# SODLOG #
+##########
+
+# GET list
+@api_view(['GET'])
+@auth_required()
+@auto_logout()
+@perm_required('{}.01'.format(SoDLog.MODEL_ID))
+def sod_log_list(request):
+    logs = SoDLog.objects.all()
+    serializer = SoDLogReadSerializer(logs, many=True)
     return Response(serializer.data)

@@ -823,7 +823,11 @@ class PostNewVersion(APITestCase):
             # add check that data is the same, except status and version
             query = self.model.objects.get(**self.query)
             serializer = self.serializer(query)
-            self.assertEqual(response.data[self.model.UNIQUE], serializer.data[self.model.UNIQUE])
+            if isinstance(self.model.UNIQUE, list):
+                for field in self.model.UNIQUE:
+                    self.assertEqual(response.data[field], serializer.data[field])
+            else:
+                self.assertEqual(response.data[self.model.UNIQUE], serializer.data[self.model.UNIQUE])
             self.assertEqual(response.data['valid_from'], serializer.data['valid_from'])
             # verify log record
             self.assertEqual(log_records(model=self.model, data=response.data, action=settings.DEFAULT_LOG_CREATE),

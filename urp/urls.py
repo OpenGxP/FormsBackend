@@ -26,7 +26,7 @@ from .views import permissions_list, roles_list, roles_detail, status_list, \
     roles_status, users_list, users_detail, api_root, users_status, access_log_list, central_log_list, \
     permissions_log_list, users_log_list, roles_log_list, audit_trail_list, status_log_list, \
     ldap_list, ldap_detail, ldap_log_list, login_view, logout_view, meta_list, get_csrf_token, settings_list, \
-    settings_detail, settings_log_list, logout_auto_view
+    settings_detail, settings_log_list, logout_auto_view, sod_list, sod_detail, sod_log_list, sod_status
 
 
 urlpatterns = [
@@ -46,6 +46,7 @@ urlpatterns = [
     path('{}logs/permissions'.format(settings.BASE_URL), permissions_log_list, name='permissions-log-list'),
     path('{}logs/roles'.format(settings.BASE_URL), roles_log_list, name='roles-log-list'),
     path('{}logs/users'.format(settings.BASE_URL), users_log_list, name='users-log-list'),
+    path('{}logs/sod'.format(settings.BASE_URL), sod_log_list, name='sod-log-list'),
     path('{}logs/ldap'.format(settings.BASE_URL), ldap_log_list, name='ldap-log-list'),
     path('{}logs/settings'.format(settings.BASE_URL), settings_log_list, name='settings-log-list'),
     # ldap
@@ -59,6 +60,11 @@ urlpatterns = [
     path('{}admin/roles/<str:lifecycle_id>/<int:version>'.format(settings.BASE_URL), roles_detail),
     path('{}admin/roles/<str:lifecycle_id>/<int:version>/<str:status>'.format(settings.BASE_URL), roles_status,
          name='roles-status'),
+    # sod
+    path('{}admin/sod'.format(settings.BASE_URL), sod_list, name='sod-list'),
+    path('{}admin/sod/<str:lifecycle_id>/<int:version>'.format(settings.BASE_URL), sod_detail),
+    path('{}admin/sod/<str:lifecycle_id>/<int:version>/<str:status>'.format(settings.BASE_URL), sod_status,
+         name='sod-status'),
     # users
     path('{}admin/users'.format(settings.BASE_URL), users_list, name='users-list'),
     path('{}admin/users/<str:lifecycle_id>/<int:version>'.format(settings.BASE_URL), users_detail),

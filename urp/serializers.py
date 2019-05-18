@@ -20,7 +20,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from rest_framework import serializers
 
 # custom imports
-from .models import Status, Permissions, Users, Roles, AccessLog, PermissionsLog, RolesLog, UsersLog, LDAP, LDAPLog
+from .models import Status, Permissions, Users, Roles, AccessLog, PermissionsLog, RolesLog, UsersLog, LDAP, LDAPLog, \
+    SoD, SoDLog
 from basics.custom import generate_checksum, generate_to_hash, encrypt, value_to_int
 from basics.models import AVAILABLE_STATUS, StatusLog, CentralLog, Settings, SettingsLog
 from .decorators import require_STATUS_CHANGE, require_POST, require_DELETE, require_PATCH, require_NONE, \
@@ -302,9 +303,15 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
 
                     # verify that record remains unique
                     if self.instance.version > 1:
-                        if getattr(self.instance, self.model.UNIQUE) != data[self.model.UNIQUE]:
-                            raise serializers.ValidationError('Attribute "{}" is unique and can not be changed.'
-                                                              .format(self.model.UNIQUE))
+                        if isinstance(self.model.UNIQUE, list):
+                            for field in self.model.UNIQUE:
+                                if getattr(self.instance, field) != data[field]:
+                                    raise serializers.ValidationError('Attribute "{}" is unique and can not be changed.'
+                                                                      .format(field))
+                        else:
+                            if getattr(self.instance, self.model.UNIQUE) != data[self.model.UNIQUE]:
+                                raise serializers.ValidationError('Attribute "{}" is unique and can not be changed.'
+                                                                  .format(self.model.UNIQUE))
                     else:
                         _filter = {self.model.UNIQUE: data[self.model.UNIQUE]}
                         # FO-134: allow update of status-managed object in version 1
@@ -349,11 +356,20 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
             @require_NEW
             def validate_unique(self):
                 if self.model.objects.HAS_STATUS:
-                    _filter = {self.model.UNIQUE: data[self.model.UNIQUE]}
-                    query = self.model.objects.filter(**_filter).exists()
-                    if query:
-                        raise serializers.ValidationError('Record(s) with attribute "{}" = "{}" already exist.'
-                                                          .format(self.model.UNIQUE, data[self.model.UNIQUE]))
+                    # if unique is not only one, but a list of fields
+                    if isinstance(self.model.UNIQUE, list):
+                        _filter = dict()
+                        for field in self.model.UNIQUE:
+                            _filter[field] = data[field]
+                        query = self.model.objects.filter(**_filter).exists()
+                        if query:
+                            raise serializers.ValidationError('Record(s) with data "{}" already exists'.format(_filter))
+                    else:
+                        _filter = {self.model.UNIQUE: data[self.model.UNIQUE]}
+                        query = self.model.objects.filter(**_filter).exists()
+                        if query:
+                            raise serializers.ValidationError('Record(s) with attribute "{}" = "{}" already exist.'
+                                                              .format(self.model.UNIQUE, data[self.model.UNIQUE]))
 
             @require_NEW_VERSION
             def validate_only_draft_or_circulation(self):
@@ -679,7 +695,55 @@ class UsersLogReadSerializer(GlobalReadWriteSerializer):
             UsersLog.objects.GET_BASE_ORDER_LOG + UsersLog.objects.GET_BASE_CALCULATED
 
 
+#######
+# SOD #
+#######
+
+# read
+class SoDReadSerializer(GlobalReadWriteSerializer):
+    status = serializers.CharField(source='get_status')
+
+    class Meta:
+        model = SoD
+        fields = SoD.objects.GET_MODEL_ORDER + SoD.objects.GET_BASE_ORDER_STATUS_MANAGED + \
+            SoD.objects.GET_BASE_CALCULATED
+
+
+# write
+class SoDWriteSerializer(GlobalReadWriteSerializer):
+    status = serializers.CharField(source='get_status', read_only=True)
+
+    class Meta:
+        model = SoD
+        extra_kwargs = {'version': {'required': False}}
+        fields = SoD.objects.GET_MODEL_ORDER + SoD.objects.GET_BASE_ORDER_STATUS_MANAGED + \
+            SoD.objects.GET_BASE_CALCULATED
+
+
+class SoDDeleteStatusNewVersionSerializer(GlobalReadWriteSerializer):
+    status = serializers.CharField(source='get_status', read_only=True)
+
+    class Meta:
+        model = SoD
+        extra_kwargs = {'version': {'required': False},
+                        'base': {'required': False},
+                        'conflict': {'required': False}}
+        fields = SoD.objects.GET_MODEL_ORDER + SoD.objects.GET_BASE_ORDER_STATUS_MANAGED + \
+            SoD.objects.GET_BASE_CALCULATED
+
+
+# log
+class SoDLogReadSerializer(GlobalReadWriteSerializer):
+    status = serializers.CharField(source='get_status')
+
+    class Meta:
+        model = SoDLog
+        fields = SoD.objects.GET_MODEL_ORDER + SoD.objects.GET_BASE_ORDER_STATUS_MANAGED + \
+            SoD.objects.GET_BASE_ORDER_LOG + SoD.objects.GET_BASE_CALCULATED
+
+
 AUDIT_TRAIL_SERIALIZERS = {
     Users.MODEL_CONTEXT.lower(): UsersLogReadSerializer,
-    Roles.MODEL_CONTEXT.lower(): RolesLogReadSerializer
+    Roles.MODEL_CONTEXT.lower(): RolesLogReadSerializer,
+    SoD.MODEL_CONTEXT.lower(): SoDLogReadSerializer
 }
