@@ -74,19 +74,6 @@ class GlobalManager(models.Manager):
     POST_BASE_EXCLUDE = ('id', 'lifecycle_id', 'checksum', 'status', 'version')
     POST_MODEL_EXCLUDE = tuple()
 
-    def validate_unique(self, instance):
-        model_unique = self.model.UNIQUE
-        unique = getattr(instance, self.model.UNIQUE)
-        _filter = {model_unique: unique}
-        try:
-            query = self.filter(**_filter).filter(~Q(lifecycle_id=getattr(instance, 'lifecycle_id'))).\
-                filter(Q(status=Status.objects.circulation) | Q(status=Status.objects.productive)).all()
-            for item in query:
-                return (_('{} "{}" does already exist in status "{}" and version "{}".'.format(
-                    model_unique.capitalize(), unique, item.status.status, item.version)))
-        except self.model.DoesNotExist:
-            return None
-
     def get_previous_version(self, instance):
         try:
             version = instance.version - 1

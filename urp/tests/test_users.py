@@ -150,7 +150,7 @@ class PatchOneUser(PatchOne):
                                'roles': 'all',
                                'valid_from': timezone.now(),
                                'ldap': False}
-        self.valid_payload = {'username': 'testtest',
+        self.valid_payload = {'username': 'testtestanders',
                               'password': 'test12345test',
                               'roles': 'all',
                               'valid_to': timezone.now(),

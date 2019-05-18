@@ -124,7 +124,7 @@ class PatchOneSoD(PatchOne):
                                'conflict': 'test'}
         self.valid_payload = {
             'base': 'test',
-            'conflict': 'testneu'
+            'conflict': 'anders'
         }
         self.invalid_payload = {
             'base': 'testeu',

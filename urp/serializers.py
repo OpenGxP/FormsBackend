@@ -225,11 +225,6 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 if self.context['status'] != 'circulation':
                     raise serializers.ValidationError('Circulation can only be started from status draft.')
 
-                # validation for unique characteristic on start circulation
-                validation_unique = self.model.objects.validate_unique(self.instance)
-                if validation_unique:
-                    raise serializers.ValidationError(validation_unique)
-
                 # validate for "valid from" of new version shall not be before old version
                 # only for circulations of version 2 and higher
                 if self.instance.version > 1:
@@ -313,15 +308,20 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                                 raise serializers.ValidationError('Attribute "{}" is unique and can not be changed.'
                                                                   .format(self.model.UNIQUE))
                     else:
-                        _filter = {self.model.UNIQUE: data[self.model.UNIQUE]}
-                        # FO-134: allow update of status-managed object in version 1
-                        _list = list()
-                        query = self.model.objects.filter(**_filter).all()
-                        for record in query:
-                            _list.append(record.lifecycle_id)
-                        if self.instance.lifecycle_id not in _list:
-                            raise serializers.ValidationError('Record(s) with attribute "{}" = "{}" already exist.'
-                                                              .format(self.model.UNIQUE, data[self.model.UNIQUE]))
+                        # if unique is not only one, but a list of fields
+                        if isinstance(self.model.UNIQUE, list):
+                            _filter = dict()
+                            for field in self.model.UNIQUE:
+                                _filter[field] = data[field]
+                        else:
+                            _filter = {self.model.UNIQUE: data[self.model.UNIQUE]}
+                        query = self.model.objects.filter(**_filter).exists()
+                        if query:
+                            records = self.model.objects.filter(**_filter).all()
+                            for item in records:
+                                if self.instance.lifecycle_id != item.lifecycle_id:
+                                    raise serializers.ValidationError('Record(s) with data "{}" already exists'
+                                                                      .format(_filter))
 
             @require_NONE
             @require_LDAP
@@ -361,15 +361,11 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                         _filter = dict()
                         for field in self.model.UNIQUE:
                             _filter[field] = data[field]
-                        query = self.model.objects.filter(**_filter).exists()
-                        if query:
-                            raise serializers.ValidationError('Record(s) with data "{}" already exists'.format(_filter))
                     else:
                         _filter = {self.model.UNIQUE: data[self.model.UNIQUE]}
-                        query = self.model.objects.filter(**_filter).exists()
-                        if query:
-                            raise serializers.ValidationError('Record(s) with attribute "{}" = "{}" already exist.'
-                                                              .format(self.model.UNIQUE, data[self.model.UNIQUE]))
+                    query = self.model.objects.filter(**_filter).exists()
+                    if query:
+                        raise serializers.ValidationError('Record(s) with data "{}" already exists'.format(_filter))
 
             @require_NEW_VERSION
             def validate_only_draft_or_circulation(self):
