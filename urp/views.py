@@ -570,7 +570,7 @@ def meta_list(request, dialog):
                                    'format': _format}
 
         # add post information
-        if dialog in ['users', 'roles', 'ldap', 'settings']:
+        if dialog in ['users', 'roles', 'ldap', 'settings', 'sod']:
             exclude = model.objects.POST_BASE_EXCLUDE + model.objects.POST_MODEL_EXCLUDE
             fields = [i for i in model._meta.get_fields() if i.name not in exclude]
             for f in fields:
