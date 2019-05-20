@@ -18,9 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # django imports
 from django.urls import reverse
-from django.utils import timezone
 from django.test import Client
-from django.contrib.auth.hashers import check_password
 
 # rest framework imports
 from rest_framework import status
@@ -61,17 +59,17 @@ class PostNewUsers(PostNew):
         self.valid_payload = {'username': 'testtest',
                               'password': 'test12345test',
                               'roles': 'all',
-                              'valid_from': timezone.now(),
+                              'email': 'example@example.com',
                               'ldap': False}
         self.invalid_payloads = [dict(),
                                  {'username': 'testtest',
                                   'roles': 'all',
                                   'password': '',
-                                  'valid_from': timezone.now()},
+                                  'email': 'example@example.com'},
                                  {'username': 'testtest',
                                   'password': 'test12345test',
                                   'roles': '',
-                                  'valid_from': timezone.now()}]
+                                  'email': 'example@example.com'}]
         self.execute = True
 
 
@@ -90,7 +88,7 @@ class GetOneUser(GetOne):
         self.ok_object_data = {'username': 'testtest',
                                'password': 'test12345test',
                                'roles': 'all',
-                               'valid_from': timezone.now(),
+                               'email': 'example@example.com',
                                'ldap': False}
         self.execute = True
 
@@ -106,17 +104,17 @@ class PostNewVersionUser(PostNewVersion):
         self.ok_object_data = {'username': 'testtest',
                                'password': 'test12345test',
                                'roles': 'all',
-                               'valid_from': timezone.now(),
+                               'email': 'example@example.com',
                                'ldap': False}
         self.fail_object_draft_data = {'username': 'testtestzwei',
                                        'password': 'test12345test',
                                        'roles': 'all',
-                                       'valid_from': timezone.now(),
+                                       'email': 'example@example.com',
                                        'ldap': False}
         self.fail_object_circulation_data = {'username': 'testtestdrei',
                                              'password': 'test12345test',
                                              'roles': 'all',
-                                             'valid_from': timezone.now(),
+                                             'email': 'example@example.com',
                                              'ldap': False}
         self.execute = True
 
@@ -132,7 +130,7 @@ class DeleteOneUser(DeleteOne):
         self.ok_object_data = {'username': 'testtest',
                                'password': 'test12345test',
                                'roles': 'all',
-                               'valid_from': timezone.now(),
+                               'email': 'example@example.com',
                                'ldap': False}
         self.execute = True
 
@@ -148,22 +146,22 @@ class PatchOneUser(PatchOne):
         self.ok_object_data = {'username': 'testtest',
                                'password': 'test12345test',
                                'roles': 'all',
-                               'valid_from': timezone.now(),
+                               'email': 'example@example.com',
                                'ldap': False}
         self.valid_payload = {'username': 'testtestanders',
                               'password': 'test12345test',
-                              'roles': 'all',
-                              'valid_to': timezone.now(),
+                              'roles': 'all_two',
+                              'email': 'example@example.com',
                               'ldap': False}
         self.invalid_payload = {'username': '',
                                 'password': 'test12345test',
                                 'roles': 'all',
-                                'valid_from': timezone.now(),
+                                'email': 'example@example.com',
                                 'ldap': False}
         self.unique_invalid_payload = {'username': 'anders',
                                        'password': 'test12345test',
                                        'roles': 'all',
-                                       'valid_from': timezone.now(),
+                                       'email': 'example@example.com',
                                        'ldap': False}
         self.execute = True
 
@@ -183,7 +181,7 @@ class PatchOneStatusUser(PatchOneStatus):
         self.ok_object_data = {'username': 'testtest',
                                'password': 'test12345test',
                                'roles': 'all',
-                               'valid_from': timezone.now(),
+                               'email': 'example@example.com',
                                'ldap': False}
         self.execute = True
 
@@ -202,7 +200,8 @@ class UsersMiscellaneous(APITestCase):
         self.ok_object_data = {'username': self.username,
                                'password': self.password,
                                'roles': 'all',
-                               'ldap': False}
+                               'ldap': False,
+                               'email': 'example@example.com'}
         self.draft_role_id = 'newrole'
         self.draft_role = {
             'role': self.draft_role_id,
@@ -210,15 +209,18 @@ class UsersMiscellaneous(APITestCase):
         self.valid_payload = {'username': 'testtest',
                               'password': 'test12345test',
                               'roles': self.draft_role_id,
-                              'ldap': False}
+                              'ldap': False,
+                              'email': 'example@example.com'}
         self.valid_payload_two_roles = {'username': 'testtest',
                                         'password': 'test12345test',
                                         'roles': 'all,{}'.format(self.draft_role_id),
-                                        'ldap': False}
+                                        'ldap': False,
+                                        'email': 'example@example.com'}
         self.valid_payload_three = {'username': 'testtest',
                                     'password': 'test12345test',
                                     'roles': 'all',
-                                    'ldap': False}
+                                    'ldap': False,
+                                    'email': 'example@example.com'}
 
     def setUp(self):
         self.client = Client(enforce_csrf_checks=True)
@@ -358,7 +360,7 @@ class UsersMiscellaneous(APITestCase):
         self.assertEqual(response_prod.status_code, status.HTTP_200_OK)
         # verify if password was stored secure
         query = Users.objects.filter(lifecycle_id=response.data['lifecycle_id']).get()
-        self.assertTrue(check_password(self.password, query.password))
+        self.assertTrue(query.check_password(self.password))
 
         # login with new user
         self.client.logout()
@@ -385,14 +387,15 @@ class UsersMiscellaneous(APITestCase):
         data = {'username': self.username,
                 'password': new_password,
                 'roles': 'all',
-                'ldap': False}
+                'ldap': False,
+                'email': 'example@example.com'}
         path = '{}/{}/{}'.format(self.base_path, response.data['lifecycle_id'], 1)
         response_update = self.client.patch(path, data=data, content_type='application/json',
                                             HTTP_X_CSRFTOKEN=csrf_token)
         self.assertEqual(response_update.status_code, status.HTTP_200_OK)
         # verify if password was stored secure
         query = Users.objects.filter(lifecycle_id=response.data['lifecycle_id']).get()
-        self.assertTrue(check_password(new_password, query.password))
+        self.assertTrue(query.check_password(new_password))
 
         # start circulation
         path = '{}/{}/{}/{}'.format(self.base_path, response.data['lifecycle_id'], 1, 'circulation')

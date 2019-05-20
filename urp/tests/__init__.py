@@ -42,6 +42,9 @@ class Prerequisites(object):
         # second superuser
         self.username_two = 'superusertesttwo'
         self.password_two = 'test123123123asd'
+        # third superuser
+        self.username_three = 'superuserthree'
+        self.password_three = 'test123123123asd'
         # user for tests without permissions
         self.username_no_perm = 'usernoperms'
         # user for valid from tests
@@ -77,6 +80,12 @@ class Prerequisites(object):
         role = 'all_two'
         call_command('create-role', name=role)
         Users.objects.create_superuser(username=self.username_two, password=self.password_two, role=role,
+                                       email=self.email)
+
+    def role_superuser_three(self):
+        role = 'all_three'
+        call_command('create-role', name=role)
+        Users.objects.create_superuser(username=self.username_three, password=self.password_three, role=role,
                                        email=self.email)
 
     def role_no_permissions(self):
@@ -129,6 +138,15 @@ class Prerequisites(object):
     def auth_two(self, ext_client):
         ext_client.logout()
         response = ext_client.login(username=self.username_two, password=self.password_two)
+        assert response is True
+        # save last touch now timestamp to session to prevent auto logout error
+        session = ext_client.session
+        session['last_touch'] = timezone.now()
+        session.save()
+
+    def auth_three(self, ext_client):
+        ext_client.logout()
+        response = ext_client.login(username=self.username_three, password=self.password_three)
         assert response is True
         # save last touch now timestamp to session to prevent auto logout error
         session = ext_client.session
@@ -206,14 +224,15 @@ class Prerequisites(object):
         data = {'username': self.username,
                 'password': self.password,
                 'roles': 'all',
+                'email': 'example@example.com',
                 'valid_from': timezone.now(),
                 'valid_to': timezone.now(),
                 'ldap': False}
         response = ext_client.patch(path, data=data, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
         assert response.status_code == status.HTTP_200_OK
         # auth with second user to avoid SoD and set set in circulation
-        self.role_superuser_two()
-        self.auth_two(ext_client)
+        self.role_superuser_three()
+        self.auth_three(ext_client)
         csrf_token = self.get_csrf(ext_client, path=reverse('users-list'))
         path = '{}/{}/2/circulation'.format(reverse('users-list'), user.lifecycle_id)
         response = ext_client.patch(path, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)

@@ -30,6 +30,7 @@ from django.core.exceptions import ValidationError
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.utils.translation import gettext_lazy as _
 from django.contrib.auth.password_validation import password_validators_help_texts, validate_password
+from django.contrib.auth.hashers import make_password, check_password
 
 # app imports
 from .validators import validate_no_space, validate_no_specials, validate_no_specials_reduced, SPECIALS_REDUCED, \
@@ -576,6 +577,68 @@ class LDAP(GlobalModel):
 
 
 #########
+# VAULT #
+#########
+
+# vault manager
+class VaultManager(GlobalManager):
+    # flags
+    HAS_VERSION = False
+    HAS_STATUS = False
+
+
+class Vault(GlobalModel):
+    # custom fields
+    username = models.CharField(max_length=CHAR_DEFAULT, unique=True)
+    initial_password = models.BooleanField()
+    password = models.CharField(
+        verbose_name=_('Password'),
+        help_text='{}'.format(password_validators_help_texts()),
+        max_length=CHAR_MAX,
+        validators=[validate_password])
+    question_one = models.CharField(max_length=CHAR_DEFAULT, blank=True)
+    question_two = models.CharField(max_length=CHAR_DEFAULT, blank=True)
+    question_three = models.CharField(max_length=CHAR_DEFAULT, blank=True)
+    answer_one = models.CharField(max_length=CHAR_DEFAULT, blank=True)
+    answer_two = models.CharField(max_length=CHAR_DEFAULT, blank=True)
+    answer_three = models.CharField(max_length=CHAR_DEFAULT, blank=True)
+
+    # manager
+    objects = VaultManager()
+
+    def set_password(self, raw_password):
+        self.password = make_password(raw_password)
+
+    valid_from = None
+    valid_to = None
+    lifecycle_id = None
+
+    # hashing
+    HASH_SEQUENCE = ['username', 'initial_password', 'password', 'question_one', 'question_two',
+                     'question_three', 'answer_one', 'answer_two', 'answer_three']
+
+    # integrity check
+    def verify_checksum(self):
+        to_hash_payload = 'username:{};initial_password:{};password:{};question_one:{};question_two:{};' \
+                          'question_three:{};answer_one:{};answer_two:{};answer_three:{};' \
+            .format(self.username, self.initial_password, self.password, self.question_one, self.question_two,
+                    self.question_three, self.answer_one, self.answer_two, self.answer_three)
+        return self._verify_checksum(to_hash_payload=to_hash_payload)
+
+    def check_password(self, raw_password):
+        """
+        Return a boolean of whether the raw_password was correct. Handles
+        hashing formats behind the scenes.
+        """
+        def setter(raw_password):
+            self.set_password(raw_password)
+            # Password hash upgrades shouldn't be considered password changes.
+            self._password = None
+            self.save(update_fields=["password"])
+        return check_password(raw_password, self.password, setter)
+
+
+#########
 # USERS #
 #########
 
@@ -686,28 +749,41 @@ class UsersManager(BaseUserManager, GlobalManager):
                   'version': 1,
                   'is_active': True,
                   'valid_from': now,
-                  'initial_password': True,
                   'email': email,
                   'status_id': status_id,
                   'ldap': False,
                   'roles': role}
         user = self.model(**fields)
-        user.set_password(password)
-        fields['password'] = user.password
-        # build string with row id to generate hash
+        # set random password for user object because required
+        user.set_password(self.make_random_password())
+        vault_fields = {
+            'username': username,
+            'initial_password': True
+        }
+        vault = Vault(**vault_fields)
+        vault.set_password(password)
+        vault_fields['password'] = vault.password
+
+        # build string with row id to generate hash for user
         to_hash = generate_to_hash(fields, hash_sequence=user.HASH_SEQUENCE, unique_id=user.id,
                                    lifecycle_id=user.lifecycle_id)
         user.checksum = generate_checksum(to_hash)
+
+        # build string with row id to generate hash for vault
+        to_hash = generate_to_hash(vault_fields, hash_sequence=vault.HASH_SEQUENCE, unique_id=vault.id)
+        vault.checksum = generate_checksum(to_hash)
         try:
             user.full_clean()
+            vault.full_clean()
         except ValidationError as e:
             raise e
         else:
             user.save()
+            vault.save()
         # log record
-        del fields['password']
         context = dict()
         context['function'] = 'init'
+        fields['initial_password'] = True
         create_log_record(model=self.model, context=context, obj=user,
                           validated_data=fields, action=settings.DEFAULT_LOG_CREATE)
         return user
@@ -727,9 +803,8 @@ class Users(AbstractBaseUser, GlobalModel):
                     validate_only_ascii])
     email = models.EmailField(
         _('Email'),
-        help_text='Email must be provided in format info@test.com.',
-        max_length=CHAR_MAX,
-        blank=True)
+        help_text='Email must be provided in format example@example.com.',
+        max_length=CHAR_MAX)
     first_name = models.CharField(
         _('First name'),
         max_length=CHAR_DEFAULT,
@@ -750,12 +825,6 @@ class Users(AbstractBaseUser, GlobalModel):
                     validate_no_numbers,
                     validate_only_ascii],
         blank=True)
-    initial_password = models.BooleanField(_('initial password'))
-    password = models.CharField(
-        _('Password'),
-        help_text='{}'.format(password_validators_help_texts()),
-        max_length=CHAR_MAX,
-        validators=[validate_password])
     ldap = models.BooleanField(
         _('LDAP'),
         help_text=_('Specify if user is manually or LDAP manged.'))
@@ -772,11 +841,17 @@ class Users(AbstractBaseUser, GlobalModel):
 
     # integrity check
     def verify_checksum(self):
-        to_hash_payload = 'username:{};email:{};first_name:{};last_name:{};is_active:{};initial_password:{};' \
-                          'password:{};status_id:{};version:{};valid_from:{};valid_to:{};ldap:{};roles:{};'\
-            .format(self.username, self.email, self.first_name, self.last_name, self.is_active, self.initial_password,
-                    self.password, self.status_id, self.version, self.valid_from, self.valid_to, self.ldap, self.roles)
-        return self._verify_checksum(to_hash_payload=to_hash_payload)
+        to_hash_payload = 'username:{};email:{};first_name:{};last_name:{};is_active:{};' \
+                          'status_id:{};version:{};valid_from:{};valid_to:{};ldap:{};roles:{};'\
+            .format(self.username, self.email, self.first_name, self.last_name, self.is_active,
+                    self.status_id, self.version, self.valid_from, self.valid_to, self.ldap, self.roles)
+        user = self._verify_checksum(to_hash_payload=to_hash_payload)
+        vault = Vault.objects.filter(username=self.username).get()
+        user_ext = vault.verify_checksum()
+        if user and user_ext:
+            return True
+        else:
+            return False
 
     @property
     def get_status(self):
@@ -834,7 +909,7 @@ class Users(AbstractBaseUser, GlobalModel):
         unique_together = ('lifecycle_id', 'version')
 
     # hashing
-    HASH_SEQUENCE = ['username', 'email', 'first_name', 'last_name', 'is_active', 'initial_password', 'password',
+    HASH_SEQUENCE = ['username', 'email', 'first_name', 'last_name', 'is_active',
                      'status_id', 'version', 'valid_from', 'valid_to', 'ldap', 'roles']
 
     # permissions
@@ -846,6 +921,18 @@ class Users(AbstractBaseUser, GlobalModel):
 
     def get_short_name(self):
         return _('{} - {} {}').format(self.username)
+
+    def check_password(self, raw_password):
+        """
+        direct password check to vault
+        """
+        user = Vault.objects.filter(username=self.username).get()
+        return user.check_password(raw_password)
+
+    @property
+    def initial_password(self):
+        user = Vault.objects.filter(username=self.username).get()
+        return user.initial_password
 
 
 ########
