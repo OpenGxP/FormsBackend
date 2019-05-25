@@ -265,6 +265,9 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 # add initial password to validated data for logging
                 vault = Vault.objects.filter(username=self.instance.username).get()
                 fields['initial_password'] = vault.initial_password
+                # FO-140: delete vault record after deleting object, only for version 1
+                if self.instance.version == 1:
+                    vault.delete()
             create_log_record(model=model, context=self.context, obj=self.instance, validated_data=fields,
                               action=settings.DEFAULT_LOG_DELETE)
 
