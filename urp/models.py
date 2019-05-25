@@ -591,11 +591,7 @@ class Vault(GlobalModel):
     # custom fields
     username = models.CharField(max_length=CHAR_DEFAULT, unique=True)
     initial_password = models.BooleanField()
-    password = models.CharField(
-        verbose_name=_('Password'),
-        help_text='{}'.format(password_validators_help_texts()),
-        max_length=CHAR_MAX,
-        validators=[validate_password])
+    password = models.CharField(max_length=CHAR_MAX)
     question_one = models.CharField(max_length=CHAR_DEFAULT, blank=True)
     question_two = models.CharField(max_length=CHAR_DEFAULT, blank=True)
     question_three = models.CharField(max_length=CHAR_DEFAULT, blank=True)
@@ -832,6 +828,12 @@ class Users(AbstractBaseUser, GlobalModel):
         _('Roles'),
         help_text='Provide comma separated roles. Roles must exist in status "productive".',
         max_length=CHAR_DEFAULT)
+    password = models.CharField(
+        _('Password'),
+        help_text='{}'.format(password_validators_help_texts()),
+        max_length=CHAR_MAX,
+        validators=[validate_password]
+    )
     # defaults
     status = models.ForeignKey(Status, on_delete=models.PROTECT)
     version = FIELD_VERSION

@@ -421,6 +421,22 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                     LDAP.objects.search(data)
 
             @require_NONE
+            @require_USERS
+            def validate_password(self):
+                # only allow password change in draft version 1
+                if self.instance.version > 1:
+                    if 'password' in data:
+                        raise serializers.ValidationError('Password cant not be changed using this dialog.')
+                else:
+                    if not data['ldap']:
+                        if 'password' in data:
+                            if 'password_two' not in data:
+                                raise serializers.ValidationError({'password_two': ['This filed is required.']})
+                            # check if password 1 is equal to password two
+                            if data['password'] != data['password_two']:
+                                raise serializers.ValidationError('Passwords must match.')
+
+            @require_NONE
             @require_SETTINGS
             def validate_settings(self):
                 # validate maximum login attempts and maximum inactive time
@@ -479,9 +495,17 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                     # in case a password was passed, set to none
                     data['password'] = ''
                     LDAP.objects.search(data)
-                else:
+
+            @require_NEW
+            @require_USERS
+            def validate_password(self):
                     if 'password' not in data:
                         raise serializers.ValidationError({'password': ['This filed is required.']})
+                    if 'password_two' not in data:
+                        raise serializers.ValidationError({'password_two': ['This filed is required.']})
+                    # check if password 1 is equal to password two
+                    if data['password'] != data['password_two']:
+                        raise serializers.ValidationError('Passwords must match.')
 
             @require_NEW
             @require_SOD
@@ -729,6 +753,7 @@ class UsersReadSerializer(GlobalReadWriteSerializer):
 # write
 class UsersWriteSerializer(GlobalReadWriteSerializer):
     status = serializers.CharField(source='get_status', read_only=True)
+    password_two = serializers.CharField(write_only=True, required=False)
 
     class Meta:
         model = Users
@@ -739,7 +764,7 @@ class UsersWriteSerializer(GlobalReadWriteSerializer):
                                      'required': False}}
         # to control field order in response
         fields = Users.objects.GET_MODEL_ORDER + Users.objects.GET_BASE_ORDER_STATUS_MANAGED + \
-            Users.objects.GET_BASE_CALCULATED
+            Users.objects.GET_BASE_CALCULATED + ('password_two',)
 
 
 class UsersNewVersionSerializer(GlobalReadWriteSerializer):

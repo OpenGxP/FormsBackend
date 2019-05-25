@@ -222,7 +222,6 @@ class Prerequisites(object):
         # update draft of second version to be invalid
         path = '{}/{}/2'.format(reverse('users-list'), user.lifecycle_id)
         data = {'username': self.username,
-                'password': self.password,
                 'roles': 'all',
                 'email': 'example@example.com',
                 'valid_from': timezone.now(),

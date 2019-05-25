@@ -58,6 +58,7 @@ class PostNewUsers(PostNew):
         self.prerequisites = Prerequisites(base_path=self.base_path)
         self.valid_payload = {'username': 'testtest',
                               'password': 'test12345test',
+                              'password_two': 'test12345test',
                               'roles': 'all',
                               'email': 'example@example.com',
                               'ldap': False}
@@ -87,6 +88,7 @@ class GetOneUser(GetOne):
         self.serializer = UsersReadSerializer
         self.ok_object_data = {'username': 'testtest',
                                'password': 'test12345test',
+                               'password_two': 'test12345test',
                                'roles': 'all',
                                'email': 'example@example.com',
                                'ldap': False}
@@ -103,16 +105,19 @@ class PostNewVersionUser(PostNewVersion):
         self.serializer = UsersReadSerializer
         self.ok_object_data = {'username': 'testtest',
                                'password': 'test12345test',
+                               'password_two': 'test12345test',
                                'roles': 'all',
                                'email': 'example@example.com',
                                'ldap': False}
         self.fail_object_draft_data = {'username': 'testtestzwei',
                                        'password': 'test12345test',
+                                       'password_two': 'test12345test',
                                        'roles': 'all',
                                        'email': 'example@example.com',
                                        'ldap': False}
         self.fail_object_circulation_data = {'username': 'testtestdrei',
                                              'password': 'test12345test',
+                                             'password_two': 'test12345test',
                                              'roles': 'all',
                                              'email': 'example@example.com',
                                              'ldap': False}
@@ -129,6 +134,7 @@ class DeleteOneUser(DeleteOne):
         self.serializer = UsersReadSerializer
         self.ok_object_data = {'username': 'testtest',
                                'password': 'test12345test',
+                               'password_two': 'test12345test',
                                'roles': 'all',
                                'email': 'example@example.com',
                                'ldap': False}
@@ -145,11 +151,11 @@ class PatchOneUser(PatchOne):
         self.serializer = UsersReadSerializer
         self.ok_object_data = {'username': 'testtest',
                                'password': 'test12345test',
+                               'password_two': 'test12345test',
                                'roles': 'all',
                                'email': 'example@example.com',
                                'ldap': False}
         self.valid_payload = {'username': 'testtestanders',
-                              'password': 'test12345test',
                               'roles': 'all_two',
                               'email': 'example@example.com',
                               'ldap': False}
@@ -159,7 +165,6 @@ class PatchOneUser(PatchOne):
                                 'email': 'example@example.com',
                                 'ldap': False}
         self.unique_invalid_payload = {'username': 'anders',
-                                       'password': 'test12345test',
                                        'roles': 'all',
                                        'email': 'example@example.com',
                                        'ldap': False}
@@ -180,6 +185,7 @@ class PatchOneStatusUser(PatchOneStatus):
         self.serializer = UsersReadSerializer
         self.ok_object_data = {'username': 'testtest',
                                'password': 'test12345test',
+                               'password_two': 'test12345test',
                                'roles': 'all',
                                'email': 'example@example.com',
                                'ldap': False}
@@ -199,6 +205,7 @@ class UsersMiscellaneous(APITestCase):
         self.password = 'asdad2qa3dad2'
         self.ok_object_data = {'username': self.username,
                                'password': self.password,
+                               'password_two': self.password,
                                'roles': 'all',
                                'ldap': False,
                                'email': 'example@example.com'}
@@ -208,16 +215,19 @@ class UsersMiscellaneous(APITestCase):
         }
         self.valid_payload = {'username': 'testtest',
                               'password': 'test12345test',
+                              'password_two': 'test12345test',
                               'roles': self.draft_role_id,
                               'ldap': False,
                               'email': 'example@example.com'}
         self.valid_payload_two_roles = {'username': 'testtest',
                                         'password': 'test12345test',
+                                        'password_two': 'test12345test',
                                         'roles': 'all,{}'.format(self.draft_role_id),
                                         'ldap': False,
                                         'email': 'example@example.com'}
         self.valid_payload_three = {'username': 'testtest',
                                     'password': 'test12345test',
+                                    'password_two': 'test12345test',
                                     'roles': 'all',
                                     'ldap': False,
                                     'email': 'example@example.com'}
@@ -367,6 +377,47 @@ class UsersMiscellaneous(APITestCase):
         response = self.client.login(username=self.username, password=self.password)
         self.assertTrue(response)
 
+    def test_400_edit_version_two(self):
+        """
+        This test shall show that it is not possible to change the password using regular edit function for users in
+        version 2 or higher.
+        """
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+
+        # add new non-ldap managed user
+        response = self.client.post(self.base_path, data=self.ok_object_data, content_type='application/json',
+                                    HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        # start circulation
+        path = '{}/{}/{}/{}'.format(self.base_path, response.data['lifecycle_id'], 1, 'circulation')
+        response_circ = self.client.patch(path, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response_circ.status_code, status.HTTP_200_OK)
+
+        # auth with second user to avoid SoD
+        self.prerequisites.auth_two(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # set prod
+        path = '{}/{}/{}/{}'.format(self.base_path, response.data['lifecycle_id'], 1, 'productive')
+        response_prod = self.client.patch(path, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response_prod.status_code, status.HTTP_200_OK)
+
+        # try to update user password
+        new_password = '32hai82dhaks8da'
+        data = {'username': self.username,
+                'password': new_password,
+                'roles': 'all',
+                'ldap': False,
+                'email': 'example@example.com'}
+        path = '{}/{}/{}'.format(self.base_path, response.data['lifecycle_id'], 1)
+        response_update = self.client.patch(path, data=data, content_type='application/json',
+                                            HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response_update.status_code, status.HTTP_400_BAD_REQUEST)
+
     # FO-132: test for hash password during edit
     def test_200_edit(self):
         """
@@ -386,6 +437,7 @@ class UsersMiscellaneous(APITestCase):
         new_password = '32hai82dhaks8da'
         data = {'username': self.username,
                 'password': new_password,
+                'password_two': new_password,
                 'roles': 'all',
                 'ldap': False,
                 'email': 'example@example.com'}

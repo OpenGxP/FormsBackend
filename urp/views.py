@@ -38,7 +38,7 @@ from .serializers import StatusReadWriteSerializer, PermissionsReadWriteSerializ
     SettingsReadWriteSerializer, SoDLogReadSerializer, SoDDeleteStatusNewVersionSerializer, SoDWriteSerializer, \
     SoDReadSerializer
 from .decorators import perm_required, auth_required
-from basics.models import StatusLog, CentralLog, SettingsLog, Settings
+from basics.models import StatusLog, CentralLog, SettingsLog, Settings, CHAR_MAX
 from basics.custom import get_model_by_string
 from .backends import write_access_log
 
@@ -49,6 +49,7 @@ from django.utils import timezone
 from django.conf import settings
 from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie, csrf_exempt
 from django.middleware.csrf import get_token
+from django.contrib.auth.password_validation import password_validators_help_texts
 
 
 ###############
@@ -580,7 +581,14 @@ def meta_list(request, dialog):
                                         'data_type': f.get_internal_type(),
                                         'required': not f.blank,
                                         'unique': f.unique}
-
+            if dialog == 'users':
+                # add calculated field "password_two"
+                data['post']['password_two'] = {'verbose_name': 'Password verification',
+                                                'help_text': '{}'.format(password_validators_help_texts()),
+                                                'max_length': CHAR_MAX,
+                                                'data_type': 'CharField',
+                                                'required': True,
+                                                'unique': False}
         return Response(data=data, status=http_status.HTTP_200_OK)
 
     if request.method == 'GET':
