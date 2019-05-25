@@ -511,6 +511,8 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
             @require_NEW
             @require_USERS
             def validate_password(self):
+                # FO-143: password check for non-ldap managed users only
+                if not data['ldap']:
                     if 'password' not in data:
                         raise serializers.ValidationError({'password': ['This filed is required.']})
                     if 'password_two' not in data:
