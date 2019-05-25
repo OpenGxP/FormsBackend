@@ -26,7 +26,8 @@ from .views import permissions_list, roles_list, roles_detail, status_list, \
     roles_status, users_list, users_detail, api_root, users_status, access_log_list, central_log_list, \
     permissions_log_list, users_log_list, roles_log_list, audit_trail_list, status_log_list, \
     ldap_list, ldap_detail, ldap_log_list, login_view, logout_view, meta_list, get_csrf_token, settings_list, \
-    settings_detail, settings_log_list, logout_auto_view, sod_list, sod_detail, sod_log_list, sod_status
+    settings_detail, settings_log_list, logout_auto_view, sod_list, sod_detail, sod_log_list, sod_status, \
+    userspassword_list
 
 
 urlpatterns = [
@@ -70,6 +71,8 @@ urlpatterns = [
     path('{}admin/users/<str:lifecycle_id>/<int:version>'.format(settings.BASE_URL), users_detail),
     path('{}admin/users/<str:lifecycle_id>/<int:version>/<str:status>'.format(settings.BASE_URL), users_status,
          name='users-status'),
+    # users passwords
+    path('{}admin/users_password'.format(settings.BASE_URL), userspassword_list, name='userspassword-list'),
     # root
     path('{}'.format(settings.BASE_URL[:-1]), api_root),
     # audit trails

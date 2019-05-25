@@ -28,7 +28,7 @@ from rest_framework import serializers
 
 # custom imports
 from .models import Status, Roles, Permissions, Users, AccessLog, PermissionsLog, RolesLog, UsersLog, LDAP, LDAPLog, \
-    SoD, SoDLog
+    SoD, SoDLog, Vault
 from .serializers import StatusReadWriteSerializer, PermissionsReadWriteSerializer, RolesReadSerializer, \
     RolesWriteSerializer, UsersReadSerializer, RolesDeleteStatusSerializer, RolesNewVersionSerializer, \
     UsersWriteSerializer, UsersNewVersionSerializer, UsersDeleteStatusSerializer, \
@@ -36,7 +36,7 @@ from .serializers import StatusReadWriteSerializer, PermissionsReadWriteSerializ
     PermissionsLogReadSerializer, RolesLogReadSerializer, UsersLogReadSerializer, AUDIT_TRAIL_SERIALIZERS, \
     LDAPLogReadSerializer, LDAPReadWriteSerializer, LDAPDeleteSerializer, SettingsLogReadSerializer, \
     SettingsReadWriteSerializer, SoDLogReadSerializer, SoDDeleteStatusNewVersionSerializer, SoDWriteSerializer, \
-    SoDReadSerializer
+    SoDReadSerializer, UsersPassword
 from .decorators import perm_required, auth_required
 from basics.models import StatusLog, CentralLog, SettingsLog, Settings, CHAR_MAX
 from basics.custom import get_model_by_string
@@ -123,6 +123,7 @@ def api_root(request):
                                             'roles': {'url': reverse('roles-list', request=request)},
                                             'ldap': {'url': reverse('ldap-list', request=request)},
                                             'users': {'url': reverse('users-list', request=request)},
+                                            'userspassword': {'url': reverse('userspassword-list', request=request)},
                                             'sod': {'url': reverse('sod-list', request=request)},
                                             'settings': {'url': reverse('settings-list', request=request)}}},
             'logs': {'root': '/logs/',
@@ -518,6 +519,21 @@ def audit_trail_list(request, dialog, lifecycle_id):
 
     if request.method == 'GET':
         return get(request)
+
+
+#################
+# USERSPASSWORD #
+#################
+
+# GET list
+@api_view(['GET'])
+@auth_required()
+@auto_logout()
+@perm_required('{}.01'.format(Vault.MODEL_ID))
+def userspassword_list(request):
+    users = Vault.objects.all()
+    serializer = UsersPassword(users, many=True)
+    return Response(serializer.data)
 
 
 ########

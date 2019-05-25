@@ -67,39 +67,42 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 validated_data[attr] = getattr(self.instance, attr)
             validated_data['version'] = self.instance.version + 1
             if model.MODEL_ID == '04':
-                # add initial password to validated data for logging
-                vault = Vault.objects.filter(username=self.instance.username).get()
-                validated_data['initial_password'] = vault.initial_password
+                if not self.instance.ldap:
+                    # add initial password to validated data for logging
+                    vault = Vault.objects.filter(username=self.instance.username).get()
+                    validated_data['initial_password'] = vault.initial_password
+                else:
+                    # ldap is always false
+                    validated_data['initial_password'] = False
         else:
             validated_data['version'] = 1
             # for users
             if obj.MODEL_ID == '04':
                 vault_fields = dict()
-                vault_fields['username'] = validated_data['username']
                 validated_data['is_active'] = True
-                # only set initial password for non-ldap managed users
                 if not validated_data['ldap']:
                     vault_fields['initial_password'] = True
+                    vault_fields['username'] = validated_data['username']
+                    # FO-132: hash password before saving
+                    raw_pw = validated_data['password']
+                    vault_fields['password'] = make_password(raw_pw)
+
+                    # set random password for user object because required
+                    obj.set_password(Users.objects.make_random_password())
+
+                    # create vault object
+                    vault = Vault(**vault_fields)
+                    # build string with row id to generate hash for vault
+                    to_hash = generate_to_hash(vault_fields, hash_sequence=vault.HASH_SEQUENCE, unique_id=vault.id)
+                    vault.checksum = generate_checksum(to_hash)
+                    try:
+                        vault.full_clean()
+                    except ValidationError as e:
+                        raise e
+                    else:
+                        vault.save()
                 else:
                     vault_fields['initial_password'] = False
-                # FO-132: hash password before saving
-                raw_pw = validated_data['password']
-                vault_fields['password'] = make_password(raw_pw)
-
-                # set random password for user object because required
-                obj.set_password(Users.objects.make_random_password())
-
-                # create vault object
-                vault = Vault(**vault_fields)
-                # build string with row id to generate hash for vault
-                to_hash = generate_to_hash(vault_fields, hash_sequence=vault.HASH_SEQUENCE, unique_id=vault.id)
-                vault.checksum = generate_checksum(to_hash)
-                try:
-                    vault.full_clean()
-                except ValidationError as e:
-                    raise e
-                else:
-                    vault.save()
                 # add initial password to validated data for logging
                 validated_data['initial_password'] = vault_fields['initial_password']
             # for access log
@@ -145,9 +148,6 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         model = getattr(getattr(self, 'Meta', None), 'model', None)
         if 'function' in self.context.keys():
             if self.context['function'] == 'status_change':
-                if model.MODEL_ID == '04':
-                    # set user variable
-                    username = instance.username
                 action = settings.DEFAULT_LOG_STATUS
                 validated_data['status_id'] = Status.objects.status_by_text(self.context['status'])
 
@@ -178,32 +178,33 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                     # when in version 1 draft username is changed
                     if instance.version == 1:
                         if instance.username != validated_data['username']:
-                            vault_fields = dict()
-                            vault_fields['username'] = validated_data['username']
-                            # create new vault object because username was changed
-                            # get old instance
-                            old_vault = Vault.objects.filter(username=username).get()
-                            new_vault = Vault()
-                            hash_sequence = old_vault.HASH_SEQUENCE
-                            fields = dict()
-                            for attr in hash_sequence:
-                                if attr in vault_fields.keys():
-                                    fields[attr] = vault_fields[attr]
-                                    setattr(new_vault, attr, vault_fields[attr])
+                            if not validated_data['ldap']:
+                                vault_fields = dict()
+                                vault_fields['username'] = validated_data['username']
+                                # create new vault object because username was changed
+                                # get old instance
+                                old_vault = Vault.objects.filter(username=username).get()
+                                new_vault = Vault()
+                                hash_sequence = old_vault.HASH_SEQUENCE
+                                fields = dict()
+                                for attr in hash_sequence:
+                                    if attr in vault_fields.keys():
+                                        fields[attr] = vault_fields[attr]
+                                        setattr(new_vault, attr, vault_fields[attr])
+                                    else:
+                                        fields[attr] = getattr(old_vault, attr)
+                                        setattr(new_vault, attr, getattr(old_vault, attr))
+                                to_hash = generate_to_hash(fields, hash_sequence=new_vault.HASH_SEQUENCE,
+                                                           unique_id=new_vault.id)
+                                new_vault.checksum = generate_checksum(to_hash)
+                                try:
+                                    new_vault.full_clean()
+                                except ValidationError as e:
+                                    raise e
                                 else:
-                                    fields[attr] = getattr(old_vault, attr)
-                                    setattr(new_vault, attr, getattr(old_vault, attr))
-                            to_hash = generate_to_hash(fields, hash_sequence=new_vault.HASH_SEQUENCE,
-                                                       unique_id=new_vault.id)
-                            new_vault.checksum = generate_checksum(to_hash)
-                            try:
-                                new_vault.full_clean()
-                            except ValidationError as e:
-                                raise e
-                            else:
-                                new_vault.save()
-                                old_vault.delete()
-                                username = new_vault.username
+                                    new_vault.save()
+                                    old_vault.delete()
+                                    username = new_vault.username
                     # only set initial password and password for non-ldap managed users
                     if not validated_data['ldap']:
                         # only do something in case password was updated
@@ -245,9 +246,13 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         # log record
         if model.objects.LOG_TABLE:
             if model.MODEL_ID == '04':
-                # add initial password to validated data for logging
-                vault = Vault.objects.filter(username=username).get()
-                fields['initial_password'] = vault.initial_password
+                if not self.instance.ldap:
+                    # add initial password to validated data for logging
+                    vault = Vault.objects.filter(username=self.instance.username).get()
+                    fields['initial_password'] = vault.initial_password
+                else:
+                    # ldap is always false
+                    fields['initial_password'] = False
             create_log_record(model=model, context=self.context, obj=instance, validated_data=fields,
                               action=action, now=now)
         return instance
@@ -262,11 +267,15 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         self.instance.delete()
         if model.objects.LOG_TABLE:
             if model.MODEL_ID == '04':
-                # add initial password to validated data for logging
-                vault = Vault.objects.filter(username=self.instance.username).get()
-                fields['initial_password'] = vault.initial_password
+                if not self.instance.ldap:
+                    # add initial password to validated data for logging
+                    vault = Vault.objects.filter(username=self.instance.username).get()
+                    fields['initial_password'] = vault.initial_password
+                else:
+                    fields['initial_password'] = False
                 # FO-140: delete vault record after deleting object, only for version 1
-                if self.instance.version == 1:
+                if not self.instance.ldap and self.instance.version == 1:
+                    vault = Vault.objects.filter(username=self.instance.username).get()
                     vault.delete()
             create_log_record(model=model, context=self.context, obj=self.instance, validated_data=fields,
                               action=settings.DEFAULT_LOG_DELETE)
@@ -735,6 +744,20 @@ class RolesLogReadSerializer(GlobalReadWriteSerializer):
         # to control field order in response
         fields = Roles.objects.GET_MODEL_ORDER + Roles.objects.GET_BASE_ORDER_STATUS_MANAGED + \
             Roles.objects.GET_BASE_ORDER_LOG + Roles.objects.GET_BASE_CALCULATED
+
+
+#################
+# USER_PASSWORD #
+#################
+
+# read
+class UsersPassword(GlobalReadWriteSerializer):
+
+    class Meta:
+        model = Vault
+        fields = ('valid', 'unique', 'username', 'initial_password', )
+        extra_kwargs = {'username': {'read_only': False},
+                        'initial_password': {'read_only': True}}
 
 
 #########

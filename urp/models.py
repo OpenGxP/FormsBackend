@@ -586,6 +586,17 @@ class VaultManager(GlobalManager):
     HAS_VERSION = False
     HAS_STATUS = False
 
+    # meta
+    GET_MODEL_EXCLUDE = ('password',
+                         'question_one',
+                         'question_two',
+                         'question_three',
+                         'answer_one',
+                         'answer_two',
+                         'answer_three',)
+    GET_MODEL_ORDER = ('username',
+                       'initial_password',)
+
 
 class Vault(GlobalModel):
     # custom fields
@@ -612,6 +623,17 @@ class Vault(GlobalModel):
     # hashing
     HASH_SEQUENCE = ['username', 'initial_password', 'password', 'question_one', 'question_two',
                      'question_three', 'answer_one', 'answer_two', 'answer_three']
+
+    # permissions
+    MODEL_ID = '17'
+    MODEL_CONTEXT = 'userspassword'
+    perms = {
+        '01': 'read',
+        '13': 'change_password',
+    }
+
+    # unique field
+    UNIQUE = 'username'
 
     # integrity check
     def verify_checksum(self):
@@ -848,12 +870,13 @@ class Users(AbstractBaseUser, GlobalModel):
             .format(self.username, self.email, self.first_name, self.last_name, self.is_active,
                     self.status_id, self.version, self.valid_from, self.valid_to, self.ldap, self.roles)
         user = self._verify_checksum(to_hash_payload=to_hash_payload)
-        vault = Vault.objects.filter(username=self.username).get()
-        user_ext = vault.verify_checksum()
-        if user and user_ext:
-            return True
+        if not self.ldap:
+            vault = Vault.objects.filter(username=self.username).get()
+            user_ext = vault.verify_checksum()
+            if user and user_ext:
+                return True
         else:
-            return False
+            return user
 
     @property
     def get_status(self):
@@ -933,8 +956,11 @@ class Users(AbstractBaseUser, GlobalModel):
 
     @property
     def initial_password(self):
-        user = Vault.objects.filter(username=self.username).get()
-        return user.initial_password
+        if not self.ldap:
+            user = Vault.objects.filter(username=self.username).get()
+            return user.initial_password
+        else:
+            return False
 
 
 ########
