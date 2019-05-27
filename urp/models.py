@@ -626,7 +626,7 @@ class Vault(GlobalModel):
 
     # permissions
     MODEL_ID = '17'
-    MODEL_CONTEXT = 'userspassword'
+    MODEL_CONTEXT = 'users_password'
     perms = {
         '01': 'read',
         '13': 'change_password',

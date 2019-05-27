@@ -39,8 +39,9 @@ from .serializers import StatusReadWriteSerializer, PermissionsReadWriteSerializ
     SoDReadSerializer, UsersPassword
 from .decorators import perm_required, auth_required
 from basics.models import StatusLog, CentralLog, SettingsLog, Settings, CHAR_MAX
-from basics.custom import get_model_by_string
+from basics.custom import get_model_by_string, generate_to_hash, generate_checksum
 from .backends import write_access_log
+from .custom import create_log_record
 
 # django imports
 from django.core.exceptions import ValidationError
@@ -49,7 +50,8 @@ from django.utils import timezone
 from django.conf import settings
 from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie, csrf_exempt
 from django.middleware.csrf import get_token
-from django.contrib.auth.password_validation import password_validators_help_texts
+from django.contrib.auth.hashers import make_password
+from django.contrib.auth.password_validation import password_validators_help_texts, validate_password
 
 
 ###############
@@ -123,7 +125,7 @@ def api_root(request):
                                             'roles': {'url': reverse('roles-list', request=request)},
                                             'ldap': {'url': reverse('ldap-list', request=request)},
                                             'users': {'url': reverse('users-list', request=request)},
-                                            'userspassword': {'url': reverse('userspassword-list', request=request)},
+                                            'users_password': {'url': reverse('users-password-list', request=request)},
                                             'sod': {'url': reverse('sod-list', request=request)},
                                             'settings': {'url': reverse('settings-list', request=request)}}},
             'logs': {'root': '/logs/',
@@ -168,6 +170,70 @@ def login_view(request):
         return Response(casl, status=http_status.HTTP_200_OK)
     else:
         return Response(status=http_status.HTTP_400_BAD_REQUEST)
+
+
+###################
+# PASSWORD_CHANGE #
+###################
+
+@api_view(['PATCH'])
+@auth_required()
+@perm_required('{}.13'.format(Vault.MODEL_ID))
+@csrf_protect
+def change_password_view(request, username):
+    try:
+        vault = Vault.objects.get(username=username)
+    except Vault.DoesNotExist:
+        return Response(status=http_status.HTTP_404_NOT_FOUND)
+    except ValidationError:
+        return Response(status=http_status.HTTP_400_BAD_REQUEST)
+
+    # field validation
+    if not hasattr(request, 'data'):
+        raise serializers.ValidationError('Fields "password" and "password_two" are required.')
+    if 'password' not in request.data:
+        raise serializers.ValidationError({'password': ['This filed is required.']})
+    if 'password_two' not in request.data:
+        raise serializers.ValidationError({'password_two': ['This filed is required.']})
+    # django password validation
+    try:
+        validate_password(request.data['password'])
+    except ValidationError as e:
+        raise serializers.ValidationError(e)
+    else:
+        # check if password 1 is equal to password two
+        if request.data['password'] != request.data['password_two']:
+            raise serializers.ValidationError('Passwords must match.')
+
+        # change user password
+        raw_pw = request.data['password']
+        vault_fields = dict()
+        vault_fields['password'] = make_password(raw_pw)
+        vault_fields['initial_password'] = True
+        hash_sequence = vault.HASH_SEQUENCE
+        fields = dict()
+        for attr in hash_sequence:
+            if attr in vault_fields.keys():
+                fields[attr] = vault_fields[attr]
+                setattr(vault, attr, vault_fields[attr])
+            else:
+                fields[attr] = getattr(vault, attr)
+        to_hash = generate_to_hash(fields, hash_sequence=vault.HASH_SEQUENCE, unique_id=vault.id)
+        vault.checksum = generate_checksum(to_hash)
+        try:
+            vault.full_clean()
+        except ValidationError as e:
+            raise serializers.ValidationError(e)
+        else:
+            vault.save()
+            # create log record
+            context = dict()
+            context['function'] = 'password_change'
+            context['user'] = request.user.username
+            # TODO: LOG RECORD REQUIRED
+            # create_log_record(model=Users, context=context, obj=instance, validated_data=fields,
+            #                 action=settings.DEFAULT_LOG_PASSWORD)
+            return Response(status=http_status.HTTP_200_OK)
 
 
 ########
@@ -529,8 +595,9 @@ def audit_trail_list(request, dialog, lifecycle_id):
 @api_view(['GET'])
 @auth_required()
 @auto_logout()
+@ensure_csrf_cookie
 @perm_required('{}.01'.format(Vault.MODEL_ID))
-def userspassword_list(request):
+def users_password_list(request):
     users = Vault.objects.all()
     serializer = UsersPassword(users, many=True)
     return Response(serializer.data)

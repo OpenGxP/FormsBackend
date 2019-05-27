@@ -22,3 +22,4 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ###############
 
 ALL_PERMISSIONS = '00.00'
+DEFAULT_LOG_PASSWORD = 'password'

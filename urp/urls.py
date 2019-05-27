@@ -27,7 +27,7 @@ from .views import permissions_list, roles_list, roles_detail, status_list, \
     permissions_log_list, users_log_list, roles_log_list, audit_trail_list, status_log_list, \
     ldap_list, ldap_detail, ldap_log_list, login_view, logout_view, meta_list, get_csrf_token, settings_list, \
     settings_detail, settings_log_list, logout_auto_view, sod_list, sod_detail, sod_log_list, sod_status, \
-    userspassword_list
+    users_password_list, change_password_view
 
 
 urlpatterns = [
@@ -72,7 +72,9 @@ urlpatterns = [
     path('{}admin/users/<str:lifecycle_id>/<int:version>/<str:status>'.format(settings.BASE_URL), users_status,
          name='users-status'),
     # users passwords
-    path('{}admin/users_password'.format(settings.BASE_URL), userspassword_list, name='userspassword-list'),
+    path('{}admin/users_password'.format(settings.BASE_URL), users_password_list, name='users-password-list'),
+    path('{}admin/change_password/<str:username>'.format(settings.BASE_URL), change_password_view,
+         name='change-password-view'),
     # root
     path('{}'.format(settings.BASE_URL[:-1]), api_root),
     # audit trails
