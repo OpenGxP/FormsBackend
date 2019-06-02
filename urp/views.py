@@ -39,9 +39,9 @@ from .serializers import StatusReadWriteSerializer, PermissionsReadWriteSerializ
     SoDReadSerializer, UsersPassword
 from .decorators import perm_required, auth_required
 from basics.models import StatusLog, CentralLog, SettingsLog, Settings, CHAR_MAX
-from basics.custom import get_model_by_string, generate_to_hash, generate_checksum
+from basics.custom import get_model_by_string
 from .backends import write_access_log
-from .custom import create_log_record
+from .vault import validate_password_input, update_vault_record
 
 # django imports
 from django.core.exceptions import ValidationError
@@ -51,7 +51,7 @@ from django.conf import settings
 from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie, csrf_exempt
 from django.middleware.csrf import get_token
 from django.contrib.auth.hashers import make_password
-from django.contrib.auth.password_validation import password_validators_help_texts, validate_password
+from django.contrib.auth.password_validation import password_validators_help_texts
 
 
 ###############
@@ -181,6 +181,8 @@ def login_view(request):
 @perm_required('{}.13'.format(Vault.MODEL_ID))
 @csrf_protect
 def change_password_view(request, username):
+    if not hasattr(request, 'data'):
+        raise serializers.ValidationError('Fields "password" and "password_two" are required.')
     try:
         vault = Vault.objects.get(username=username)
     except Vault.DoesNotExist:
@@ -188,52 +190,15 @@ def change_password_view(request, username):
     except ValidationError:
         return Response(status=http_status.HTTP_400_BAD_REQUEST)
 
-    # field validation
-    if not hasattr(request, 'data'):
-        raise serializers.ValidationError('Fields "password" and "password_two" are required.')
-    if 'password' not in request.data:
-        raise serializers.ValidationError({'password': ['This filed is required.']})
-    if 'password_two' not in request.data:
-        raise serializers.ValidationError({'password_two': ['This filed is required.']})
-    # django password validation
-    try:
-        validate_password(request.data['password'])
-    except ValidationError as e:
-        raise serializers.ValidationError(e)
-    else:
-        # check if password 1 is equal to password two
-        if request.data['password'] != request.data['password_two']:
-            raise serializers.ValidationError('Passwords must match.')
+    validate_password_input(request.data)
 
-        # change user password
-        raw_pw = request.data['password']
-        vault_fields = dict()
-        vault_fields['password'] = make_password(raw_pw)
-        vault_fields['initial_password'] = True
-        hash_sequence = vault.HASH_SEQUENCE
-        fields = dict()
-        for attr in hash_sequence:
-            if attr in vault_fields.keys():
-                fields[attr] = vault_fields[attr]
-                setattr(vault, attr, vault_fields[attr])
-            else:
-                fields[attr] = getattr(vault, attr)
-        to_hash = generate_to_hash(fields, hash_sequence=vault.HASH_SEQUENCE, unique_id=vault.id)
-        vault.checksum = generate_checksum(to_hash)
-        try:
-            vault.full_clean()
-        except ValidationError as e:
-            raise serializers.ValidationError(e)
-        else:
-            vault.save()
-            # create log record
-            context = dict()
-            context['function'] = 'password_change'
-            context['user'] = request.user.username
-            # TODO: LOG RECORD REQUIRED
-            # create_log_record(model=Users, context=context, obj=instance, validated_data=fields,
-            #                 action=settings.DEFAULT_LOG_PASSWORD)
-            return Response(status=http_status.HTTP_200_OK)
+    raw_pw = request.data['password']
+    data = dict()
+    data['password'] = make_password(raw_pw)
+    data['initial_password'] = True
+    update_vault_record(data=data, instance=vault, action=settings.DEFAULT_LOG_PASSWORD, user=request.user.username)
+
+    return Response(status=http_status.HTTP_200_OK)
 
 
 ########

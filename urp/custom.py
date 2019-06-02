@@ -47,10 +47,19 @@ def create_central_log_record(log_id, now, action, context, user):
         obj.save()
 
 
-def create_log_record(model, context, obj, validated_data, action, now=None):
+def create_log_record(model, context, action, obj=None, validated_data=None, now=None):
     if not now:
         now = timezone.now()
     log_obj = model.objects.LOG_TABLE()
+    log_hash_sequence = log_obj.HASH_SEQUENCE
+
+    # get data of last log record instead of new data
+    if not validated_data:
+        obj = model.objects.LOG_TABLE.objects.last_record(order_str='timestamp')
+        validated_data = dict()
+        for attr in log_hash_sequence:
+            validated_data[attr] = getattr(obj, attr)
+
     # add log related data
     if context['function'] == 'init':
         validated_data['user'] = Settings.objects.core_system_username
@@ -59,7 +68,6 @@ def create_log_record(model, context, obj, validated_data, action, now=None):
     validated_data['timestamp'] = now
     validated_data['action'] = action
     # generate hash
-    log_hash_sequence = log_obj.HASH_SEQUENCE
     for attr in log_hash_sequence:
         if attr in validated_data.keys():
             setattr(log_obj, attr, validated_data[attr])

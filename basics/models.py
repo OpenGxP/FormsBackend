@@ -109,6 +109,14 @@ class GlobalManager(models.Manager):
             if record.verify_validity_range:
                 return True
 
+    def last_record(self, filter_dict=None, order_str=None):
+        if not filter_dict and not order_str:
+            return self.last()
+        if not filter_dict and order_str:
+            return self.order_by(order_str).last()
+        if filter_dict and not order_str:
+            return self.filter(**filter_dict).order_by(order_str).last()
+
 
 class GlobalModel(models.Model):
     # id
