@@ -118,7 +118,9 @@ def api_root(request):
     root = {'base': {'root': '/',
                      'subjects': {'login': {'url': reverse('login-view', request=request)},
                                   'csrftoken': {'url': reverse('get_csrf_token', request=request)},
-                                  'logout': {'url': reverse('logout-view', request=request)}}},
+                                  'logout': {'url': reverse('logout-view', request=request)},
+                                  'self_change_password': {'url': reverse('self-change-password-view',
+                                                                          request=request)}}},
             'administration': {'root': '/admin/',
                                'subjects': {'status': {'url': reverse('status-list', request=request)},
                                             'permissions': {'url': reverse('permissions-list', request=request)},
@@ -182,7 +184,7 @@ def login_view(request):
 @csrf_protect
 def change_password_view(request, username):
     if not hasattr(request, 'data'):
-        raise serializers.ValidationError('Fields "password" and "password_two" are required.')
+        raise serializers.ValidationError('Fields "password_new" and "password_new_verification" are required.')
     try:
         vault = Vault.objects.get(username=username)
     except Vault.DoesNotExist:
@@ -192,10 +194,50 @@ def change_password_view(request, username):
 
     validate_password_input(request.data)
 
-    raw_pw = request.data['password']
+    raw_pw = request.data['password_new']
     data = dict()
     data['password'] = make_password(raw_pw)
     data['initial_password'] = True
+    update_vault_record(data=data, instance=vault, action=settings.DEFAULT_LOG_PASSWORD, user=request.user.username)
+
+    return Response(status=http_status.HTTP_200_OK)
+
+
+########################
+# SELF_PASSWORD_CHANGE #
+########################
+
+@api_view(['PATCH'])
+@auth_required(initial_password_check=False)
+@csrf_protect
+def self_change_password_view(request):
+    if not hasattr(request, 'data'):
+        raise serializers.ValidationError('Fields "password", "password_new" and "password_new_verification" '
+                                          'are required.')
+    if 'password' not in request.data:
+        raise serializers.ValidationError({'password': ['This filed is required.']})
+
+    try:
+        vault = Vault.objects.get(username=request.user.username)
+    except Vault.DoesNotExist:
+        return Response(status=http_status.HTTP_404_NOT_FOUND)
+    except ValidationError:
+        return Response(status=http_status.HTTP_400_BAD_REQUEST)
+
+    # check if provided password is correct
+    authenticate(request=request, username=request.user.username, password=request.data['password'],
+                 self_password_change=True)
+
+    validate_password_input(request.data)
+
+    # new password can not be equal to previous password
+    if request.data['password_new'] == request.data['password']:
+        raise serializers.ValidationError('Password must be changed.')
+
+    raw_pw = request.data['password_new']
+    data = dict()
+    data['password'] = make_password(raw_pw)
+    data['initial_password'] = False
     update_vault_record(data=data, instance=vault, action=settings.DEFAULT_LOG_PASSWORD, user=request.user.username)
 
     return Response(status=http_status.HTTP_200_OK)
@@ -206,7 +248,7 @@ def change_password_view(request, username):
 ########
 
 @api_view(['GET'])
-@auth_required()
+@auth_required(initial_password_check=False)
 def get_csrf_token(request):
     token = {settings.CSRF_COOKIE_NAME: get_token(request)}
     return Response(data=token, status=http_status.HTTP_200_OK)

@@ -29,7 +29,7 @@ from .models import Roles, LDAP, Users, SoD
 from basics.models import Settings
 
 
-def auth_required():
+def auth_required(initial_password_check=True):
     """Authentication decorator to validate user authentication credentials."""
     def decorator(view_func):
         @wraps(view_func)
@@ -37,6 +37,10 @@ def auth_required():
             # FO-121: add second requirement, user must be prod and valid
             if request.user.is_authenticated and Users.objects.verify_prod_valid(key=request.user.username) \
                     and request.user.verify_sod:
+                # do not allow to access resources if initial password is still true
+                if initial_password_check:
+                    if request.user.initial_password:
+                        return Response(status=status.HTTP_401_UNAUTHORIZED)
                 return view_func(request, *args, **kwargs)
             return Response(status=status.HTTP_401_UNAUTHORIZED)
         return wrapper

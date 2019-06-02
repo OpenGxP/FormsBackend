@@ -72,7 +72,7 @@ class MyModelBackend(ModelBackend):
         is_active = getattr(user, 'is_active', None)
         return is_active or is_active is None
 
-    def authenticate(self, request, username=None, password=None, **kwargs):
+    def authenticate(self, request, self_password_change=False, username=None, password=None, **kwargs):
         data = {
             'user': username,
             'timestamp': timezone.now(),
@@ -122,7 +122,8 @@ class MyModelBackend(ModelBackend):
                             data['action'] = settings.DEFAULT_LOG_LOGIN
                             data['active'] = Settings.objects.core_devalue
                             data['method'] = 'local'
-                            write_access_log(data)
+                            if not self_password_change:
+                                write_access_log(data)
                             return user
                         # false password but productive and valid user generates speaking error message
                         else:

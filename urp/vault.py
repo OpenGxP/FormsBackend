@@ -31,19 +31,19 @@ from .models import Users
 
 def validate_password_input(data):
     # field validation
-    if 'password' not in data:
-        raise serializers.ValidationError({'password': ['This filed is required.']})
-    if 'password_two' not in data:
-        raise serializers.ValidationError({'password_two': ['This filed is required.']})
+    if 'password_new' not in data:
+        raise serializers.ValidationError({'password_new': ['This filed is required.']})
+    if 'password_new_verification' not in data:
+        raise serializers.ValidationError({'password_new_verification': ['This filed is required.']})
 
     # django password validation
     try:
-        validate_password(data['password'])
+        validate_password(data['password_new'])
     except ValidationError as e:
         raise serializers.ValidationError(e)
 
     # compare passwords
-    if data['password'] != data['password_two']:
+    if data['password_new'] != data['password_new_verification']:
         raise serializers.ValidationError('Passwords must match.')
 
 
@@ -72,4 +72,4 @@ def update_vault_record(data, instance, action, user):
     context = dict()
     context['function'] = 'update_vault'
     context['user'] = user
-    create_log_record(model=Users, context=context, action=action)
+    create_log_record(model=Users, context=context, action=action, validated_data=data)

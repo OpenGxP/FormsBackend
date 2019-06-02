@@ -47,18 +47,16 @@ def create_central_log_record(log_id, now, action, context, user):
         obj.save()
 
 
-def create_log_record(model, context, action, obj=None, validated_data=None, now=None):
+def create_log_record(model, context, action, validated_data, obj=None, now=None):
     if not now:
         now = timezone.now()
     log_obj = model.objects.LOG_TABLE()
     log_hash_sequence = log_obj.HASH_SEQUENCE
 
     # get data of last log record instead of new data
-    if not validated_data:
-        obj = model.objects.LOG_TABLE.objects.last_record(order_str='timestamp')
-        validated_data = dict()
-        for attr in log_hash_sequence:
-            validated_data[attr] = getattr(obj, attr)
+    if not obj:
+        filter_dict = {model.UNIQUE: context['user']}
+        obj = model.objects.LOG_TABLE.objects.last_record(filter_dict=filter_dict, order_str='timestamp')
 
     # add log related data
     if context['function'] == 'init':
@@ -71,6 +69,9 @@ def create_log_record(model, context, action, obj=None, validated_data=None, now
     for attr in log_hash_sequence:
         if attr in validated_data.keys():
             setattr(log_obj, attr, validated_data[attr])
+        else:
+            setattr(log_obj, attr, getattr(obj, attr))
+            validated_data[attr] = getattr(obj, attr)
     setattr(log_obj, 'lifecycle_id', obj.lifecycle_id)
     to_hash = generate_to_hash(fields=validated_data, hash_sequence=log_hash_sequence, unique_id=log_obj.id,
                                lifecycle_id=obj.lifecycle_id)

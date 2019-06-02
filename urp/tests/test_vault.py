@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # django imports
 from django.urls import reverse
 from django.test import Client
+from django.utils import timezone
 
 # rest framework imports
 from rest_framework import status
@@ -49,6 +50,10 @@ class GetVault(GetAll):
         pass
 
 
+##########################
+# /admin/change_password #
+##########################
+
 # patch
 class ChangePassword(APITestCase):
     def __init__(self, *args, **kwargs):
@@ -63,8 +68,8 @@ class ChangePassword(APITestCase):
         self.prerequisites.role_no_permissions()
         self.ok_path = self.base_path
         self.nok_path = reverse('change-password-view', args=['nonexistinguser'])
-        self.ok_data = {'password': self.password,
-                        'password_two': self.password}
+        self.ok_data = {'password_new': self.password,
+                        'password_new_verification': self.password}
 
     def test_401(self):
         # reset auth
@@ -103,14 +108,14 @@ class ChangePassword(APITestCase):
         # get csrf
         csrf_token = self.prerequisites.get_csrf(self.client, reverse('users-password-list'))
         # get API response
-        invalid_payload = [{'password': self.password},
-                           {'password': self.password,
-                            'password_two': 'abc'},
-                           {'password': '1234',
-                            'password_two': '1234'},
-                           {'password': 'test',
-                            'password_two': 'test'},
-                           {'password_two': self.password}
+        invalid_payload = [{'password_new': self.password},
+                           {'password_new': self.password,
+                            'password_new_verification': 'abc'},
+                           {'password_new': '1234',
+                            'password_new_verification': '1234'},
+                           {'password_new': 'test',
+                            'password_new_verification': 'test'},
+                           {'password_new_verification': self.password}
                            ]
         for payload in invalid_payload:
             response = self.client.patch(self.ok_path, data=payload, content_type='application/json',
@@ -132,5 +137,133 @@ class ChangePassword(APITestCase):
         self.client.logout()
         # get API response
         data = {'username': self.prerequisites.username, 'password': self.password}
+        response = self.client.post(reverse('login-view'), data=data, content_type='application/json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+
+##########################
+# /self_change_password #
+##########################
+
+# patch
+class SelfChangePassword(APITestCase):
+    def __init__(self, *args, **kwargs):
+        super(SelfChangePassword, self).__init__(*args, **kwargs)
+        self.prerequisites = Prerequisites()
+        self.base_path = reverse('self-change-password-view')
+        self.password = 'neutestdaidja2223213sdsd'
+
+    def setUp(self):
+        self.client = Client(enforce_csrf_checks=True)
+        self.prerequisites.role_superuser()
+        self.prerequisites.role_superuser_two()
+        self.ok_path = self.base_path
+        self.nok_path = reverse('change-password-view', args=['nonexistinguser'])
+        self.ok_data = {'password': 'test12345test',
+                        'password_new': self.password,
+                        'password_new_verification': self.password}
+        self.valid_payload = {'username': 'testinitialps',
+                              'password': 'test12345test',
+                              'password_two': 'test12345test',
+                              'roles': 'all',
+                              'email': 'example@example.com',
+                              'ldap': False}
+        self.login_data = {'username': self.valid_payload['username'],
+                           'password': self.valid_payload['password']}
+
+        # add new non-ldap managed user
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client, reverse('users-password-list'))
+        # get API response
+        response = self.client.post(reverse('users-list'), data=self.valid_payload, content_type='application/json',
+                                    HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        # start circulation
+        path = '{}/{}/{}/{}'.format(reverse('users-list'), response.data['lifecycle_id'], 1, 'circulation')
+        response_circ = self.client.patch(path, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response_circ.status_code, status.HTTP_200_OK)
+
+        # auth with second user to avoid SoD
+        self.prerequisites.auth_two(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client, reverse('users-password-list'))
+        # set prod
+        path = '{}/{}/{}/{}'.format(reverse('users-list'), response.data['lifecycle_id'], 1, 'productive')
+        response_prod = self.client.patch(path, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response_prod.status_code, status.HTTP_200_OK)
+
+    def test_401(self):
+        # reset auth
+        self.client.logout()
+        # get API response
+        response = self.client.patch(self.ok_path, content_type='application/json')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_401_initial_password(self):
+        # authenticate
+        login_response = self.client.login(**self.login_data)
+        assert login_response is True
+        # save last touch now timestamp to session to prevent auto logout error
+        session = self.client.session
+        session['last_touch'] = timezone.now()
+        session.save()
+        # get API response
+        response = self.client.get(reverse('users-list'), content_type='application/json')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_403_csrf(self):
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get API response
+        response = self.client.patch(self.ok_path, data=self.ok_data, content_type='application/json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_400(self):
+        # authenticate
+        login_response = self.client.login(**self.login_data)
+        assert login_response is True
+        # save last touch now timestamp to session to prevent auto logout error
+        session = self.client.session
+        session['last_touch'] = timezone.now()
+        session.save()
+        # get csrf
+        csrf_token = self.client.cookies['csrftoken'].value
+        # get API response
+        invalid_payload = [{'password_new': self.password},
+                           {'password_new': self.password,
+                            'password_new_verification': 'abc'},
+                           {'password_new': '1234',
+                            'password_new_verification': '1234'},
+                           {'password_new': 'test',
+                            'password_new_verification': 'test'},
+                           {'password_new_verification': self.password}
+                           ]
+        for payload in invalid_payload:
+            response = self.client.patch(self.ok_path, data=payload, content_type='application/json',
+                                         HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_200(self):
+        # authenticate
+        login_response = self.client.login(**self.login_data)
+        assert login_response is True
+        # save last touch now timestamp to session to prevent auto logout error
+        session = self.client.session
+        session['last_touch'] = timezone.now()
+        session.save()
+        # get csrf
+        csrf_token = self.client.cookies['csrftoken'].value
+        # get API response
+        response = self.client.patch(self.ok_path, data=self.ok_data, content_type='application/json',
+                                     HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # try to log in with new password
+        # reset auth
+        self.client.logout()
+        # get API response
+        data = {'username': self.valid_payload['username'], 'password': self.password}
         response = self.client.post(reverse('login-view'), data=data, content_type='application/json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)

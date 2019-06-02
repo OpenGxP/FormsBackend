@@ -757,7 +757,7 @@ class UsersManager(BaseUserManager, GlobalManager):
         return self.filter(username=username).exists()
 
     # superuser function for createsuperuser
-    def create_superuser(self, username, password, role, email):
+    def create_superuser(self, username, password, role, email, initial_password=True):
         # initial status "Effective" to immediately user superuser
         now = timezone.now()
         status_id = Status.objects.productive
@@ -776,7 +776,7 @@ class UsersManager(BaseUserManager, GlobalManager):
         user.set_password(self.make_random_password())
         vault_fields = {
             'username': username,
-            'initial_password': True
+            'initial_password': initial_password
         }
         vault = Vault(**vault_fields)
         vault.set_password(password)
@@ -801,7 +801,7 @@ class UsersManager(BaseUserManager, GlobalManager):
         # log record
         context = dict()
         context['function'] = 'init'
-        fields['initial_password'] = True
+        fields['initial_password'] = initial_password
         create_log_record(model=self.model, context=context, obj=user,
                           validated_data=fields, action=settings.DEFAULT_LOG_CREATE)
         return user

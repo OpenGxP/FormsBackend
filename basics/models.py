@@ -115,7 +115,8 @@ class GlobalManager(models.Manager):
         if not filter_dict and order_str:
             return self.order_by(order_str).last()
         if filter_dict and not order_str:
-            return self.filter(**filter_dict).order_by(order_str).last()
+            return self.filter(**filter_dict).last()
+        return self.filter(**filter_dict).order_by(order_str).last()
 
 
 class GlobalModel(models.Model):
