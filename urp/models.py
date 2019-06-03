@@ -603,12 +603,12 @@ class Vault(GlobalModel):
     username = models.CharField(max_length=CHAR_DEFAULT, unique=True)
     initial_password = models.BooleanField()
     password = models.CharField(max_length=CHAR_MAX)
-    question_one = models.CharField(max_length=CHAR_DEFAULT, blank=True)
-    question_two = models.CharField(max_length=CHAR_DEFAULT, blank=True)
-    question_three = models.CharField(max_length=CHAR_DEFAULT, blank=True)
-    answer_one = models.CharField(max_length=CHAR_DEFAULT, blank=True)
-    answer_two = models.CharField(max_length=CHAR_DEFAULT, blank=True)
-    answer_three = models.CharField(max_length=CHAR_DEFAULT, blank=True)
+    question_one = models.CharField(max_length=CHAR_MAX, blank=True)
+    question_two = models.CharField(max_length=CHAR_MAX, blank=True)
+    question_three = models.CharField(max_length=CHAR_MAX, blank=True)
+    answer_one = models.CharField(max_length=CHAR_MAX, blank=True)
+    answer_two = models.CharField(max_length=CHAR_MAX, blank=True)
+    answer_three = models.CharField(max_length=CHAR_MAX, blank=True)
 
     # manager
     objects = VaultManager()
@@ -654,6 +654,12 @@ class Vault(GlobalModel):
             self._password = None
             self.save(update_fields=["password"])
         return check_password(raw_password, self.password, setter)
+
+    @staticmethod
+    def question_answers_fields():
+        return {'question_one': 'answer_one',
+                'question_two': 'answer_two',
+                'question_three': 'answer_three'}
 
 
 #########

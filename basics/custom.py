@@ -170,3 +170,21 @@ def decrypt(value):
     cipher = AES.new(settings.CRYPT_KEY, AES.MODE_CFB, settings.IV)
     _crypt = base64.b64decode(value)
     return cipher.decrypt(_crypt).decode('utf-8')
+
+
+def unique_items(compare_list):
+    """Method compares all items of a list to check if they are all unique.
+
+    :param compare_list: list of items that shall be checked if all items are unique
+    :type compare_list: list
+    :return: true / false
+    :rtype: bool
+    """
+    length = len(compare_list)
+    for x in range(length):
+        for y in range(length):
+            if y == length or y == x:
+                continue
+            if compare_list[x] == compare_list[y]:
+                return False
+    return True

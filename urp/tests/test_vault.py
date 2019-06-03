@@ -141,16 +141,16 @@ class ChangePassword(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
 
-##########################
-# /self_change_password #
-##########################
+########################
+# user/change_password #
+########################
 
 # patch
-class SelfChangePassword(APITestCase):
+class UserChangePassword(APITestCase):
     def __init__(self, *args, **kwargs):
-        super(SelfChangePassword, self).__init__(*args, **kwargs)
+        super(UserChangePassword, self).__init__(*args, **kwargs)
         self.prerequisites = Prerequisites()
-        self.base_path = reverse('self-change-password-view')
+        self.base_path = reverse('user-change-password-view')
         self.password = 'neutestdaidja2223213sdsd'
 
     def setUp(self):
@@ -266,4 +266,39 @@ class SelfChangePassword(APITestCase):
         # get API response
         data = {'username': self.valid_payload['username'], 'password': self.password}
         response = self.client.post(reverse('login-view'), data=data, content_type='application/json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+
+#########################
+# user/change_questions #
+#########################
+
+# patch
+class UserChangeQuestions(APITestCase):
+    def __init__(self, *args, **kwargs):
+        super(UserChangeQuestions, self).__init__(*args, **kwargs)
+        self.prerequisites = Prerequisites()
+        self.base_path = reverse('user-change-questions-view')
+
+    def setUp(self):
+        self.client = Client(enforce_csrf_checks=True)
+        self.prerequisites.role_superuser()
+        self.prerequisites.role_superuser_two()
+        self.ok_path = self.base_path
+        self.ok_data = {'password': self.prerequisites.password,
+                        'question_one': 'Who am I?',
+                        'answer_one': '4711',
+                        'question_two': 'Where is the holy grail?',
+                        'answer_two': 'camelot',
+                        'question_three': 'What is the meaning of life?',
+                        'answer_three': '47'}
+
+    def test_200(self):
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client, reverse('users-password-list'))
+        # get API response
+        response = self.client.patch(self.ok_path, data=self.ok_data, content_type='application/json',
+                                     HTTP_X_CSRFTOKEN=csrf_token)
         self.assertEqual(response.status_code, status.HTTP_200_OK)

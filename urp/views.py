@@ -39,7 +39,7 @@ from .serializers import StatusReadWriteSerializer, PermissionsReadWriteSerializ
     SoDReadSerializer, UsersPassword
 from .decorators import perm_required, auth_required
 from basics.models import StatusLog, CentralLog, SettingsLog, Settings, CHAR_MAX
-from basics.custom import get_model_by_string
+from basics.custom import get_model_by_string, unique_items
 from .backends import write_access_log
 from .vault import validate_password_input, update_vault_record
 
@@ -118,16 +118,17 @@ def api_root(request):
     root = {'base': {'root': '/',
                      'subjects': {'login': {'url': reverse('login-view', request=request)},
                                   'csrftoken': {'url': reverse('get_csrf_token', request=request)},
-                                  'logout': {'url': reverse('logout-view', request=request)},
-                                  'self_change_password': {'url': reverse('self-change-password-view',
-                                                                          request=request)}}},
+                                  'logout': {'url': reverse('logout-view', request=request)}}},
+            'user': {'root': '/user/',
+                     'subjects': {'change_password': {'url': reverse('user-change-password-view', request=request)},
+                                  'change_questions': {'url': reverse('user-change-questions-view', request=request)}}},
             'administration': {'root': '/admin/',
                                'subjects': {'status': {'url': reverse('status-list', request=request)},
                                             'permissions': {'url': reverse('permissions-list', request=request)},
                                             'roles': {'url': reverse('roles-list', request=request)},
                                             'ldap': {'url': reverse('ldap-list', request=request)},
                                             'users': {'url': reverse('users-list', request=request)},
-                                            'users_password': {'url': reverse('users-password-list', request=request)},
+                                            'users/passwords': {'url': reverse('users-password-list', request=request)},
                                             'sod': {'url': reverse('sod-list', request=request)},
                                             'settings': {'url': reverse('settings-list', request=request)}}},
             'logs': {'root': '/logs/',
@@ -181,6 +182,7 @@ def login_view(request):
 @api_view(['PATCH'])
 @auth_required()
 @perm_required('{}.13'.format(Vault.MODEL_ID))
+@auto_logout()
 @csrf_protect
 def change_password_view(request, username):
     if not hasattr(request, 'data'):
@@ -204,13 +206,14 @@ def change_password_view(request, username):
 
 
 ########################
-# SELF_PASSWORD_CHANGE #
+# USER_CHANGE_PASSWORD #
 ########################
 
 @api_view(['PATCH'])
 @auth_required(initial_password_check=False)
+@auto_logout()
 @csrf_protect
-def self_change_password_view(request):
+def user_change_password_view(request):
     if not hasattr(request, 'data'):
         raise serializers.ValidationError('Fields "password", "password_new" and "password_new_verification" '
                                           'are required.')
@@ -239,6 +242,67 @@ def self_change_password_view(request):
     data['password'] = make_password(raw_pw)
     data['initial_password'] = False
     update_vault_record(data=data, instance=vault, action=settings.DEFAULT_LOG_PASSWORD, user=request.user.username)
+
+    return Response(status=http_status.HTTP_200_OK)
+
+
+#########################
+# USER_CHANGE_QUESTIONS #
+#########################
+
+@api_view(['PATCH'])
+@auth_required()
+@auto_logout()
+@csrf_protect
+def user_change_questions_view(request):
+    if not hasattr(request, 'data'):
+        raise serializers.ValidationError('Data is required.')
+
+    error_dict = dict()
+    field_error = ['This filed is required.']
+
+    # password is always required if security questions are changed
+    if 'password' not in request.data:
+        error_dict['password'] = field_error
+
+    # all questions / answers must be provided
+    question_answer_fields = Vault.question_answers_fields()
+    for question, answer in question_answer_fields.items():
+        if question not in request.data:
+            error_dict[question] = field_error
+        if answer not in request.data:
+            error_dict[answer] = field_error
+
+    if error_dict:
+        raise serializers.ValidationError(error_dict)
+
+    # questions and answers must be unique
+    items = list()
+    for question, answer in question_answer_fields.items():
+        items.append(request.data[question])
+        items.append(request.data[answer])
+
+    if not unique_items(items):
+        raise serializers.ValidationError('Questions and answers must be unique.')
+
+    try:
+        vault = Vault.objects.get(username=request.user.username)
+    except Vault.DoesNotExist:
+        return Response(status=http_status.HTTP_404_NOT_FOUND)
+    except ValidationError:
+        return Response(status=http_status.HTTP_400_BAD_REQUEST)
+
+    # check if provided password is correct
+    authenticate(request=request, username=request.user.username, password=request.data['password'],
+                 self_password_change=True)
+
+    data = dict()
+    for question, answer in question_answer_fields.items():
+        data[question] = request.data[question]
+        # save answers like passwords
+        data[answer] = make_password(request.data[answer])
+
+    update_vault_record(data=data, instance=vault, action=settings.DEFAULT_LOG_QUESTIONS, user=request.user.username)
 
     return Response(status=http_status.HTTP_200_OK)
 
