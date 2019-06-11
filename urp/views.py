@@ -171,8 +171,12 @@ def login_view(request):
         login(request, user)
         request.session['last_touch'] = timezone.now()
         # pass authenticated user roles to casl method, split to parse
+        data = dict()
+        # get initial password fag of user
+        data['initial_password'] = user.initial_password
         casl = Roles.objects.casl(user.roles.split(','))
-        return Response(casl, status=http_status.HTTP_200_OK)
+        data['casl'] = casl
+        return Response(data=data, status=http_status.HTTP_200_OK)
     else:
         return Response(status=http_status.HTTP_400_BAD_REQUEST)
 
