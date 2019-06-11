@@ -452,7 +452,8 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
             @require_SETTINGS
             def validate_settings(self):
                 # validate maximum login attempts and maximum inactive time
-                if self.instance.key == 'auth.max_login_attempts' or self.instance.key == 'core.auto_logout':
+                if self.instance.key == 'auth.max_login_attempts' or self.instance.key == 'core.auto_logout' \
+                        or self.instance.key == 'core.password_reset_time':
                     try:
                         # try to convert to integer
                         data['value'] = value_to_int(data['value'])

@@ -27,7 +27,8 @@ from .views import permissions_list, roles_list, roles_detail, status_list, \
     permissions_log_list, users_log_list, roles_log_list, audit_trail_list, status_log_list, \
     ldap_list, ldap_detail, ldap_log_list, login_view, logout_view, meta_list, get_csrf_token, settings_list, \
     settings_detail, settings_log_list, logout_auto_view, sod_list, sod_detail, sod_log_list, sod_status, \
-    users_password_list, change_password_view, user_change_password_view, user_change_questions_view
+    users_password_list, change_password_view, user_change_password_view, user_change_questions_view, \
+    request_password_reset_email_view, password_reset_email_view
 
 
 urlpatterns = [
@@ -36,6 +37,10 @@ urlpatterns = [
     path('{}csrftoken'.format(settings.BASE_URL), get_csrf_token, name='get_csrf_token'),
     path('{}logout'.format(settings.BASE_URL), logout_view, name='logout-view'),
     path('{}logout_auto'.format(settings.BASE_URL), logout_auto_view, name='logout-auto-view'),
+    path('{}request_password_reset_email'.format(settings.BASE_URL), request_password_reset_email_view,
+         name='request-password-reset-email-view'),
+    path('{}password_reset_email/<str:token>'.format(settings.BASE_URL), password_reset_email_view,
+         name='password-reset-email-view'),
     # user profile
     path('{}user/change_questions'.format(settings.BASE_URL), user_change_questions_view,
          name='user-change-questions-view'),

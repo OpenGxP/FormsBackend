@@ -111,6 +111,7 @@ venv.bak/
 private_test.py
 */keys
 */credentials
+*/email
 # start.sh
 status.json
 permissions.json

@@ -38,7 +38,7 @@ from .validators import validate_no_space, validate_no_specials, validate_no_spe
 from .custom import create_log_record
 from basics.custom import generate_checksum, generate_to_hash, decrypt
 from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, CHAR_MAX, FIELD_VERSION, Status, \
-    LOG_HASH_SEQUENCE, CHAR_BIG
+    LOG_HASH_SEQUENCE, CHAR_BIG, Settings
 from .ldap import init_server, connect, search
 
 
@@ -576,6 +576,91 @@ class LDAP(GlobalModel):
     UNIQUE = 'host'
 
 
+##########
+# TOKENS #
+##########
+
+# tokens manager
+class TokensManager(GlobalManager):
+    # flags
+    HAS_VERSION = False
+    HAS_STATUS = False
+
+    def check_token_exists(self, token):
+        record = self.filter(id=token).get()
+        if record.verify_checksum():
+            return record
+        raise ValidationError
+
+    def check_token_valid(self, token):
+        record = self.filter(id=token).get()
+        if record.verify_checksum():
+            if timezone.now() - record.timestamp \
+                    < timezone.timedelta(minutes=Settings.objects.core_password_reset_time):
+                return True
+        return False
+
+    def create_token(self, username, email):
+        hash_sequence = self.model.HASH_SEQUENCE
+
+        def create():
+            fields = {'username': username,
+                      'email': email,
+                      'timestamp': timezone.now()}
+            record = self.model(**fields)
+            to_hash = generate_to_hash(fields, hash_sequence=hash_sequence, unique_id=record.id)
+            record.checksum = generate_checksum(to_hash)
+
+            # save record
+            record.full_clean()
+            record.save()
+            return record
+
+        try:
+            existing_record = self.filter(username=username).get()
+        except self.model.DoesNotExist:
+            token = create()
+        else:
+            existing_record.delete()
+            token = create()
+        return token
+
+
+# table
+class Tokens(GlobalModel):
+    # custom fields
+    username = models.CharField(max_length=CHAR_DEFAULT, unique=True)
+    email = models.CharField(max_length=CHAR_DEFAULT)
+    timestamp = models.DateTimeField()
+
+    # manager
+    objects = TokensManager()
+
+    valid_from = None
+    valid_to = None
+    lifecycle_id = None
+
+    # hashing
+    HASH_SEQUENCE = ['username', 'email', 'timestamp']
+
+    # permissions
+    perms = None
+
+    # unique field
+    UNIQUE = 'username'
+
+    # integrity check
+    def verify_checksum(self):
+        to_hash_payload = 'username:{};email:{};timestamp:{};'.format(self.username, self.email, self.timestamp)
+        return self._verify_checksum(to_hash_payload=to_hash_payload)
+
+    # expiry timestamp
+    @property
+    def expiry_timestamp(self):
+        non_formatted = self.timestamp + timezone.timedelta(minutes=Settings.objects.core_password_reset_time)
+        return non_formatted.strftime('%d-%b-%Y %H:%M:%S %Z')
+
+
 #########
 # VAULT #
 #########
@@ -660,6 +745,18 @@ class Vault(GlobalModel):
         return {'question_one': 'answer_one',
                 'question_two': 'answer_two',
                 'question_three': 'answer_three'}
+
+    @property
+    def get_questions(self):
+        return {'question_one': self.question_one,
+                'question_two': self.question_two,
+                'question_three': self.question_three}
+
+    @property
+    def get_answers(self):
+        return {'answer_one': self.answer_one,
+                'answer_two': self.answer_two,
+                'answer_three': self.answer_three}
 
 
 #########
@@ -761,6 +858,15 @@ class UsersManager(BaseUserManager, GlobalManager):
 
     def exist(self, username):
         return self.filter(username=username).exists()
+
+    def get_valid_user_by_email(self, email):
+        query = self.filter(email=email).all()
+        if not query:
+            return
+        for record in query:
+            if record.verify_validity_range:
+                return record
+        return
 
     # superuser function for createsuperuser
     def create_superuser(self, username, password, role, email, initial_password=True):
@@ -948,7 +1054,7 @@ class Users(AbstractBaseUser, GlobalModel):
     MODEL_CONTEXT = 'Users'
 
     def get_full_name(self):
-        return _('{} - {} {}').format(self.username, self.first_name, self.last_name)
+        return _('{} {}').format(self.first_name, self.last_name)
 
     def get_short_name(self):
         return _('{} - {} {}').format(self.username)

@@ -16,9 +16,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-# basic imports
-from basics.custom import value_to_int, value_to_bool, require_file
-
 # ldap imports
 from ldap3 import SIMPLE, AUTO_BIND_DEFAULT, SUBTREE
 
@@ -57,6 +54,7 @@ DEFAULT_LOG_LOGIN = 'login'
 DEFAULT_LOG_LOGOUT = 'logout'
 DEFAULT_FRONT_TIMESTAMP = 'DD-MM-YYYYTHH:MM:SS Z'
 DEFAULT_AUTO_LOGOUT = 5  # in minutes
+DEFAULT_PASSWORD_RESET_TIME = 60  # in minutes
 
 #########
 # PATHS #
@@ -64,8 +62,6 @@ DEFAULT_AUTO_LOGOUT = 5  # in minutes
 
 # base directory
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-# security directory for storing secrets in permission controlled files
-SECURITY_DIR = os.path.join(BASE_DIR, 'security')
 # log directory
 LOG_DIR = os.path.join(BASE_DIR, 'logs')
 
@@ -288,7 +284,11 @@ INITIALIZE_SETTINGS = {'auth.max_login_attempts': MAX_LOGIN_ATTEMPTS,
                        'core.system_username': DEFAULT_SYSTEM_USER,
                        'core.devalue': DEFAULT_SYSTEM_DEVALUE,
                        'core.timestamp_format': DEFAULT_FRONT_TIMESTAMP,
-                       'core.auto_logout': DEFAULT_AUTO_LOGOUT}
+                       'core.auto_logout': DEFAULT_AUTO_LOGOUT,
+                       'core.password_reset_time': DEFAULT_PASSWORD_RESET_TIME}
+
+EMAIL_BASE_URL = 'http://127.0.0.1:8000'
+EMAIL_BACKEND = 'urp.backends.MyEmailBackend'
 
 ###########
 # LOGGING #

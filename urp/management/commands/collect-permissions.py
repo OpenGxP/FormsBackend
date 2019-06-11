@@ -42,6 +42,8 @@ class Command(BaseCommand):
         models = apps.all_models['urp']
         models.update(apps.all_models['basics'])
         for model in models:
+            if model == 'tokens':
+                continue
             for key, value in models[model].perms.items():
                 data = {'model': model,
                         'permission': value,

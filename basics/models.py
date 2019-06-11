@@ -89,6 +89,15 @@ class GlobalManager(models.Manager):
         else:
             return query
 
+    def get_valid_by_key(self, key):
+        query = self.filter(**{self.model.UNIQUE: key}).all()
+        if not query:
+            return
+        for record in query:
+            if record.verify_validity_range:
+                return record
+        return
+
     def get_circulation_user_for_sod(self, instance):
         status_circulation_id = Status.objects.circulation
         try:
@@ -451,6 +460,13 @@ class SettingsManager(GlobalManager):
             return int(self.filter(key='core.auto_logout').get().value)
         except self.model.DoesNotExist:
             return settings.DEFAULT_AUTO_LOGOUT
+
+    @property
+    def core_password_reset_time(self):
+        try:
+            return int(self.filter(key='core.password_reset_time').get().value)
+        except self.model.DoesNotExist:
+            return settings.DEFAULT_PASSWORD_RESET_TIME
 
 
 # table

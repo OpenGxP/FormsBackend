@@ -16,6 +16,34 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+# python imports
+import os
+
+# basic imports
+from basics.custom import value_to_int, value_to_bool, require_file
+
+#########
+# PATHS #
+#########
+
+# base directory
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# directory to store email templates
+EMAIL_DIR = os.path.join(BASE_DIR, 'templates')
+# security directory for storing secrets in permission controlled files
+SECURITY_DIR = os.path.join(BASE_DIR, 'security')
+
+
+#########
+# EMAIL #
+#########
+
+EMAIL_HOST = require_file(path=SECURITY_DIR + '/email/', file_name='HOST')
+EMAIL_PORT = int(require_file(path=SECURITY_DIR + '/email/', file_name='PORT'))
+EMAIL_HOST_USER = require_file(path=SECURITY_DIR + '/email/', file_name='USER')
+EMAIL_HOST_PASSWORD = require_file(path=SECURITY_DIR + '/email/', file_name='PASSWORD')
+EMAIL_USE_SSL = True
+
 
 ###############
 # APP DEFAULT #

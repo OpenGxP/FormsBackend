@@ -57,6 +57,7 @@ DEFAULT_LOG_LOGIN = 'login'
 DEFAULT_LOG_LOGOUT = 'logout'
 DEFAULT_FRONT_TIMESTAMP = 'DD-MM-YYYYTHH:MM:SS Z'
 DEFAULT_AUTO_LOGOUT = 5  # in minutes
+DEFAULT_PASSWORD_RESET_TIME = 5  # in minutes
 
 #########
 # PATHS #
@@ -270,7 +271,10 @@ INITIALIZE_SETTINGS = {'auth.max_login_attempts': MAX_LOGIN_ATTEMPTS,
                        'core.system_username': DEFAULT_SYSTEM_USER,
                        'core.devalue': DEFAULT_SYSTEM_DEVALUE,
                        'core.timestamp_format': DEFAULT_FRONT_TIMESTAMP,
-                       'core.auto_logout': DEFAULT_AUTO_LOGOUT}
+                       'core.auto_logout': DEFAULT_AUTO_LOGOUT,
+                       'core.password_reset_time': DEFAULT_PASSWORD_RESET_TIME}
+
+EMAIL_BASE_URL = 'https://{}'.format(ALLOWED_HOSTS[0])
 
 ###########
 # LOGGING #

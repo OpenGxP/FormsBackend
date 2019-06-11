@@ -21,11 +21,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import os
 import base64
 from passlib.hash import sha512_crypt
+from jinja2 import Template
 
 # django imports
 from django.conf import settings
 from django.apps import apps
 from django.core.exceptions import ValidationError, ImproperlyConfigured
+from django.core.mail import send_mail
 
 # crypto imports
 from Crypto.Cipher import AES
@@ -188,3 +190,30 @@ def unique_items(compare_list):
             if compare_list[x] == compare_list[y]:
                 return False
     return True
+
+
+def render_email_from_template(template_file_name, data=None):
+    # try to get custom template, if not applicable, use default template
+    try:
+        template = require_file(path=settings.EMAIL_DIR + '/custom/', file_name=template_file_name)
+    except FileNotFoundError:
+        template = require_file(path=settings.EMAIL_DIR + '/default/', file_name=template_file_name)
+    t = Template(template)
+    if data:
+        return t.render(**data)
+    return t.render()
+
+
+def send_email(email, html_message, subject):
+    def send():
+        return send_mail(subject=subject,
+                         message='opengxp message',
+                         html_message=html_message,
+                         from_email='from@example.com',
+                         recipient_list=[email],
+                         fail_silently=True)
+
+    for x in range(2):
+        result = send()
+        if result == 1:
+            break
