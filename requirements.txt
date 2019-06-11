@@ -9,4 +9,5 @@ django-filter===2.1.0
 ldap3===2.6
 django-redis===4.10.0
 gunicorn===19.9.0
-pycrypto==2.6.1
+pycrypto===2.6.1
+jinja2===2.10.1
