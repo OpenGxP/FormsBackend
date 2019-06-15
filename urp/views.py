@@ -205,7 +205,11 @@ def change_password_view(request, username):
 
     validate_password_input(request.data)
 
+    # FO-147: new password can not be equal to previous password
     raw_pw = request.data['password_new']
+    if check_password(raw_pw, vault.password):
+        raise serializers.ValidationError('New password is identical to old password. Password must be changed.')
+
     data = dict()
     data['password'] = make_password(raw_pw)
     data['initial_password'] = True
@@ -248,9 +252,9 @@ def user_change_password_view(request):
 
     validate_password_input(request.data)
 
-    # new password can not be equal to previous password
+    # FO-147: new password can not be equal to previous password
     if request.data['password_new'] == request.data['password']:
-        raise serializers.ValidationError('Password must be changed.')
+        raise serializers.ValidationError('New password is identical to old password. Password must be changed.')
 
     raw_pw = request.data['password_new']
     data = dict()
@@ -416,14 +420,14 @@ def password_reset_email_view(request, token):
         # validate password data
         validate_password_input(request.data)
 
-        # new password can not be equal to previous password
+        # FO-147: new password can not be equal to previous password
         raw_pw = request.data['password_new']
-        hashed_pw = make_password(raw_pw)
-        if hashed_pw == vault.password:
+        if check_password(raw_pw, vault.password):
             raise serializers.ValidationError('New password is identical to old password. Password must be changed.')
 
         # update vault with new password
         data = dict()
+        hashed_pw = make_password(raw_pw)
         data['password'] = hashed_pw
         data['initial_password'] = False
         now = timezone.now()
