@@ -67,7 +67,7 @@ class MyEmailBackend(EmailBackend):
         self.use_ssl = use_ssl
 
         # standard
-        self.timeout = settings.EMAIL_SERVER_CONNECTION_TIMEOUT
+        self.timeout = settings.EMAIL_SERVER_CONNECTION_TIMEOUT if timeout is None else timeout
         self.use_tls = settings.EMAIL_USE_TLS if use_tls is None else use_tls
         self.ssl_keyfile = settings.EMAIL_SSL_KEYFILE if ssl_keyfile is None else ssl_keyfile
         self.ssl_certfile = settings.EMAIL_SSL_CERTFILE if ssl_certfile is None else ssl_certfile
@@ -89,7 +89,7 @@ class MyEmailBackend(EmailBackend):
                 self.port = record.port
                 self.username = record.username
                 self.password = decrypt(record.password)
-                self.use_ssl = record.ssl_tls
+                self.use_ssl = record.use_ssl
 
                 try:
                     return self._open()
