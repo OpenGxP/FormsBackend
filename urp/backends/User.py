@@ -58,6 +58,19 @@ def block_user(user):
         _serializer.save()
 
 
+def activate_user(user, action_user=None, now=None):
+    if not action_user:
+        action_user = Settings.objects.core_system_username
+
+    _serializer = UsersDeleteStatusSerializer(user, data={}, context={'method': 'PATCH',
+                                                                      'function': 'status_change',
+                                                                      'status': 'productive',
+                                                                      'user': action_user,
+                                                                      'now': now})
+    if _serializer.is_valid():
+        _serializer.save()
+
+
 def attempt(username):
     query = AccessLog.objects.latest_record(username)
     if query:

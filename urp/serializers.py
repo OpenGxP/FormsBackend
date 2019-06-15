@@ -260,6 +260,9 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 else:
                     # ldap is always false
                     fields['initial_password'] = False
+            # route now for activate user and set password at same time
+            if 'now' in self.context.keys():
+                now = self.context['now']
             create_log_record(model=model, context=self.context, obj=instance, validated_data=fields,
                               action=action, now=now)
         return instance

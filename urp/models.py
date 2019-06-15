@@ -995,7 +995,7 @@ class UsersManager(BaseUserManager, GlobalManager):
         return
 
     # superuser function for createsuperuser
-    def create_superuser(self, username, password, role, email, initial_password=True):
+    def create_superuser(self, username, password, role, email, initial_password=False):
         # initial status "Effective" to immediately user superuser
         now = timezone.now()
         status_id = Status.objects.productive

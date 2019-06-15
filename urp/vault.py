@@ -51,7 +51,7 @@ def create_vault_record():
     pass
 
 
-def update_vault_record(data, instance, action, user):
+def update_vault_record(data, instance, action, user, now=None):
     hash_sequence = instance.HASH_SEQUENCE
     fields = dict()
     for attr in hash_sequence:
@@ -72,4 +72,4 @@ def update_vault_record(data, instance, action, user):
     context = dict()
     context['function'] = 'update_vault'
     context['user'] = user
-    create_log_record(model=Users, context=context, action=action, validated_data=data)
+    create_log_record(model=Users, context=context, action=action, validated_data=data, now=now)

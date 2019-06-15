@@ -42,7 +42,7 @@ from .decorators import perm_required, auth_required
 from basics.models import StatusLog, CentralLog, SettingsLog, Settings, CHAR_MAX
 from basics.custom import get_model_by_string, unique_items, render_email_from_template
 from .backends.Email import send_email
-from .backends.User import write_access_log
+from .backends.User import write_access_log, activate_user
 from .vault import validate_password_input, update_vault_record
 
 # django imports
@@ -426,10 +426,16 @@ def password_reset_email_view(request, token):
         data = dict()
         data['password'] = hashed_pw
         data['initial_password'] = False
-        update_vault_record(data=data, instance=vault, action=settings.DEFAULT_LOG_PASSWORD, user=vault.username)
+        now = timezone.now()
+        update_vault_record(data=data, instance=vault, action=settings.DEFAULT_LOG_PASSWORD, user=vault.username,
+                            now=now)
+
+        # in case user is in status blocked, set effective
+        user = Users.objects.get_valid_by_key(vault.username)
+        if user.status.id == Status.objects.blocked:
+            activate_user(user=user, action_user=user.username, now=now)
 
         # inform user about successful password change
-        user = Users.objects.get_valid_by_key(vault.username)
         email_data = {'fullname': user.get_full_name()}
         html_message = render_email_from_template(template_file_name='email_password_changed.html', data=email_data)
         send_email(subject='OpenGxP Password Changed', html_message=html_message, email=token.email)
