@@ -29,7 +29,7 @@ from rest_framework import serializers
 
 # custom imports
 from .models import Status, Roles, Permissions, Users, AccessLog, PermissionsLog, RolesLog, UsersLog, LDAP, LDAPLog, \
-    SoD, SoDLog, Vault, Tokens
+    SoD, SoDLog, Vault, Tokens, Email, EmailLog
 from .serializers import StatusReadWriteSerializer, PermissionsReadWriteSerializer, RolesReadSerializer, \
     RolesWriteSerializer, UsersReadSerializer, RolesDeleteStatusSerializer, RolesNewVersionSerializer, \
     UsersWriteSerializer, UsersNewVersionSerializer, UsersDeleteStatusSerializer, \
@@ -37,11 +37,12 @@ from .serializers import StatusReadWriteSerializer, PermissionsReadWriteSerializ
     PermissionsLogReadSerializer, RolesLogReadSerializer, UsersLogReadSerializer, AUDIT_TRAIL_SERIALIZERS, \
     LDAPLogReadSerializer, LDAPReadWriteSerializer, LDAPDeleteSerializer, SettingsLogReadSerializer, \
     SettingsReadWriteSerializer, SoDLogReadSerializer, SoDDeleteStatusNewVersionSerializer, SoDWriteSerializer, \
-    SoDReadSerializer, UsersPassword
+    SoDReadSerializer, UsersPassword, EmailDeleteSerializer, EmailLogReadSerializer, EmailReadWriteSerializer
 from .decorators import perm_required, auth_required
 from basics.models import StatusLog, CentralLog, SettingsLog, Settings, CHAR_MAX
-from basics.custom import get_model_by_string, unique_items, render_email_from_template, send_email
-from .backends import write_access_log
+from basics.custom import get_model_by_string, unique_items, render_email_from_template
+from .backends.Email import send_email
+from .backends.User import write_access_log
 from .vault import validate_password_input, update_vault_record
 
 # django imports
@@ -129,6 +130,7 @@ def api_root(request):
                                             'permissions': {'url': reverse('permissions-list', request=request)},
                                             'roles': {'url': reverse('roles-list', request=request)},
                                             'ldap': {'url': reverse('ldap-list', request=request)},
+                                            'email': {'url': reverse('email-list', request=request)},
                                             'users': {'url': reverse('users-list', request=request)},
                                             'users/passwords': {'url': reverse('users-password-list', request=request)},
                                             'sod': {'url': reverse('sod-list', request=request)},
@@ -140,6 +142,7 @@ def api_root(request):
                                   'permissions': {'url': reverse('permissions-log-list', request=request)},
                                   'roles': {'url': reverse('roles-log-list', request=request)},
                                   'ldap': {'url': reverse('ldap-log-list', request=request)},
+                                  'email': {'url': reverse('email-log-list', request=request)},
                                   'users': {'url': reverse('users-log-list', request=request)},
                                   'sod': {'url': reverse('sod-log-list', request=request)},
                                   'settings': {'url': reverse('settings-log-list', request=request)}}}}
@@ -734,6 +737,108 @@ def ldap_detail(request, host):
     try:
         query = LDAP.objects.get(host=host)
     except LDAP.DoesNotExist:
+        return Response(status=http_status.HTTP_404_NOT_FOUND)
+    except ValidationError:
+        return Response(status=http_status.HTTP_400_BAD_REQUEST)
+
+    if request.method == 'GET':
+        return get(request)
+
+    elif request.method == 'PATCH':
+        return patch(request)
+
+    elif request.method == 'DELETE':
+        return delete(request)
+
+
+############
+# EMAILLOG #
+############
+
+# GET list
+@api_view(['GET'])
+@auth_required()
+@auto_logout()
+@perm_required('{}.01'.format(EmailLog.MODEL_ID))
+def email_log_list(request):
+    """
+    List all email log records.
+    """
+    logs = EmailLog.objects.all()
+    serializer = EmailLogReadSerializer(logs, many=True)
+    return Response(serializer.data)
+
+
+#########
+# EMAIL #
+#########
+
+# GET list
+@api_view(['GET', 'POST'])
+@auth_required()
+@auto_logout()
+def email_list(request):
+    @perm_required('{}.02'.format(Email.MODEL_ID))
+    @csrf_protect
+    def post(_request):
+        _serializer = EmailReadWriteSerializer(data=_request.data, context={'method': 'POST',
+                                                                            'function': 'new',
+                                                                            'user': request.user.username})
+
+        if _serializer.is_valid():
+            _serializer.save()
+            return Response(_serializer.data, status=http_status.HTTP_201_CREATED)
+        return Response(_serializer.errors, status=http_status.HTTP_400_BAD_REQUEST)
+
+    @perm_required('{}.01'.format(Email.MODEL_ID))
+    @ensure_csrf_cookie
+    def get(_request):
+        query = Email.objects.all()
+        serializer = EmailReadWriteSerializer(query, many=True)
+        return Response(serializer.data)
+
+    if request.method == 'GET':
+        return get(request)
+    if request.method == 'POST':
+        return post(request)
+
+
+# GET detail
+@api_view(['GET', 'PATCH', 'DELETE'])
+@auth_required()
+@auto_logout()
+def email_detail(request, host):
+    @perm_required('{}.03'.format(Email.MODEL_ID))
+    @csrf_protect
+    def patch(_request):
+        _serializer = EmailReadWriteSerializer(query, data=_request.data, context={'method': 'PATCH',
+                                                                                   'function': '',
+                                                                                   'user': request.user.username})
+        if _serializer.is_valid():
+            _serializer.save()
+            return Response(_serializer.data)
+        return Response(_serializer.errors, status=http_status.HTTP_400_BAD_REQUEST)
+
+    @perm_required('{}.04'.format(Email.MODEL_ID))
+    @csrf_protect
+    def delete(_request):
+        _serializer = EmailDeleteSerializer(query, data={}, context={'method': 'DELETE',
+                                                                     'function': '',
+                                                                     'user': request.user.username})
+        if _serializer.is_valid():
+            _serializer.delete()
+            return Response(status=http_status.HTTP_204_NO_CONTENT)
+        return Response(_serializer.errors, status=http_status.HTTP_400_BAD_REQUEST)
+
+    @perm_required('{}.01'.format(Email.MODEL_ID))
+    @ensure_csrf_cookie
+    def get(_request):
+        serializer = EmailReadWriteSerializer(query)
+        return Response(serializer.data)
+
+    try:
+        query = Email.objects.get(host=host)
+    except Email.DoesNotExist:
         return Response(status=http_status.HTTP_404_NOT_FOUND)
     except ValidationError:
         return Response(status=http_status.HTTP_400_BAD_REQUEST)

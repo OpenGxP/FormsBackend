@@ -28,7 +28,7 @@ from .views import permissions_list, roles_list, roles_detail, status_list, \
     ldap_list, ldap_detail, ldap_log_list, login_view, logout_view, meta_list, get_csrf_token, settings_list, \
     settings_detail, settings_log_list, logout_auto_view, sod_list, sod_detail, sod_log_list, sod_status, \
     users_password_list, change_password_view, user_change_password_view, user_change_questions_view, \
-    request_password_reset_email_view, password_reset_email_view
+    request_password_reset_email_view, password_reset_email_view, email_detail, email_list, email_log_list
 
 
 urlpatterns = [
@@ -59,10 +59,14 @@ urlpatterns = [
     path('{}logs/users'.format(settings.BASE_URL), users_log_list, name='users-log-list'),
     path('{}logs/sod'.format(settings.BASE_URL), sod_log_list, name='sod-log-list'),
     path('{}logs/ldap'.format(settings.BASE_URL), ldap_log_list, name='ldap-log-list'),
+    path('{}logs/email'.format(settings.BASE_URL), email_log_list, name='email-log-list'),
     path('{}logs/settings'.format(settings.BASE_URL), settings_log_list, name='settings-log-list'),
     # ldap
     path('{}admin/ldap'.format(settings.BASE_URL), ldap_list, name='ldap-list'),
     path('{}admin/ldap/<str:host>'.format(settings.BASE_URL), ldap_detail, name='ldap-detail'),
+    # email
+    path('{}admin/email'.format(settings.BASE_URL), email_list, name='email-list'),
+    path('{}admin/email/<str:host>'.format(settings.BASE_URL), email_detail, name='email-detail'),
     # settings
     path('{}admin/settings'.format(settings.BASE_URL), settings_list, name='settings-list'),
     path('{}admin/settings/<str:key>'.format(settings.BASE_URL), settings_detail, name='settings-detail'),

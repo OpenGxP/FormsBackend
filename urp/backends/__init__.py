@@ -15,29 +15,3 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
-
-# python imports
-import os
-
-# basic imports
-from basics.custom import value_to_int, value_to_bool, require_file
-
-#########
-# PATHS #
-#########
-
-# base directory
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-# directory to store email templates
-EMAIL_DIR = os.path.join(BASE_DIR, 'templates')
-# security directory for storing secrets in permission controlled files
-SECURITY_DIR = os.path.join(BASE_DIR, 'security')
-
-
-###############
-# APP DEFAULT #
-###############
-
-ALL_PERMISSIONS = '00.00'
-DEFAULT_LOG_PASSWORD = 'password'
-DEFAULT_LOG_QUESTIONS = 'questions'

@@ -21,20 +21,22 @@ from rest_framework import serializers
 
 # custom imports
 from .models import Status, Permissions, Users, Roles, AccessLog, PermissionsLog, RolesLog, UsersLog, LDAP, LDAPLog, \
-    SoD, SoDLog, Vault
+    SoD, SoDLog, Vault, Email, EmailLog
 from basics.custom import generate_checksum, generate_to_hash, encrypt, value_to_int
 from basics.models import AVAILABLE_STATUS, StatusLog, CentralLog, Settings, SettingsLog
 from .decorators import require_STATUS_CHANGE, require_POST, require_DELETE, require_PATCH, require_NONE, \
-    require_NEW_VERSION, require_status, require_LDAP, require_USERS, require_NEW, require_SETTINGS, require_SOD
+    require_NEW_VERSION, require_status, require_LDAP, require_USERS, require_NEW, require_SETTINGS, require_SOD, \
+    require_EMAIL
 from .custom import create_log_record, create_central_log_record
 from .ldap import server_check
+from .backends.Email import MyEmailBackend
 
 # django imports
 from django.utils import timezone
 from django.db import IntegrityError
 from django.conf import settings
 from django.contrib.auth.hashers import make_password
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ValidationError, ImproperlyConfigured
 
 
 ##########
@@ -109,8 +111,8 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
             if obj.MODEL_ID == '05':
                 create_central_log_record(log_id=obj.id, now=validated_data['timestamp'], context=model.MODEL_CONTEXT,
                                           action=validated_data['action'], user=validated_data['user'])
-            # ldap encrypt password before save to db
-            if obj.MODEL_ID == '11':
+            # ldap and email encrypt password before save to db
+            if obj.MODEL_ID == '11' or obj.MODEL_ID == '18':
                 raw_pw = validated_data['password']
                 validated_data['password'] = encrypt(raw_pw)
 
@@ -231,6 +233,11 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                                 raise e
                             else:
                                 vault.save()
+
+                # ldap and email encrypt password before save to db
+                if model.MODEL_ID == '11' or model.MODEL_ID == '18':
+                    raw_pw = validated_data['password']
+                    validated_data['password'] = encrypt(raw_pw)
         hash_sequence = instance.HASH_SEQUENCE
         fields = dict()
         for attr in hash_sequence:
@@ -425,6 +432,14 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 server_check(data)
 
             @require_NONE
+            @require_EMAIL
+            def validate_server_check(self):
+                try:
+                    MyEmailBackend(**data, check_call=True).open()
+                except ImproperlyConfigured as e:
+                    raise serializers.ValidationError(e)
+
+            @require_NONE
             @require_USERS
             def validate_ldap(self):
                 if data['ldap']:
@@ -500,6 +515,14 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
             @require_LDAP
             def validate_server_check(self):
                 server_check(data)
+
+            @require_NEW
+            @require_EMAIL
+            def validate_server_check(self):
+                try:
+                    MyEmailBackend(**data, check_call=True).open()
+                except ImproperlyConfigured as e:
+                    raise serializers.ValidationError(e)
 
             @require_NEW
             @require_USERS
@@ -602,7 +625,7 @@ class LDAPReadWriteSerializer(GlobalReadWriteSerializer):
         # exclude = ('id', 'checksum',)
         extra_kwargs = {'password': {'write_only': True}}
         # to control field order in response
-        fields = LDAP.objects.GET_MODEL_ORDER + LDAP.objects.GET_BASE_CALCULATED
+        fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_CALCULATED
 
 
 # read
@@ -611,13 +634,42 @@ class LDAPLogReadSerializer(GlobalReadWriteSerializer):
         model = LDAPLog
         # exclude = ('id', 'checksum', )
         # to control field order in response
-        fields = LDAP.objects.GET_MODEL_ORDER + LDAP.objects.GET_BASE_ORDER_LOG + LDAP.objects.GET_BASE_CALCULATED
+        fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_ORDER_LOG + model.objects.GET_BASE_CALCULATED
 
 
 # delete
 class LDAPDeleteSerializer(GlobalReadWriteSerializer):
     class Meta:
         model = LDAP
+        fields = ()
+
+
+#########
+# EMAIL #
+#########
+
+# read/write
+class EmailReadWriteSerializer(GlobalReadWriteSerializer):
+    class Meta:
+        model = Email
+        extra_kwargs = {'password': {'write_only': True}}
+        # to control field order in response
+        fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_CALCULATED
+
+
+# read
+class EmailLogReadSerializer(GlobalReadWriteSerializer):
+    class Meta:
+        model = EmailLog
+        # exclude = ('id', 'checksum', )
+        # to control field order in response
+        fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_ORDER_LOG + model.objects.GET_BASE_CALCULATED
+
+
+# delete
+class EmailDeleteSerializer(GlobalReadWriteSerializer):
+    class Meta:
+        model = Email
         fields = ()
 
 

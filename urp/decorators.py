@@ -25,7 +25,7 @@ from rest_framework.response import Response
 from rest_framework import status
 
 # app imports
-from .models import Roles, LDAP, Users, SoD
+from .models import Roles, LDAP, Users, SoD, Email
 from basics.models import Settings
 
 
@@ -110,6 +110,7 @@ require_LDAP = require_model(LDAP)
 require_USERS = require_model(Users)
 require_SETTINGS = require_model(Settings)
 require_SOD = require_model(SoD)
+require_EMAIL = require_model(Email)
 
 
 def require_status(_status):

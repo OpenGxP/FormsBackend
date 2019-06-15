@@ -39,6 +39,11 @@ LDAP_CON_READ_ONLY = True
 LDAP_CON_AUTO_BIN = AUTO_BIND_DEFAULT
 LDAP_SEARCH_SCOPE = SUBTREE
 
+#########
+# EMAIL #
+#########
+
+EMAIL_SERVER_CONNECTION_TIMEOUT = 5
 
 ########################
 # APP SETTINGS DEFAULT #
@@ -58,6 +63,7 @@ DEFAULT_LOG_LOGOUT = 'logout'
 DEFAULT_FRONT_TIMESTAMP = 'DD-MM-YYYYTHH:MM:SS Z'
 DEFAULT_AUTO_LOGOUT = 5  # in minutes
 DEFAULT_PASSWORD_RESET_TIME = 5  # in minutes
+DEFAULT_EMAIL_SENDER = 'noreply@opengxp.com'
 
 #########
 # PATHS #
@@ -125,7 +131,7 @@ REST_FRAMEWORK = {
 
 
 AUTHENTICATION_BACKENDS = [
-    'urp.backends.MyModelBackend',
+    'urp.backends.User.MyModelBackend',
 ]
 
 AUTH_USER_MODEL = 'urp.Users'
@@ -272,9 +278,11 @@ INITIALIZE_SETTINGS = {'auth.max_login_attempts': MAX_LOGIN_ATTEMPTS,
                        'core.devalue': DEFAULT_SYSTEM_DEVALUE,
                        'core.timestamp_format': DEFAULT_FRONT_TIMESTAMP,
                        'core.auto_logout': DEFAULT_AUTO_LOGOUT,
-                       'core.password_reset_time': DEFAULT_PASSWORD_RESET_TIME}
+                       'core.password_reset_time': DEFAULT_PASSWORD_RESET_TIME,
+                       'email.sender': DEFAULT_EMAIL_SENDER}
 
 EMAIL_BASE_URL = 'https://{}'.format(ALLOWED_HOSTS[0])
+EMAIL_BACKEND = 'urp.backends.Email.MyEmailBackend'
 
 ###########
 # LOGGING #
@@ -325,8 +333,16 @@ LOGGING = {
         'db.backends': {
             'level': 'DEBUG',
             'class': 'logging.handlers.RotatingFileHandler',
-            'filename': LOG_DIR + '/backends.log',
+            'filename': LOG_DIR + '/db_backends.log',
             'maxBytes': 1024*1024*5,  # 5 MB
+            'backupCount': 5,
+            'formatter': 'standard'
+        },
+        'backends': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': LOG_DIR + '/backends.log',
+            'maxBytes': 1024 * 1024 * 5,  # 5 MB
             'backupCount': 5,
             'formatter': 'standard'
         },
@@ -353,13 +369,13 @@ LOGGING = {
         },
     },
     'loggers': {
-        'opengxp': {
-            'handlers': ['default', 'console'],
+        'urp.backends': {
+            'handlers': ['backends'],
             'level': 'DEBUG',
             'propagate': True
         },
         'django.request': {
-            'handlers': ['request', 'console'],
+            'handlers': ['request'],
             'level': 'DEBUG',
             'propagate': False
         },

@@ -1,6 +1,6 @@
 """
 opengxp.org
-Copyright (C) 2018  Henrik Baran
+Copyright (C) 2019  Henrik Baran
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
 # python imports
-import threading
+import logging
 
 # rest imports
 from rest_framework import serializers
@@ -29,13 +29,14 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.backends import ModelBackend
 from django.utils.translation import ugettext_lazy as _
-from django.core.mail.backends.smtp import EmailBackend
 
 # custom imports
-from .models import AccessLog, LDAP
-from .serializers import AccessLogReadWriteSerializer, UsersDeleteStatusSerializer
+from ..models import AccessLog, LDAP
+from ..serializers import AccessLogReadWriteSerializer, UsersDeleteStatusSerializer
 from basics.models import Settings
 
+# define logger
+logger = logging.getLogger(__name__)
 
 UserModel = get_user_model()
 ERROR_TEXT_AUTH = _('False username and / or false password and / or user not active.')
@@ -193,30 +194,3 @@ class MyModelBackend(ModelBackend):
             UserModel().set_password(password)
             # FO-123: adapted error message to more general one
             raise serializers.ValidationError(ERROR_TEXT_AUTH)
-
-
-class MyEmailBackend(EmailBackend):
-    """
-    Send emails against settings.EMAIL_BACKEND.
-    """
-
-    def __init__(self, host=None, port=None, username=None, password=None,
-                 use_tls=None, fail_silently=False, use_ssl=None, timeout=None,
-                 ssl_keyfile=None, ssl_certfile=None,
-                 **kwargs):
-        super().__init__(fail_silently=fail_silently)
-        self.host = host or settings.EMAIL_HOST
-        self.port = port or settings.EMAIL_PORT
-        self.username = settings.EMAIL_HOST_USER if username is None else username
-        self.password = settings.EMAIL_HOST_PASSWORD if password is None else password
-        self.use_tls = settings.EMAIL_USE_TLS if use_tls is None else use_tls
-        self.use_ssl = settings.EMAIL_USE_SSL if use_ssl is None else use_ssl
-        self.timeout = settings.EMAIL_TIMEOUT if timeout is None else timeout
-        self.ssl_keyfile = settings.EMAIL_SSL_KEYFILE if ssl_keyfile is None else ssl_keyfile
-        self.ssl_certfile = settings.EMAIL_SSL_CERTFILE if ssl_certfile is None else ssl_certfile
-        if self.use_ssl and self.use_tls:
-            raise ValueError(
-                "EMAIL_USE_TLS/EMAIL_USE_SSL are mutually exclusive, so only set "
-                "one of those settings to True.")
-        self.connection = None
-        self._lock = threading.RLock()

@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # python imports
 import os
+import json
 import base64
 from passlib.hash import sha512_crypt
 from jinja2 import Template
@@ -27,7 +28,7 @@ from jinja2 import Template
 from django.conf import settings
 from django.apps import apps
 from django.core.exceptions import ValidationError, ImproperlyConfigured
-from django.core.mail import send_mail
+
 
 # crypto imports
 from Crypto.Cipher import AES
@@ -162,6 +163,30 @@ def require_file(path, file_name):
         raise
 
 
+# function for required settings from local files
+def require_json_file(path, file_name):
+    """Raise an error if file for configuration not existing or empty.
+
+        :param path: absolute path to file ending with /
+        :type path: str
+        :param file_name: file name
+        :type file_name: str
+        :return: returns json parsed dict
+        :rtype: dict
+    """
+    if not isinstance(path, str) or not isinstance(file_name, str):
+        raise TypeError('Argument of type string expected.')
+    try:
+        with open(path + file_name, 'r') as local_file:
+            content = json.load(local_file)
+            if content:
+                return content
+            else:
+                raise ImproperlyConfigured('File "{}" is empty.'.format(file_name))
+    except FileNotFoundError:
+        raise
+
+
 def encrypt(value):
     cipher = AES.new(settings.CRYPT_KEY, AES.MODE_CFB, settings.IV)
     _crypt = cipher.encrypt(value)
@@ -202,18 +227,3 @@ def render_email_from_template(template_file_name, data=None):
     if data:
         return t.render(**data)
     return t.render()
-
-
-def send_email(email, html_message, subject):
-    def send():
-        return send_mail(subject=subject,
-                         message='opengxp message',
-                         html_message=html_message,
-                         from_email='from@example.com',
-                         recipient_list=[email],
-                         fail_silently=True)
-
-    for x in range(2):
-        result = send()
-        if result == 1:
-            break

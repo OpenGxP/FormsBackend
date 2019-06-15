@@ -21,8 +21,8 @@ from django.urls import reverse
 from django.conf import settings
 
 # app imports
-from ..models import LDAP
-from ..serializers import LDAPReadWriteSerializer
+from ..models import Email
+from ..serializers import EmailReadWriteSerializer
 
 # test imports
 from . import Prerequisites, GetAll, PostNew, DeleteOneNoStatus, PatchOneNoStatus, GetOneNoStatus
@@ -31,45 +31,41 @@ from . import Prerequisites, GetAll, PostNew, DeleteOneNoStatus, PatchOneNoStatu
 from basics.custom import require_json_file
 
 
-BASE_PATH = reverse('ldap-list')
-LDAP_CON_DATA = require_json_file(path=settings.SECURITY_DIR + '/credentials/', file_name='LDAP_CON_DATA.json')
+BASE_PATH = reverse('email-list')
+EMAIL_CON_DATA = require_json_file(path=settings.SECURITY_DIR + '/credentials/', file_name='EMAIL_CON_DATA.json')
 
-
-#############
-# /md/ldap/ #
-#############
 
 # get
-class GetAllLdap(GetAll):
+class GetAllEmail(GetAll):
     def __init__(self, *args, **kwargs):
-        super(GetAllLdap, self).__init__(*args, **kwargs)
+        super(GetAllEmail, self).__init__(*args, **kwargs)
         self.base_path = BASE_PATH
-        self.model = LDAP
-        self.serializer = LDAPReadWriteSerializer
+        self.model = Email
+        self.serializer = EmailReadWriteSerializer
         self.execute = True
 
 
-class GetOneNoStatusLdap(GetOneNoStatus):
+class GetOneNoStatusEmail(GetOneNoStatus):
     def __init__(self, *args, **kwargs):
-        super(GetOneNoStatusLdap, self).__init__(*args, **kwargs)
+        super(GetOneNoStatusEmail, self).__init__(*args, **kwargs)
         self.base_path = BASE_PATH
         self.prerequisites = Prerequisites(base_path=self.base_path)
-        self.model = LDAP
-        self.serializer = LDAPReadWriteSerializer
+        self.model = Email
+        self.serializer = EmailReadWriteSerializer
         self.execute = True
-        self.ok_object_data = LDAP_CON_DATA
+        self.ok_object_data = EMAIL_CON_DATA
         self.ok_object_data_unique = 'host'
 
 
 # post
-class PostNewLdap(PostNew):
+class PostNewEmail(PostNew):
     def __init__(self, *args, **kwargs):
-        super(PostNewLdap, self).__init__(*args, **kwargs)
+        super(PostNewEmail, self).__init__(*args, **kwargs)
         self.base_path = BASE_PATH
-        self.model = LDAP
+        self.model = Email
         self.prerequisites = Prerequisites(base_path=self.base_path)
-        self.valid_payload = LDAP_CON_DATA
-        invalid_payload = LDAP_CON_DATA.copy()
+        self.valid_payload = EMAIL_CON_DATA
+        invalid_payload = EMAIL_CON_DATA.copy()
         invalid_payload['host'] = ''
         self.invalid_payloads = [dict(), invalid_payload]
         self.execute = True
@@ -77,32 +73,32 @@ class PostNewLdap(PostNew):
 
 
 # delete
-class DeleteOneLdap(DeleteOneNoStatus):
+class DeleteOneEmail(DeleteOneNoStatus):
     def __init__(self, *args, **kwargs):
-        super(DeleteOneLdap, self).__init__(*args, **kwargs)
+        super(DeleteOneEmail, self).__init__(*args, **kwargs)
         self.base_path = BASE_PATH
-        self.model = LDAP
+        self.model = Email
         self.prerequisites = Prerequisites(base_path=self.base_path)
-        self.serializer = LDAPReadWriteSerializer
-        self.ok_object_data = LDAP_CON_DATA
+        self.serializer = EmailReadWriteSerializer
+        self.ok_object_data = EMAIL_CON_DATA
         self.ok_object_data_unique = 'host'
         self.execute = True
 
 
 # patch
-class PatchOneLdap(PatchOneNoStatus):
+class PatchOneEmail(PatchOneNoStatus):
     def __init__(self, *args, **kwargs):
-        super(PatchOneLdap, self).__init__(*args, **kwargs)
+        super(PatchOneEmail, self).__init__(*args, **kwargs)
         self.base_path = BASE_PATH
-        self.model = LDAP
+        self.model = Email
         self.prerequisites = Prerequisites(base_path=self.base_path)
-        self.serializer = LDAPReadWriteSerializer
+        self.serializer = EmailReadWriteSerializer
         self.ok_object_data_unique = 'host'
-        self.ok_object_data = LDAP_CON_DATA
-        valid_payload = LDAP_CON_DATA.copy()
+        self.ok_object_data = EMAIL_CON_DATA
+        valid_payload = EMAIL_CON_DATA.copy()
         valid_payload['priority'] = 2
         self.valid_payload = valid_payload
-        invalid_payload = LDAP_CON_DATA.copy()
+        invalid_payload = EMAIL_CON_DATA.copy()
         invalid_payload['host'] = ''
         self.invalid_payload = invalid_payload
         self.execute = True

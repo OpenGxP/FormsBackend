@@ -368,7 +368,6 @@ class LDAPLogManager(GlobalManager):
                        'port',
                        'ssl_tls',
                        'bindDN',
-                       'password',
                        'base',
                        'filter',
                        'attr_username',
@@ -433,8 +432,18 @@ class LDAPManager(GlobalManager):
     LOG_TABLE = LDAPLog
 
     # meta
-    GET_MODEL_EXCLUDE = ('password',)
-    GET_MODEL_ORDER = LDAPLogManager.GET_MODEL_ORDER
+    GET_MODEL_ORDER = ('host',
+                       'port',
+                       'ssl_tls',
+                       'bindDN',
+                       'password',
+                       'base',
+                       'filter',
+                       'attr_username',
+                       'attr_email',
+                       'attr_surname',
+                       'attr_forename',
+                       'priority',)
 
     def _server(self):
         query = self.order_by('-priority').all()
@@ -565,6 +574,123 @@ class LDAP(GlobalModel):
     # permissions
     MODEL_ID = '11'
     MODEL_CONTEXT = 'LDAP'
+    perms = {
+        '01': 'read',
+        '02': 'add',
+        '03': 'edit',
+        '04': 'delete',
+    }
+
+    # unique field
+    UNIQUE = 'host'
+
+
+#########
+# EMAIL #
+#########
+
+# log manager
+class EmailLogManager(GlobalManager):
+    # flags
+    HAS_VERSION = False
+    HAS_STATUS = False
+
+    # meta
+    GET_MODEL_ORDER = ('host',
+                       'port',
+                       'username',
+                       'use_ssl',
+                       'priority',)
+
+
+# log table
+class EmailLog(GlobalModel):
+    # custom fields
+    host = models.CharField(_('Host'), max_length=CHAR_DEFAULT)
+    port = models.IntegerField(_('Port'))
+    username = models.CharField(_('Username'), max_length=CHAR_DEFAULT)
+    use_ssl = models.BooleanField(_('SSL'))
+    priority = models.IntegerField(_('Priority'))
+    # log specific fields
+    user = models.CharField(_('User'), max_length=CHAR_DEFAULT)
+    timestamp = models.DateTimeField(_('Timestamp'))
+    action = models.CharField(_('Action'), max_length=CHAR_DEFAULT)
+
+    # manager
+    objects = EmailLogManager()
+
+    # integrity check
+    def verify_checksum(self):
+        to_hash_payload = 'host:{};port:{};username:{};use_ssl:{};priority:{};' \
+                          'user:{};timestamp:{};action:{};'. \
+            format(self.host, self.port, self.username, self.use_ssl, self.priority,
+                   self.user, self.timestamp, self.action)
+        return self._verify_checksum(to_hash_payload=to_hash_payload)
+
+    valid_from = None
+    valid_to = None
+    lifecycle_id = None
+
+    # hashing
+    HASH_SEQUENCE = ['host', 'port', 'username', 'use_ssl', 'priority'] \
+        + LOG_HASH_SEQUENCE
+
+    # permissions
+    MODEL_ID = '19'
+    MODEL_CONTEXT = 'EmailLog'
+    perms = {
+        '01': 'read',
+    }
+
+
+class EmailManager(GlobalManager):
+    # flags
+    HAS_VERSION = False
+    HAS_STATUS = False
+    LOG_TABLE = EmailLog
+
+    # meta
+    GET_MODEL_ORDER = ('host',
+                       'port',
+                       'username',
+                       'password',
+                       'use_ssl',
+                       'priority',)
+
+    # get configured hosts
+    def get_hosts(self):
+        return self.all().order_by('priority')
+
+
+# table
+class Email(GlobalModel):
+    # custom fields
+    host = models.CharField(_('Host'), max_length=CHAR_DEFAULT, unique=True)
+    port = models.IntegerField(_('Port'))
+    username = models.CharField(_('Username'), max_length=CHAR_DEFAULT)
+    password = models.CharField(_('Password'), max_length=CHAR_MAX)
+    use_ssl = models.BooleanField(_('SSL'))
+    priority = models.IntegerField(_('Priority'), validators=[validate_only_positive_numbers], unique=True)
+
+    # manager
+    objects = EmailManager()
+
+    # integrity check
+    def verify_checksum(self):
+        to_hash_payload = 'host:{};port:{};username:{};password:{};use_ssl:{};priority:{};'. \
+            format(self.host, self.port, self.username, self.password, self.use_ssl, self.priority)
+        return self._verify_checksum(to_hash_payload=to_hash_payload)
+
+    valid_from = None
+    valid_to = None
+    lifecycle_id = None
+
+    # hashing
+    HASH_SEQUENCE = ['host', 'port', 'username', 'password', 'use_ssl', 'priority']
+
+    # permissions
+    MODEL_ID = '18'
+    MODEL_CONTEXT = 'Email'
     perms = {
         '01': 'read',
         '02': 'add',

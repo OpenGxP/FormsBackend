@@ -468,6 +468,13 @@ class SettingsManager(GlobalManager):
         except self.model.DoesNotExist:
             return settings.DEFAULT_PASSWORD_RESET_TIME
 
+    @property
+    def email_sender(self):
+        try:
+            return self.filter(key='email.sender').get().value
+        except self.model.DoesNotExist:
+            return settings.DEFAULT_EMAIL_SENDER
+
 
 # table
 class Settings(GlobalModel):
