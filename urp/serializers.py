@@ -30,13 +30,13 @@ from .decorators import require_STATUS_CHANGE, require_POST, require_DELETE, req
 from .custom import create_log_record, create_central_log_record
 from .ldap import server_check
 from .backends.Email import MyEmailBackend
+from .vault import create_update_vault, validate_password_input
 
 # django imports
 from django.utils import timezone
 from django.db import IntegrityError
 from django.conf import settings
-from django.contrib.auth.hashers import make_password
-from django.core.exceptions import ValidationError, ImproperlyConfigured
+from django.core.exceptions import ImproperlyConfigured
 
 
 ##########
@@ -68,49 +68,33 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
             for attr in hash_sequence:
                 validated_data[attr] = getattr(self.instance, attr)
             validated_data['version'] = self.instance.version + 1
+
+            # for users
             if model.MODEL_ID == '04':
-                if not self.instance.ldap:
-                    # add initial password to validated data for logging
-                    vault = Vault.objects.filter(username=self.instance.username).get()
-                    validated_data['initial_password'] = vault.initial_password
-                else:
-                    # ldap is always false
-                    validated_data['initial_password'] = False
+                # use users initial_password property method
+                validated_data['initial_password'] = self.instance.initial_password
         else:
             validated_data['version'] = 1
             # for users
             if obj.MODEL_ID == '04':
-                vault_fields = dict()
+                # add is_active because django framework needs it
                 validated_data['is_active'] = True
+                # default initial password is false for ldap (initial_password required for log record)
+                validated_data['initial_password'] = False
+
+                # if not ldap managed user create vault record
                 if not validated_data['ldap']:
-                    vault_fields['initial_password'] = True
-                    vault_fields['username'] = validated_data['username']
-                    # FO-132: hash password before saving
-                    raw_pw = validated_data['password']
-                    vault_fields['password'] = make_password(raw_pw)
+                    # default initial password for not ldap managed users is true
+                    validated_data['initial_password'] = True
 
-                    # set random password for user object because required
-                    obj.set_password(Users.objects.make_random_password())
+                    # create vault record
+                    create_update_vault(data=validated_data, log=False, initial=True)
 
-                    # create vault object
-                    vault = Vault(**vault_fields)
-                    # build string with row id to generate hash for vault
-                    to_hash = generate_to_hash(vault_fields, hash_sequence=vault.HASH_SEQUENCE, unique_id=vault.id)
-                    vault.checksum = generate_checksum(to_hash)
-                    try:
-                        vault.full_clean()
-                    except ValidationError as e:
-                        raise e
-                    else:
-                        vault.save()
-                else:
-                    vault_fields['initial_password'] = False
-                # add initial password to validated data for logging
-                validated_data['initial_password'] = vault_fields['initial_password']
             # for access log
             if obj.MODEL_ID == '05':
                 create_central_log_record(log_id=obj.id, now=validated_data['timestamp'], context=model.MODEL_CONTEXT,
                                           action=validated_data['action'], user=validated_data['user'])
+
             # ldap and email encrypt password before save to db
             if obj.MODEL_ID == '11' or obj.MODEL_ID == '18':
                 raw_pw = validated_data['password']
@@ -175,69 +159,30 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
             else:
                 # FO-132: hash password before saving
                 if model.MODEL_ID == '04':
-                    # set user variable
-                    username = instance.username
-                    # when in version 1 draft username is changed
-                    if instance.version == 1:
-                        if instance.username != validated_data['username']:
-                            if not validated_data['ldap']:
-                                vault_fields = dict()
-                                vault_fields['username'] = validated_data['username']
-                                # create new vault object because username was changed
-                                # get old instance
-                                old_vault = Vault.objects.filter(username=username).get()
-                                new_vault = Vault()
-                                hash_sequence = old_vault.HASH_SEQUENCE
-                                fields = dict()
-                                for attr in hash_sequence:
-                                    if attr in vault_fields.keys():
-                                        fields[attr] = vault_fields[attr]
-                                        setattr(new_vault, attr, vault_fields[attr])
-                                    else:
-                                        fields[attr] = getattr(old_vault, attr)
-                                        setattr(new_vault, attr, getattr(old_vault, attr))
-                                to_hash = generate_to_hash(fields, hash_sequence=new_vault.HASH_SEQUENCE,
-                                                           unique_id=new_vault.id)
-                                new_vault.checksum = generate_checksum(to_hash)
-                                try:
-                                    new_vault.full_clean()
-                                except ValidationError as e:
-                                    raise e
-                                else:
-                                    new_vault.save()
-                                    old_vault.delete()
-                                    username = new_vault.username
-                    # only set initial password and password for non-ldap managed users
+                    # draft updates shall be reflected in vault
                     if not validated_data['ldap']:
-                        # only do something in case password was updated
-                        if 'password' in validated_data.keys():
-                            raw_pw = validated_data['password']
-                            vault_fields = dict()
-                            vault_fields['password'] = make_password(raw_pw)
-                            vault_fields['initial_password'] = True
-                            # create vault object
-                            vault = Vault.objects.filter(username=username).get()
-                            hash_sequence = vault.HASH_SEQUENCE
-                            fields = dict()
-                            for attr in hash_sequence:
-                                if attr in vault_fields.keys():
-                                    fields[attr] = vault_fields[attr]
-                                    setattr(vault, attr, vault_fields[attr])
-                                else:
-                                    fields[attr] = getattr(vault, attr)
-                            to_hash = generate_to_hash(fields, hash_sequence=vault.HASH_SEQUENCE, unique_id=vault.id)
-                            vault.checksum = generate_checksum(to_hash)
-                            try:
-                                vault.full_clean()
-                            except ValidationError as e:
-                                raise e
-                            else:
-                                vault.save()
+                        # check if previous record was ldap managed
+                        if instance.ldap:
+                            # create new vault, because now is password managed
+                            create_update_vault(data=validated_data, log=False, initial=True)
+                        else:
+                            # get existing vault for that user
+                            vault = Vault.objects.filter(username=instance.username).get()
+
+                            # update vault
+                            create_update_vault(data=validated_data, instance=vault, log=False, initial=True)
+
+                    else:
+                        # check if previous record was ldap managed
+                        if not instance.ldap:
+                            # delete existing vault for that user because not password managed anymore
+                            Vault.objects.filter(username=instance.username).delete()
 
                 # ldap and email encrypt password before save to db
                 if model.MODEL_ID == '11' or model.MODEL_ID == '18':
                     raw_pw = validated_data['password']
                     validated_data['password'] = encrypt(raw_pw)
+
         hash_sequence = instance.HASH_SEQUENCE
         fields = dict()
         for attr in hash_sequence:
@@ -253,9 +198,9 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         # log record
         if model.objects.LOG_TABLE:
             if model.MODEL_ID == '04':
-                if not self.instance.ldap:
+                if not instance.ldap:
                     # add initial password to validated data for logging
-                    vault = Vault.objects.filter(username=self.instance.username).get()
+                    vault = Vault.objects.filter(username=instance.username).get()
                     fields['initial_password'] = vault.initial_password
                 else:
                     # ldap is always false
@@ -444,27 +389,15 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
 
             @require_NONE
             @require_USERS
-            def validate_ldap(self):
+            def validate_ldap_and_password(self):
                 if data['ldap']:
                     # in case a password was passed, set to none
                     data['password'] = ''
                     LDAP.objects.search(data)
-
-            @require_NONE
-            @require_USERS
-            def validate_password(self):
-                # only allow password change in draft version 1
-                if self.instance.version > 1:
-                    if 'password' in data:
-                        raise serializers.ValidationError('Password cant not be changed using this dialog.')
                 else:
-                    if not data['ldap']:
-                        if 'password' in data:
-                            if 'password_two' not in data:
-                                raise serializers.ValidationError({'password_two': ['This filed is required.']})
-                            # check if password 1 is equal to password two
-                            if data['password'] != data['password_two']:
-                                raise serializers.ValidationError('Passwords must match.')
+                    # check if previous record was ldap managed
+                    if self.instance.ldap:
+                        validate_password_input(data=data, initial=True)
 
             @require_NONE
             @require_SETTINGS
@@ -540,13 +473,8 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
             def validate_password(self):
                 # FO-143: password check for non-ldap managed users only
                 if not data['ldap']:
-                    if 'password' not in data:
-                        raise serializers.ValidationError({'password': ['This filed is required.']})
-                    if 'password_two' not in data:
-                        raise serializers.ValidationError({'password_two': ['This filed is required.']})
-                    # check if password 1 is equal to password two
-                    if data['password'] != data['password_two']:
-                        raise serializers.ValidationError('Passwords must match.')
+                    # perform password check
+                    validate_password_input(data=data, initial=True)
 
             @require_NEW
             @require_SOD
@@ -837,7 +765,7 @@ class UsersReadSerializer(GlobalReadWriteSerializer):
 # write
 class UsersWriteSerializer(GlobalReadWriteSerializer):
     status = serializers.CharField(source='get_status', read_only=True)
-    password_two = serializers.CharField(write_only=True, required=False)
+    password_verification = serializers.CharField(write_only=True, required=False)
 
     class Meta:
         model = Users
@@ -848,7 +776,7 @@ class UsersWriteSerializer(GlobalReadWriteSerializer):
                                      'required': False}}
         # to control field order in response
         fields = Users.objects.GET_MODEL_ORDER + Users.objects.GET_BASE_ORDER_STATUS_MANAGED + \
-            Users.objects.GET_BASE_CALCULATED + ('password_two',)
+            Users.objects.GET_BASE_CALCULATED + ('password_verification',)
 
 
 class UsersNewVersionSerializer(GlobalReadWriteSerializer):

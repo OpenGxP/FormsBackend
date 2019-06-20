@@ -58,7 +58,7 @@ class PostNewUsers(PostNew):
         self.prerequisites = Prerequisites(base_path=self.base_path)
         self.valid_payload = {'username': 'testtest',
                               'password': 'test12345test',
-                              'password_two': 'test12345test',
+                              'password_verification': 'test12345test',
                               'roles': 'all',
                               'email': 'example@example.com',
                               'ldap': False}
@@ -88,7 +88,7 @@ class GetOneUser(GetOne):
         self.serializer = UsersReadSerializer
         self.ok_object_data = {'username': 'testtest',
                                'password': 'test12345test',
-                               'password_two': 'test12345test',
+                               'password_verification': 'test12345test',
                                'roles': 'all',
                                'email': 'example@example.com',
                                'ldap': False}
@@ -105,19 +105,19 @@ class PostNewVersionUser(PostNewVersion):
         self.serializer = UsersReadSerializer
         self.ok_object_data = {'username': 'testtest',
                                'password': 'test12345test',
-                               'password_two': 'test12345test',
+                               'password_verification': 'test12345test',
                                'roles': 'all',
                                'email': 'example@example.com',
                                'ldap': False}
         self.fail_object_draft_data = {'username': 'testtestzwei',
                                        'password': 'test12345test',
-                                       'password_two': 'test12345test',
+                                       'password_verification': 'test12345test',
                                        'roles': 'all',
                                        'email': 'example@example.com',
                                        'ldap': False}
         self.fail_object_circulation_data = {'username': 'testtestdrei',
                                              'password': 'test12345test',
-                                             'password_two': 'test12345test',
+                                             'password_verification': 'test12345test',
                                              'roles': 'all',
                                              'email': 'example@example.com',
                                              'ldap': False}
@@ -134,7 +134,7 @@ class DeleteOneUser(DeleteOne):
         self.serializer = UsersReadSerializer
         self.ok_object_data = {'username': 'testtest',
                                'password': 'test12345test',
-                               'password_two': 'test12345test',
+                               'password_verification': 'test12345test',
                                'roles': 'all',
                                'email': 'example@example.com',
                                'ldap': False}
@@ -151,7 +151,7 @@ class PatchOneUser(PatchOne):
         self.serializer = UsersReadSerializer
         self.ok_object_data = {'username': 'testtest',
                                'password': 'test12345test',
-                               'password_two': 'test12345test',
+                               'password_verification': 'test12345test',
                                'roles': 'all',
                                'email': 'example@example.com',
                                'ldap': False}
@@ -185,7 +185,7 @@ class PatchOneStatusUser(PatchOneStatus):
         self.serializer = UsersReadSerializer
         self.ok_object_data = {'username': 'testtest',
                                'password': 'test12345test',
-                               'password_two': 'test12345test',
+                               'password_verification': 'test12345test',
                                'roles': 'all',
                                'email': 'example@example.com',
                                'ldap': False}
@@ -205,7 +205,7 @@ class UsersMiscellaneous(APITestCase):
         self.password = 'asdad2qa3dad2'
         self.ok_object_data = {'username': self.username,
                                'password': self.password,
-                               'password_two': self.password,
+                               'password_verification': self.password,
                                'roles': 'all',
                                'ldap': False,
                                'email': 'example@example.com'}
@@ -215,19 +215,19 @@ class UsersMiscellaneous(APITestCase):
         }
         self.valid_payload = {'username': 'testtest',
                               'password': 'test12345test',
-                              'password_two': 'test12345test',
+                              'password_verification': 'test12345test',
                               'roles': self.draft_role_id,
                               'ldap': False,
                               'email': 'example@example.com'}
         self.valid_payload_two_roles = {'username': 'testtest',
                                         'password': 'test12345test',
-                                        'password_two': 'test12345test',
+                                        'password_verification': 'test12345test',
                                         'roles': 'all,{}'.format(self.draft_role_id),
                                         'ldap': False,
                                         'email': 'example@example.com'}
         self.valid_payload_three = {'username': 'testtest',
                                     'password': 'test12345test',
-                                    'password_two': 'test12345test',
+                                    'password_verification': 'test12345test',
                                     'roles': 'all',
                                     'ldap': False,
                                     'email': 'example@example.com'}

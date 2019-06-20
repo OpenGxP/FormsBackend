@@ -164,7 +164,7 @@ class UserChangePassword(APITestCase):
                         'password_new_verification': self.password}
         self.valid_payload = {'username': 'testinitialps',
                               'password': 'test12345test',
-                              'password_two': 'test12345test',
+                              'password_verification': 'test12345test',
                               'roles': 'all',
                               'email': 'example@example.com',
                               'ldap': False}

@@ -97,7 +97,6 @@ class MyModelBackend(ModelBackend):
             'mode': 'manual',
             'method': Settings.objects.core_devalue
         }
-
         if username is None:
             username = kwargs.get(UserModel.USERNAME_FIELD)
         # try to find user(s) in status productive

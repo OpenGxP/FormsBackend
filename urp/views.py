@@ -43,7 +43,7 @@ from basics.models import StatusLog, CentralLog, SettingsLog, Settings, CHAR_MAX
 from basics.custom import get_model_by_string, unique_items, render_email_from_template
 from .backends.Email import send_email
 from .backends.User import write_access_log, activate_user
-from .vault import validate_password_input, update_vault_record
+from .vault import validate_password_input, create_update_vault
 
 # django imports
 from django.core.exceptions import ValidationError
@@ -203,17 +203,10 @@ def change_password_view(request, username):
     except ValidationError:
         return Response(status=http_status.HTTP_400_BAD_REQUEST)
 
-    validate_password_input(request.data)
+    validate_password_input(request.data, instance=vault)
 
-    # FO-147: new password can not be equal to previous password
-    raw_pw = request.data['password_new']
-    if check_password(raw_pw, vault.password):
-        raise serializers.ValidationError('New password is identical to old password. Password must be changed.')
-
-    data = dict()
-    data['password'] = make_password(raw_pw)
-    data['initial_password'] = True
-    update_vault_record(data=data, instance=vault, action=settings.DEFAULT_LOG_PASSWORD, user=request.user.username)
+    create_update_vault(data=request.data, instance=vault, action=settings.DEFAULT_LOG_PASSWORD,
+                        user=request.user.username)
 
     # inform user about successful password change
     user = Users.objects.get_valid_by_key(vault.username)
@@ -250,17 +243,10 @@ def user_change_password_view(request):
     authenticate(request=request, username=request.user.username, password=request.data['password'],
                  self_password_change=True)
 
-    validate_password_input(request.data)
+    validate_password_input(request.data, instance=vault)
 
-    # FO-147: new password can not be equal to previous password
-    if request.data['password_new'] == request.data['password']:
-        raise serializers.ValidationError('New password is identical to old password. Password must be changed.')
-
-    raw_pw = request.data['password_new']
-    data = dict()
-    data['password'] = make_password(raw_pw)
-    data['initial_password'] = False
-    update_vault_record(data=data, instance=vault, action=settings.DEFAULT_LOG_PASSWORD, user=request.user.username)
+    create_update_vault(data=request.data, instance=vault, action=settings.DEFAULT_LOG_PASSWORD,
+                        user=request.user.username)
 
     # inform user about successful password change
     user = Users.objects.get_valid_by_key(vault.username)
@@ -327,7 +313,7 @@ def user_change_questions_view(request):
         # save answers like passwords
         data[answer] = make_password(request.data[answer])
 
-    update_vault_record(data=data, instance=vault, action=settings.DEFAULT_LOG_QUESTIONS, user=request.user.username)
+    create_update_vault(data=data, instance=vault, action=settings.DEFAULT_LOG_QUESTIONS, user=request.user.username)
 
     return Response(status=http_status.HTTP_200_OK)
 
@@ -431,7 +417,7 @@ def password_reset_email_view(request, token):
         data['password'] = hashed_pw
         data['initial_password'] = False
         now = timezone.now()
-        update_vault_record(data=data, instance=vault, action=settings.DEFAULT_LOG_PASSWORD, user=vault.username,
+        create_update_vault(data=data, instance=vault, action=settings.DEFAULT_LOG_PASSWORD, user=vault.username,
                             now=now)
 
         # in case user is in status blocked, set effective
@@ -1010,13 +996,13 @@ def meta_list(request, dialog):
                                         'required': not f.blank,
                                         'unique': f.unique}
             if dialog == 'users':
-                # add calculated field "password_two"
-                data['post']['password_two'] = {'verbose_name': 'Password verification',
-                                                'help_text': '{}'.format(password_validators_help_texts()),
-                                                'max_length': CHAR_MAX,
-                                                'data_type': 'CharField',
-                                                'required': True,
-                                                'unique': False}
+                # add calculated field "password_verification"
+                data['post']['password_verification'] = {'verbose_name': 'Password verification',
+                                                         'help_text': '{}'.format(password_validators_help_texts()),
+                                                         'max_length': CHAR_MAX,
+                                                         'data_type': 'CharField',
+                                                         'required': True,
+                                                         'unique': False}
         return Response(data=data, status=http_status.HTTP_200_OK)
 
     if request.method == 'GET':
