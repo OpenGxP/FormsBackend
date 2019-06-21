@@ -656,6 +656,7 @@ class EmailManager(GlobalManager):
                        'password',
                        'use_ssl',
                        'priority',)
+    GET_MODEL_EXCLUDE = ('password', )
 
     # get configured hosts
     def get_hosts(self):
@@ -903,15 +904,13 @@ class UsersLogManager(GlobalManager):
                        'password',
                        'email',
                        'roles',
-                       'ldap',
-                       'initial_password',)
+                       'ldap')
     GET_MODEL_ORDER_NO_PW = ('username',
                              'first_name',
                              'last_name',
                              'email',
                              'roles',
-                             'ldap',
-                             'initial_password',)
+                             'ldap')
 
 
 # log table

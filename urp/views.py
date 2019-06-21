@@ -37,7 +37,8 @@ from .serializers import StatusReadWriteSerializer, PermissionsReadWriteSerializ
     PermissionsLogReadSerializer, RolesLogReadSerializer, UsersLogReadSerializer, AUDIT_TRAIL_SERIALIZERS, \
     LDAPLogReadSerializer, LDAPReadWriteSerializer, LDAPDeleteSerializer, SettingsLogReadSerializer, \
     SettingsReadWriteSerializer, SoDLogReadSerializer, SoDDeleteStatusNewVersionSerializer, SoDWriteSerializer, \
-    SoDReadSerializer, UsersPassword, EmailDeleteSerializer, EmailLogReadSerializer, EmailReadWriteSerializer
+    SoDReadSerializer, UsersPassword, EmailDeleteSerializer, EmailLogReadSerializer, EmailReadWriteSerializer, \
+    UserProfile
 from .decorators import perm_required, auth_required
 from basics.models import StatusLog, CentralLog, SettingsLog, Settings, CHAR_MAX
 from basics.custom import get_model_by_string, unique_items, render_email_from_template
@@ -123,7 +124,8 @@ def api_root(request):
                                   'csrftoken': {'url': reverse('get_csrf_token', request=request)},
                                   'logout': {'url': reverse('logout-view', request=request)}}},
             'user': {'root': '/user/',
-                     'subjects': {'change_password': {'url': reverse('user-change-password-view', request=request)},
+                     'subjects': {'profile': {'url': reverse('user-profile-list', request=request)},
+                                  'change_password': {'url': reverse('user-change-password-view', request=request)},
                                   'change_questions': {'url': reverse('user-change-questions-view', request=request)}}},
             'administration': {'root': '/admin/',
                                'subjects': {'status': {'url': reverse('status-list', request=request)},
@@ -934,6 +936,24 @@ def users_password_list(request):
     return Response(serializer.data)
 
 
+################
+# USER_PROFILE #
+################
+
+# GET list
+@api_view(['GET'])
+@auth_required()
+@auto_logout()
+@ensure_csrf_cookie
+def user_profile_list(request):
+    try:
+        user = Vault.objects.filter(username=request.user.username).get()
+    except Vault.DoesNotExist:
+        raise serializers.ValidationError('Profile for ldap managed users does not exist.')
+    serializer = UserProfile(user)
+    return Response(serializer.data)
+
+
 ########
 # META #
 ########
@@ -944,9 +964,38 @@ def meta_list(request, dialog):
     # lower all inputs for dialog
     dialog = dialog.lower()
     # filter out status because no public dialog
-    if dialog in ['status']:
+    if dialog in ['status', 'tokens']:
         return Response(status=http_status.HTTP_400_BAD_REQUEST)
     # determine the model instance from string parameter
+
+    if dialog == 'profile':
+        data = {'get': dict()}
+        # add calculated field "valid"
+        data['get']['valid'] = {'verbose_name': 'Valid',
+                                'data_type': 'CharField',
+                                'render': False,
+                                'format': None}
+        # add calculated field "unique"
+        data['get']['unique'] = {'verbose_name': 'Unique',
+                                 'data_type': 'CharField',
+                                 'render': False,
+                                 'format': None}
+
+        # add questions fields
+        data['get']['question_one'] = {'verbose_name': 'Question one',
+                                       'data_type': 'CharField',
+                                       'render': True,
+                                       'format': None}
+        data['get']['question_two'] = {'verbose_name': 'Question two',
+                                       'data_type': 'CharField',
+                                       'render': True,
+                                       'format': None}
+        data['get']['question_three'] = {'verbose_name': 'Question three',
+                                         'data_type': 'CharField',
+                                         'render': True,
+                                         'format': None}
+        return Response(data=data, status=http_status.HTTP_200_OK)
+
     try:
         model = get_model_by_string(dialog)
     except ValidationError:
@@ -985,7 +1034,7 @@ def meta_list(request, dialog):
                                    'format': _format}
 
         # add post information
-        if dialog in ['users', 'roles', 'ldap', 'settings', 'sod']:
+        if dialog in ['users', 'roles', 'ldap', 'settings', 'sod', 'email']:
             exclude = model.objects.POST_BASE_EXCLUDE + model.objects.POST_MODEL_EXCLUDE
             fields = [i for i in model._meta.get_fields() if i.name not in exclude]
             for f in fields:

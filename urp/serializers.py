@@ -742,8 +742,19 @@ class UsersPassword(GlobalReadWriteSerializer):
     class Meta:
         model = Vault
         fields = ('valid', 'unique', 'username', 'initial_password', )
-        extra_kwargs = {'username': {'read_only': False},
+        extra_kwargs = {'username': {'read_only': True},
                         'initial_password': {'read_only': True}}
+
+
+################
+# USER_PROFILE #
+################
+
+# read
+class UserProfile(GlobalReadWriteSerializer):
+    class Meta:
+        model = Vault
+        fields = ('valid', 'unique', 'question_one', 'question_two', 'question_three')
 
 
 #########

@@ -28,7 +28,8 @@ from .views import permissions_list, roles_list, roles_detail, status_list, \
     ldap_list, ldap_detail, ldap_log_list, login_view, logout_view, meta_list, get_csrf_token, settings_list, \
     settings_detail, settings_log_list, logout_auto_view, sod_list, sod_detail, sod_log_list, sod_status, \
     users_password_list, change_password_view, user_change_password_view, user_change_questions_view, \
-    request_password_reset_email_view, password_reset_email_view, email_detail, email_list, email_log_list
+    request_password_reset_email_view, password_reset_email_view, email_detail, email_list, email_log_list, \
+    user_profile_list
 
 
 urlpatterns = [
@@ -42,6 +43,8 @@ urlpatterns = [
     path('{}password_reset_email/<str:token>'.format(settings.BASE_URL), password_reset_email_view,
          name='password-reset-email-view'),
     # user profile
+    path('{}user/profile'.format(settings.BASE_URL), user_profile_list,
+         name='user-profile-list'),
     path('{}user/change_questions'.format(settings.BASE_URL), user_change_questions_view,
          name='user-change-questions-view'),
     path('{}user/change_password'.format(settings.BASE_URL), user_change_password_view,
