@@ -11,3 +11,4 @@ django-redis===4.10.0
 gunicorn===19.9.0
 pycrypto===2.6.1
 jinja2===2.10.1
+cryptography===2.7
