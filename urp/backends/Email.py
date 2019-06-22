@@ -32,7 +32,7 @@ from django.core.mail import send_mail
 # custom imports
 from ..models import Email
 from basics.models import Settings
-from basics.custom import decrypt
+from ..crypto import decrypt
 
 # define logger
 logger = logging.getLogger(__name__)

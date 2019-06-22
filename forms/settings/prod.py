@@ -84,8 +84,6 @@ LOG_DIR = os.path.join(BASE_DIR, 'logs')
 # secret keys
 SECRET_KEY = require_file(path=SECURITY_DIR + '/keys/', file_name='SECRET_KEY')
 SECRET_HASH_KEY = require_file(path=SECURITY_DIR + '/keys/', file_name='SECRET')
-CRYPT_KEY = require_file(path=SECURITY_DIR + '/keys/', file_name='CRYPT')
-IV = require_file(path=SECURITY_DIR + '/keys/', file_name='IV')
 POSTGRES_USER = require_file(path=SECURITY_DIR + '/credentials/', file_name='POSTGRES_USER')
 POSTGRES_PASSWORD = require_file(path=SECURITY_DIR + '/credentials/', file_name='POSTGRES_PASSWORD')
 

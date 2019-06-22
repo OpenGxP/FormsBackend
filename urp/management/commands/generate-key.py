@@ -16,29 +16,26 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-# python imports
-import os
+# crypto imports
+from cryptography.fernet import Fernet
 
-# basic imports
-from basics.custom import value_to_int, value_to_bool, require_file
-
-#########
-# PATHS #
-#########
-
-# base directory
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-# directory to store email templates
-EMAIL_DIR = os.path.join(BASE_DIR, 'templates')
-# security directory for storing secrets in permission controlled files
-SECURITY_DIR = os.path.join(BASE_DIR, 'security')
+# django imports
+from django.core.management.base import BaseCommand
+from django.conf import settings
 
 
-###############
-# APP DEFAULT #
-###############
+CRYPTO_KEY = settings.SECURITY_DIR + '/keys/' + settings.CRYPTO_KEY
 
-ALL_PERMISSIONS = '00.00'
-DEFAULT_LOG_PASSWORD = 'password'
-DEFAULT_LOG_QUESTIONS = 'questions'
-CRYPTO_KEY = 'CRYPTO_KEY'
+
+class Command(BaseCommand):
+    help = 'Generate AES key.'
+
+    def handle(self, *args, **options):
+        # generate key
+        key = Fernet.generate_key()
+
+        # save key to file
+        with open(CRYPTO_KEY, 'wb') as file:
+            file.write(key)
+
+        self.stdout.write(self.style.SUCCESS('Successfully generated crypto key.'))
