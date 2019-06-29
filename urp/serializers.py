@@ -306,17 +306,17 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
 
             @require_STATUS_CHANGE
             @require_USERS
+            @require_draft
             def validate_users(self):
-                # check if used roles are productive
-                if self.context['status'] in ['circulation', 'productive']:
-                    query = Users.objects.filter(lifecycle_id=self.instance.lifecycle_id,
-                                                 version=self.instance.version).get()
-                    raw_roles = query.roles.split(',')
-                    for role in raw_roles:
-                        try:
-                            Roles.objects.get_by_natural_key_productive(role)
-                        except Roles.DoesNotExist:
-                            raise serializers.ValidationError('Role "{}" not in status productive.'.format(role))
+                # check if used roles are not in status draft any more that natural key can not be changed anymore
+                query = Users.objects.filter(lifecycle_id=self.instance.lifecycle_id,
+                                             version=self.instance.version).get()
+                raw_roles = query.roles.split(',')
+                for role in raw_roles:
+                    try:
+                        Roles.objects.get_by_natural_key_not_draft(role)
+                    except Roles.DoesNotExist:
+                        raise serializers.ValidationError('Role "{}" still in status draft.'.format(role))
 
             @require_STATUS_CHANGE
             @require_productive

@@ -89,6 +89,13 @@ class GlobalManager(models.Manager):
         else:
             return query
 
+    def get_by_natural_key_not_draft(self, key):
+        status_draft_id = Status.objects.draft
+        query = self.filter(~Q(status__id=status_draft_id)).filter(**{self.model.UNIQUE: key}).all()
+        if not query:
+            raise self.model.DoesNotExist
+        return query
+
     def get_valid_by_key(self, key):
         query = self.filter(**{self.model.UNIQUE: key}).all()
         if not query:
