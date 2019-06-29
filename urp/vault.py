@@ -66,7 +66,7 @@ def validate_password_input(data, instance=None, password='password_new', initia
 
 
 def create_update_vault(data, password='password_new', initial=False, instance=None, action=None, user=None, log=True,
-                        now=None):
+                        now=None, self_pw=False):
     # create new instance if not passed
     if not instance:
         instance = Vault()
@@ -79,7 +79,10 @@ def create_update_vault(data, password='password_new', initial=False, instance=N
         raw_pw = data[password]
         hashed_pw = make_password(raw_pw)
         data['password'] = hashed_pw
-        data['initial_password'] = True
+        if self_pw:
+            data['initial_password'] = False
+        else:
+            data['initial_password'] = True
 
     hash_sequence = instance.HASH_SEQUENCE
     fields = dict()

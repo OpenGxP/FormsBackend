@@ -244,7 +244,7 @@ def user_change_password_view(request):
     validate_password_input(request.data, instance=vault)
 
     create_update_vault(data=request.data, instance=vault, action=settings.DEFAULT_LOG_PASSWORD,
-                        user=request.user.username)
+                        user=request.user.username, self_pw=True)
 
     # inform user about successful password change
     user = Users.objects.get_valid_by_key(vault.username)
@@ -410,13 +410,9 @@ def password_reset_email_view(request, token):
             raise serializers.ValidationError('New password is identical to old password. Password must be changed.')
 
         # update vault with new password
-        data = dict()
-        hashed_pw = make_password(raw_pw)
-        data['password'] = hashed_pw
-        data['initial_password'] = False
         now = timezone.now()
-        create_update_vault(data=data, instance=vault, action=settings.DEFAULT_LOG_PASSWORD, user=vault.username,
-                            now=now)
+        create_update_vault(data=request.data, instance=vault, action=settings.DEFAULT_LOG_PASSWORD,
+                            user=vault.username, now=now, self_pw=True)
 
         # in case user is in status blocked, set effective
         user = Users.objects.get_valid_by_key(vault.username)
