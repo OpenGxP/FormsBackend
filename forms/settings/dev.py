@@ -17,7 +17,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 # ldap imports
-from ldap3 import SIMPLE, AUTO_BIND_DEFAULT, SUBTREE
+from ldap3 import SIMPLE, AUTO_BIND_TLS_BEFORE_BIND, SUBTREE
+from ldap3.utils.log import EXTENDED
 
 # python imports
 import os
@@ -33,8 +34,9 @@ LDAP_SERVER_CONNECTION_TIMEOUT = 5
 LDAP_CON_VERSION = 3
 LDAP_CON_AUTHENTICATE = SIMPLE
 LDAP_CON_READ_ONLY = True
-LDAP_CON_AUTO_BIN = AUTO_BIND_DEFAULT
+LDAP_CON_AUTO_BIN = AUTO_BIND_TLS_BEFORE_BIND
 LDAP_SEARCH_SCOPE = SUBTREE
+LDAP_LOG_LEVEL = EXTENDED
 
 #########
 # EMAIL #
@@ -70,6 +72,8 @@ DEFAULT_EMAIL_SENDER = 'noreply@opengxp.com'
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # log directory
 LOG_DIR = os.path.join(BASE_DIR, 'logs')
+# directory for ldap certificate file
+LDAP_CA_CERTS_DIR = SECURITY_DIR + '/ldap/'
 
 
 ###########
@@ -302,7 +306,7 @@ EMAIL_BACKEND = 'urp.backends.Email.MyEmailBackend'
 # logging settings
 LOGGING = {
     'version': 1,
-    'disable_existing_loggers': True,
+    'disable_existing_loggers': False,
     'formatters': {
         'standard': {
             'format': '%(asctime)s [%(levelname)s] %(name)s: %(message)s'
@@ -373,6 +377,14 @@ LOGGING = {
             'backupCount': 5,
             'formatter': 'standard'
         },
+        'ldap': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': LOG_DIR + '/ldap.log',
+            'maxBytes': 1024*1024*5,  # 5 MB
+            'backupCount': 5,
+            'formatter': 'standard'
+        },
         'console': {
             'level': 'DEBUG',
             'class': 'logging.StreamHandler',
@@ -384,6 +396,11 @@ LOGGING = {
             'handlers': ['backends', 'console'],
             'level': 'DEBUG',
             'propagate': True
+        },
+        'ldap3': {
+            'handlers': ['ldap', 'console'],
+            'level': 'DEBUG',
+            'propagate': False
         },
         'django.request': {
             'handlers': ['request', 'console'],

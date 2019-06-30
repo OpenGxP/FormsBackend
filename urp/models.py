@@ -39,7 +39,7 @@ from .custom import create_log_record
 from basics.custom import generate_checksum, generate_to_hash
 from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, CHAR_MAX, FIELD_VERSION, Status, \
     LOG_HASH_SEQUENCE, CHAR_BIG, Settings
-from .ldap import init_server, connect, search
+from .backends.ldap import init_server, connect, search
 from .crypto import decrypt
 
 
@@ -506,8 +506,12 @@ class LDAPManager(GlobalManager):
         for server in query:
             ser = init_server(host=server.host, port=server.port, use_ssl=server.ssl_tls)
             bind_dn = '{}={},{}'.format(server.attr_username, username, server.base)
-            con = connect(server=ser, bind_dn=bind_dn, password=password)
-            return con.bind()
+            # auto bind using tls is active, therefore no additional manual bind required
+            try:
+                connect(server=ser, bind_dn=bind_dn, password=password)
+            except ValidationError:
+                return False
+            return True
 
 
 # table

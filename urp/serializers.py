@@ -28,7 +28,7 @@ from .decorators import require_STATUS_CHANGE, require_POST, require_DELETE, req
     require_NEW_VERSION, require_status, require_LDAP, require_USERS, require_NEW, require_SETTINGS, require_SOD, \
     require_EMAIL
 from .custom import create_log_record, create_central_log_record
-from .ldap import server_check
+from .backends.ldap import server_check
 from .backends.Email import MyEmailBackend
 from .vault import create_update_vault, validate_password_input
 from .crypto import encrypt
@@ -377,12 +377,12 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
 
             @require_NONE
             @require_LDAP
-            def validate_server_check(self):
+            def validate_server_check_ldap(self):
                 server_check(data)
 
             @require_NONE
             @require_EMAIL
-            def validate_server_check(self):
+            def validate_server_check_email(self):
                 try:
                     MyEmailBackend(**data, check_call=True).open()
                 except ImproperlyConfigured as e:
@@ -450,12 +450,12 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
 
             @require_NEW
             @require_LDAP
-            def validate_server_check(self):
+            def validate_server_check_ldap(self):
                 server_check(data)
 
             @require_NEW
             @require_EMAIL
-            def validate_server_check(self):
+            def validate_server_check_email(self):
                 try:
                     MyEmailBackend(**data, check_call=True).open()
                 except ImproperlyConfigured as e:

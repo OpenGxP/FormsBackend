@@ -16,6 +16,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+# python imports
+import ssl
 
 # django imports
 from django.core.exceptions import ValidationError
@@ -24,14 +26,33 @@ from django.conf import settings
 # ldap imports
 from ldap3 import Server, Connection
 from ldap3.core import exceptions
+from ldap3.core.tls import Tls
+from ldap3.utils.log import set_library_log_detail_level
+
+# define logger
+set_library_log_detail_level(settings.LDAP_LOG_LEVEL)
 
 
 def init_server(host, port, use_ssl):
     try:
+        if use_ssl:
+            # generate tls object
+            tls = Tls(validate=ssl.CERT_REQUIRED,
+                      ca_certs_file='{}ca_certs_file.pem'.format(settings.LDAP_CA_CERTS_DIR),
+                      valid_names='test',
+                      version=ssl.PROTOCOL_TLS)
+
+            return Server(host=host,
+                          port=port,
+                          tls=tls,
+                          use_ssl=use_ssl,
+                          connect_timeout=settings.LDAP_SERVER_CONNECTION_TIMEOUT)
         return Server(host=host,
                       port=port,
                       use_ssl=use_ssl,
                       connect_timeout=settings.LDAP_SERVER_CONNECTION_TIMEOUT)
+    except exceptions.LDAPSSLConfigurationError as e:
+        raise ValidationError('LDAP Error: "{}"'.format(e))
     except exceptions.LDAPInvalidPortError as e:
         raise ValidationError('LDAP Error: "{}"'.format(e))
     except exceptions.LDAPInvalidServerError as e:
@@ -43,13 +64,16 @@ def init_server(host, port, use_ssl):
 
 
 def connect(server, bind_dn, password):
-    return Connection(server=server,
-                      user=bind_dn,
-                      password=password,
-                      auto_bind=settings.LDAP_CON_AUTO_BIN,
-                      version=settings.LDAP_CON_VERSION,
-                      authentication=settings.LDAP_CON_AUTHENTICATE,
-                      read_only=settings.LDAP_CON_READ_ONLY)
+    try:
+        return Connection(server=server,
+                          user=bind_dn,
+                          password=password,
+                          auto_bind=settings.LDAP_CON_AUTO_BIN,
+                          version=settings.LDAP_CON_VERSION,
+                          authentication=settings.LDAP_CON_AUTHENTICATE,
+                          read_only=settings.LDAP_CON_READ_ONLY)
+    except exceptions.LDAPBindError as e:
+        raise ValidationError('LDAP Error: "{}"'.format(e))
 
 
 def search(con, base, ldap_filter, attributes):
@@ -70,8 +94,6 @@ def server_check(data):
         raise ValidationError('LDAP server <{}> not available at port <{}>.'.format(data['host'], data['port']))
 
     con = connect(server=server, bind_dn=data['bindDN'], password=data['password'])
-    if not con.bind():
-        raise ValidationError('LDAP connection failed. False credentials and / or false bind.')
     # mandatory field username must be filled
     attributes = [data['attr_username']]
     if 'attr_email' in data:
