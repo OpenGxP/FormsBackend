@@ -292,7 +292,12 @@ class RolesManager(GlobalManager):
         casl = list()
         # iterate merges permissions to build casl response
         for perm in permissions:
-            perm_obj = Permissions.objects.filter(key=perm).get()
+            # FO-149: skip empty permissions
+
+            try:
+                perm_obj = Permissions.objects.filter(key=perm).get()
+            except Permissions.DoesNotExist:
+                continue
             append = None
             # check if subject exists and add if yes
             for item in casl:
