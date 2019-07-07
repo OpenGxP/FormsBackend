@@ -1087,13 +1087,13 @@ def meta_list(request, dialog):
                                                          'lookup': None}
             if dialog == 'passwords':
                 # add calculated fields for manual password reset
-                data['post']['password_new_'] = {'verbose_name': 'New password',
-                                                 'help_text': '{}'.format(password_validators_help_texts()),
-                                                 'max_length': CHAR_MAX,
-                                                 'data_type': 'CharField',
-                                                 'required': True,
-                                                 'unique': False,
-                                                 'lookup': None}
+                data['post']['password_new'] = {'verbose_name': 'New password',
+                                                'help_text': '{}'.format(password_validators_help_texts()),
+                                                'max_length': CHAR_MAX,
+                                                'data_type': 'CharField',
+                                                'required': True,
+                                                'unique': False,
+                                                'lookup': None}
                 data['post']['password_new_verification'] = {'verbose_name': 'New password verification',
                                                              'help_text': '{}'.format(password_validators_help_texts()),
                                                              'max_length': CHAR_MAX,
