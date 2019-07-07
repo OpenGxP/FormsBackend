@@ -98,7 +98,7 @@ def auto_logout():
 
 
 @api_view(['PATCH'])
-@auth_required()
+@auth_required(initial_password_check=False)
 def logout_auto_view(request):
     if not hasattr(request, 'data'):
         raise serializers.ValidationError('Field "active" required.')
