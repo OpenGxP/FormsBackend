@@ -88,8 +88,8 @@ urlpatterns = [
     path('{}admin/users/<str:lifecycle_id>/<int:version>'.format(settings.BASE_URL), users_detail),
     path('{}admin/users/<str:lifecycle_id>/<int:version>/<str:status>'.format(settings.BASE_URL), users_status,
          name='users-status'),
-    path('{}admin/users/passwords'.format(settings.BASE_URL), users_password_list, name='users-password-list'),
-    path('{}admin/users/change_password/<str:username>'.format(settings.BASE_URL), change_password_view,
+    path('{}admin/passwords'.format(settings.BASE_URL), users_password_list, name='users-password-list'),
+    path('{}admin/passwords/<str:username>'.format(settings.BASE_URL), change_password_view,
          name='change-password-view'),
     # root
     path('{}'.format(settings.BASE_URL[:-1]), api_root),

@@ -818,6 +818,15 @@ class VaultManager(GlobalManager):
                          'answer_three',)
     GET_MODEL_ORDER = ('username',
                        'initial_password',)
+    POST_MODEL_EXCLUDE = ('username',
+                          'initial_password',
+                          'password',
+                          'question_one',
+                          'question_two',
+                          'question_three',
+                          'answer_one',
+                          'answer_two',
+                          'answer_three',)
 
 
 class Vault(GlobalModel):
@@ -848,7 +857,7 @@ class Vault(GlobalModel):
 
     # permissions
     MODEL_ID = '17'
-    MODEL_CONTEXT = 'users_password'
+    MODEL_CONTEXT = 'passwords'
     perms = {
         '01': 'read',
         '13': 'change_password',

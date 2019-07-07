@@ -128,13 +128,41 @@ def api_root(request):
                                   'change_password': {'url': reverse('user-change-password-view', request=request)},
                                   'change_questions': {'url': reverse('user-change-questions-view', request=request)}}},
             'administration': {'root': '/admin/',
-                               'subjects': {'roles': {'url': reverse('roles-list', request=request)},
-                                            'ldap': {'url': reverse('ldap-list', request=request)},
-                                            'email': {'url': reverse('email-list', request=request)},
-                                            'users': {'url': reverse('users-list', request=request)},
-                                            'users/passwords': {'url': reverse('users-password-list', request=request)},
-                                            'sod': {'url': reverse('sod-list', request=request)},
-                                            'settings': {'url': reverse('settings-list', request=request)}}},
+                               'subjects': {'roles': {'url': reverse('roles-list', request=request),
+                                                      'post': True,
+                                                      'patch': True,
+                                                      'delete': True,
+                                                      'version': True},
+                                            'ldap': {'url': reverse('ldap-list', request=request),
+                                                     'post': True,
+                                                     'patch': True,
+                                                     'delete': True,
+                                                     'version': False},
+                                            'email': {'url': reverse('email-list', request=request),
+                                                      'post': True,
+                                                      'patch': True,
+                                                      'delete': True,
+                                                      'version': False},
+                                            'users': {'url': reverse('users-list', request=request),
+                                                      'post': True,
+                                                      'patch': True,
+                                                      'delete': True,
+                                                      'version': True},
+                                            'passwords': {'url': reverse('users-password-list', request=request),
+                                                          'post': False,
+                                                          'patch': True,
+                                                          'delete': False,
+                                                          'version': False},
+                                            'sod': {'url': reverse('sod-list', request=request),
+                                                    'post': True,
+                                                    'patch': True,
+                                                    'delete': True,
+                                                    'version': True},
+                                            'settings': {'url': reverse('settings-list', request=request),
+                                                         'post': False,
+                                                         'patch': True,
+                                                         'delete': False,
+                                                         'version': False}}},
             'logs': {'root': '/logs/',
                      'subjects': {'central': {'url': reverse('central-log-list', request=request)},
                                   'access': {'url': reverse('access-log-list', request=request)},
@@ -1026,16 +1054,28 @@ def meta_list(request, dialog):
                                    'format': _format}
 
         # add post information
-        if dialog in ['users', 'roles', 'ldap', 'settings', 'sod', 'email']:
+        if dialog in ['users', 'roles', 'ldap', 'settings', 'sod', 'email', 'passwords']:
             exclude = model.objects.POST_BASE_EXCLUDE + model.objects.POST_MODEL_EXCLUDE
             fields = [i for i in model._meta.get_fields() if i.name not in exclude]
             for f in fields:
-                data['post'][f.name] = {'verbose_name': f.verbose_name,
-                                        'help_text': f.help_text,
-                                        'max_length': f.max_length,
-                                        'data_type': f.get_internal_type(),
-                                        'required': not f.blank,
-                                        'unique': f.unique}
+                if dialog == 'users' and f.name == 'roles':
+                    data['post'][f.name] = {'verbose_name': f.verbose_name,
+                                            'help_text': f.help_text,
+                                            'max_length': f.max_length,
+                                            'data_type': f.get_internal_type(),
+                                            'required': not f.blank,
+                                            'unique': f.unique,
+                                            'lookup': {'url': reverse('roles-list'),
+                                                       'field': 'role',
+                                                       'multi': True}}
+                else:
+                    data['post'][f.name] = {'verbose_name': f.verbose_name,
+                                            'help_text': f.help_text,
+                                            'max_length': f.max_length,
+                                            'data_type': f.get_internal_type(),
+                                            'required': not f.blank,
+                                            'unique': f.unique,
+                                            'lookup': None}
             if dialog == 'users':
                 # add calculated field "password_verification"
                 data['post']['password_verification'] = {'verbose_name': 'Password verification',
@@ -1043,7 +1083,24 @@ def meta_list(request, dialog):
                                                          'max_length': CHAR_MAX,
                                                          'data_type': 'CharField',
                                                          'required': True,
-                                                         'unique': False}
+                                                         'unique': False,
+                                                         'lookup': None}
+            if dialog == 'passwords':
+                # add calculated fields for manual password reset
+                data['post']['password_new_'] = {'verbose_name': 'New password',
+                                                 'help_text': '{}'.format(password_validators_help_texts()),
+                                                 'max_length': CHAR_MAX,
+                                                 'data_type': 'CharField',
+                                                 'required': True,
+                                                 'unique': False,
+                                                 'lookup': None}
+                data['post']['password_new_verification'] = {'verbose_name': 'New password verification',
+                                                             'help_text': '{}'.format(password_validators_help_texts()),
+                                                             'max_length': CHAR_MAX,
+                                                             'data_type': 'CharField',
+                                                             'required': True,
+                                                             'unique': False,
+                                                             'lookup': None}
         return Response(data=data, status=http_status.HTTP_200_OK)
 
     if request.method == 'GET':
