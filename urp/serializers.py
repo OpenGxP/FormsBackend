@@ -21,7 +21,7 @@ from rest_framework import serializers
 
 # custom imports
 from .models import Status, Permissions, Users, Roles, AccessLog, PermissionsLog, RolesLog, UsersLog, LDAP, LDAPLog, \
-    SoD, SoDLog, Vault, Email, EmailLog
+    SoD, SoDLog, Vault, Email, EmailLog, Tags, TagsLog
 from basics.custom import generate_checksum, generate_to_hash, value_to_int
 from basics.models import AVAILABLE_STATUS, StatusLog, CentralLog, Settings, SettingsLog
 from .decorators import require_STATUS_CHANGE, require_POST, require_DELETE, require_PATCH, require_NONE, \
@@ -521,6 +521,31 @@ class StatusLogReadSerializer(GlobalReadWriteSerializer):
         # exclude = ('id', 'checksum', )
         # to control field order in response
         fields = Status.objects.GET_MODEL_ORDER + Status.objects.GET_BASE_ORDER_LOG + Status.objects.GET_BASE_CALCULATED
+
+
+########
+# TAGS #
+########
+
+# read / add / edit
+class TagsReadWriteSerializer(GlobalReadWriteSerializer):
+    class Meta:
+        model = Tags
+        fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_CALCULATED
+
+
+# delete
+class TagsDeleteSerializer(GlobalReadWriteSerializer):
+    class Meta:
+        model = Tags
+        fields = ()
+
+
+# read logs
+class TagsLogReadSerializer(GlobalReadWriteSerializer):
+    class Meta:
+        model = TagsLog
+        fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_ORDER_LOG + model.objects.GET_BASE_CALCULATED
 
 
 ###############

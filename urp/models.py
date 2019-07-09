@@ -43,6 +43,98 @@ from .backends.ldap import init_server, connect, search
 from .crypto import decrypt
 
 
+########
+# TAGS #
+########
+
+# log manager
+class TagsLogManager(GlobalManager):
+    # flags
+    HAS_VERSION = False
+    HAS_STATUS = False
+
+    # meta
+    GET_MODEL_ORDER = ('tag',)
+
+
+# log table
+class TagsLog(GlobalModel):
+    # custom fields
+    tag = models.CharField(_('Tag'), max_length=CHAR_DEFAULT)
+    # log specific fields
+    user = models.CharField(_('User'), max_length=CHAR_DEFAULT)
+    timestamp = models.DateTimeField()
+    action = models.CharField(_('Action'), max_length=CHAR_DEFAULT)
+
+    # manager
+    objects = TagsLogManager()
+
+    # integrity check
+    def verify_checksum(self):
+        to_hash_payload = 'tag:{};user:{};timestamp:{};action:{};' \
+            .format(self.tag, self.user, self.timestamp, self.action)
+        return self._verify_checksum(to_hash_payload=to_hash_payload)
+
+    valid_from = None
+    valid_to = None
+    lifecycle_id = None
+
+    # hashing
+    HASH_SEQUENCE = ['tag'] + LOG_HASH_SEQUENCE
+
+    # permissions
+    MODEL_ID = '21'
+    MODEL_CONTEXT = 'TagsLog'
+    perms = {
+            '01': 'read',
+        }
+
+
+# manager
+class TagsManager(GlobalManager):
+    # flags
+    HAS_VERSION = False
+    HAS_STATUS = False
+    LOG_TABLE = TagsLog
+
+    # meta
+    GET_MODEL_ORDER = TagsLogManager.GET_MODEL_ORDER
+
+
+# table
+class Tags(GlobalModel):
+    # custom fields
+    tag = models.CharField(_('Tag'), max_length=CHAR_DEFAULT, unique=True)
+
+    # manager
+    objects = TagsManager()
+
+    # integrity check
+    def verify_checksum(self):
+        to_hash_payload = 'tag:{};'.format(self.tag)
+        return self._verify_checksum(to_hash_payload=to_hash_payload)
+
+    valid_from = None
+    valid_to = None
+    lifecycle_id = None
+
+    # hashing
+    HASH_SEQUENCE = ['tag']
+
+    # permissions
+    MODEL_ID = '20'
+    MODEL_CONTEXT = 'Tags'
+    perms = {
+        '01': 'read',
+        '02': 'add',
+        '03': 'edit',
+        '04': 'delete',
+    }
+
+    # unique field
+    UNIQUE = 'tag'
+
+
 ###############
 # PERMISSIONS #
 ###############

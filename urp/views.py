@@ -29,7 +29,7 @@ from rest_framework import serializers
 
 # custom imports
 from .models import Status, Roles, Permissions, Users, AccessLog, PermissionsLog, RolesLog, UsersLog, LDAP, LDAPLog, \
-    SoD, SoDLog, Vault, Tokens, Email, EmailLog
+    SoD, SoDLog, Vault, Tokens, Email, EmailLog, Tags, TagsLog
 from .serializers import StatusReadWriteSerializer, PermissionsReadWriteSerializer, RolesReadSerializer, \
     RolesWriteSerializer, UsersReadSerializer, RolesDeleteStatusSerializer, RolesNewVersionSerializer, \
     UsersWriteSerializer, UsersNewVersionSerializer, UsersDeleteStatusSerializer, \
@@ -38,7 +38,7 @@ from .serializers import StatusReadWriteSerializer, PermissionsReadWriteSerializ
     LDAPLogReadSerializer, LDAPReadWriteSerializer, LDAPDeleteSerializer, SettingsLogReadSerializer, \
     SettingsReadWriteSerializer, SoDLogReadSerializer, SoDDeleteStatusNewVersionSerializer, SoDWriteSerializer, \
     SoDReadSerializer, UsersPassword, EmailDeleteSerializer, EmailLogReadSerializer, EmailReadWriteSerializer, \
-    UserProfile
+    UserProfile, TagsReadWriteSerializer, TagsDeleteSerializer, TagsLogReadSerializer
 from .decorators import perm_required, auth_required
 from basics.models import StatusLog, CentralLog, SettingsLog, Settings, CHAR_MAX
 from basics.custom import get_model_by_string, unique_items, render_email_from_template
@@ -134,6 +134,11 @@ def api_root(request):
                                                       'delete': True,
                                                       'version': True},
                                             'ldap': {'url': reverse('ldap-list', request=request),
+                                                     'post': True,
+                                                     'patch': True,
+                                                     'delete': True,
+                                                     'version': False},
+                                            'tags': {'url': reverse('tags-list', request=request),
                                                      'post': True,
                                                      'patch': True,
                                                      'delete': True,
@@ -665,6 +670,105 @@ def settings_detail(request, key):
 
     elif request.method == 'PATCH':
         return patch(request)
+
+
+###########
+# TAGSLOG #
+###########
+
+# GET list
+@api_view(['GET'])
+@auth_required()
+@auto_logout()
+@perm_required('{}.01'.format(TagsLog.MODEL_ID))
+def tags_log_list(request):
+    logs = TagsLog.objects.all()
+    serializer = TagsLogReadSerializer(logs, many=True)
+    return Response(serializer.data)
+
+
+########
+# TAGS #
+########
+
+# GET list
+@api_view(['GET', 'POST'])
+@auth_required()
+@auto_logout()
+def tags_list(request):
+    @perm_required('{}.02'.format(Tags.MODEL_ID))
+    @csrf_protect
+    def post(_request):
+        _serializer = TagsReadWriteSerializer(data=_request.data, context={'method': 'POST',
+                                                                           'function': 'new',
+                                                                           'user': request.user.username})
+
+        if _serializer.is_valid():
+            _serializer.save()
+            return Response(_serializer.data, status=http_status.HTTP_201_CREATED)
+        return Response(_serializer.errors, status=http_status.HTTP_400_BAD_REQUEST)
+
+    @perm_required('{}.01'.format(Tags.MODEL_ID))
+    @ensure_csrf_cookie
+    def get(_request):
+        query = Tags.objects.all()
+        serializer = TagsReadWriteSerializer(query, many=True)
+        return Response(serializer.data)
+
+    if request.method == 'GET':
+        return get(request)
+    if request.method == 'POST':
+        return post(request)
+
+
+# GET detail
+@api_view(['GET', 'PATCH', 'DELETE'])
+@auth_required()
+@auto_logout()
+def tags_detail(request, tag):
+    @perm_required('{}.03'.format(Tags.MODEL_ID))
+    @csrf_protect
+    def patch(_request):
+        _serializer = TagsReadWriteSerializer(query, data=_request.data, context={'method': 'PATCH',
+                                                                                  'function': '',
+                                                                                  'user': request.user.username})
+        if _serializer.is_valid():
+            _serializer.save()
+            return Response(_serializer.data)
+        return Response(_serializer.errors, status=http_status.HTTP_400_BAD_REQUEST)
+
+    @perm_required('{}.04'.format(Tags.MODEL_ID))
+    @csrf_protect
+    def delete(_request):
+        _serializer = TagsDeleteSerializer(query, data={}, context={'method': 'DELETE',
+                                                                    'function': '',
+                                                                    'user': request.user.username})
+        if _serializer.is_valid():
+            _serializer.delete()
+            return Response(status=http_status.HTTP_204_NO_CONTENT)
+        return Response(_serializer.errors, status=http_status.HTTP_400_BAD_REQUEST)
+
+    @perm_required('{}.01'.format(Tags.MODEL_ID))
+    @ensure_csrf_cookie
+    def get(_request):
+        serializer = TagsReadWriteSerializer(query)
+        return Response(serializer.data)
+
+    try:
+        query = Tags.objects.get(tag=tag)
+    except Tags.DoesNotExist:
+        return Response(status=http_status.HTTP_404_NOT_FOUND)
+    except ValidationError:
+        return Response(status=http_status.HTTP_400_BAD_REQUEST)
+
+    if request.method == 'GET':
+        return get(request)
+
+    elif request.method == 'PATCH':
+        return patch(request)
+
+    elif request.method == 'DELETE':
+        return delete(request)
 
 
 ###########
