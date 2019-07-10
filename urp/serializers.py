@@ -21,7 +21,7 @@ from rest_framework import serializers
 
 # custom imports
 from .models import Status, Permissions, Users, Roles, AccessLog, PermissionsLog, RolesLog, UsersLog, LDAP, LDAPLog, \
-    SoD, SoDLog, Vault, Email, EmailLog, Tags, TagsLog
+    SoD, SoDLog, Vault, Email, EmailLog, Tags, TagsLog, Spaces, SpacesLog
 from basics.custom import generate_checksum, generate_to_hash, value_to_int
 from basics.models import AVAILABLE_STATUS, StatusLog, CentralLog, Settings, SettingsLog
 from .decorators import require_STATUS_CHANGE, require_POST, require_DELETE, require_PATCH, require_NONE, \
@@ -548,6 +548,31 @@ class TagsLogReadSerializer(GlobalReadWriteSerializer):
         fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_ORDER_LOG + model.objects.GET_BASE_CALCULATED
 
 
+##########
+# SPACES #
+##########
+
+# read / add / edit
+class SpacesReadWriteSerializer(GlobalReadWriteSerializer):
+    class Meta:
+        model = Spaces
+        fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_CALCULATED
+
+
+# delete
+class SpacesDeleteSerializer(GlobalReadWriteSerializer):
+    class Meta:
+        model = Spaces
+        fields = ()
+
+
+# read logs
+class SpacesLogReadSerializer(GlobalReadWriteSerializer):
+    class Meta:
+        model = SpacesLog
+        fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_ORDER_LOG + model.objects.GET_BASE_CALCULATED
+
+
 ###############
 # PERMISSIONS #
 ###############
@@ -864,8 +889,9 @@ class UsersLogReadSerializer(GlobalReadWriteSerializer):
         model = UsersLog
         # exclude = ('id', 'checksum', 'is_active')
         # to control field order in response
-        fields = UsersLog.objects.GET_MODEL_ORDER_NO_PW + Users.objects.GET_BASE_ORDER_STATUS_MANAGED + \
-            UsersLog.objects.GET_BASE_ORDER_LOG + UsersLog.objects.GET_BASE_CALCULATED
+        fields = UsersLog.objects.GET_MODEL_ORDER_NO_PW + ('initial_password',) + \
+            Users.objects.GET_BASE_ORDER_STATUS_MANAGED + UsersLog.objects.GET_BASE_ORDER_LOG + \
+            UsersLog.objects.GET_BASE_CALCULATED
 
 
 #######

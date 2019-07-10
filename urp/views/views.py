@@ -28,9 +28,9 @@ from rest_framework.reverse import reverse
 from rest_framework import serializers
 
 # custom imports
-from .models import Status, Roles, Permissions, Users, AccessLog, PermissionsLog, RolesLog, UsersLog, LDAP, LDAPLog, \
+from urp.models import Status, Roles, Permissions, Users, AccessLog, PermissionsLog, RolesLog, UsersLog, LDAP, LDAPLog, \
     SoD, SoDLog, Vault, Tokens, Email, EmailLog, Tags, TagsLog
-from .serializers import StatusReadWriteSerializer, PermissionsReadWriteSerializer, RolesReadSerializer, \
+from urp.serializers import StatusReadWriteSerializer, PermissionsReadWriteSerializer, RolesReadSerializer, \
     RolesWriteSerializer, UsersReadSerializer, RolesDeleteStatusSerializer, RolesNewVersionSerializer, \
     UsersWriteSerializer, UsersNewVersionSerializer, UsersDeleteStatusSerializer, \
     AccessLogReadWriteSerializer, CentralLogReadWriteSerializer, StatusLogReadSerializer, \
@@ -39,12 +39,12 @@ from .serializers import StatusReadWriteSerializer, PermissionsReadWriteSerializ
     SettingsReadWriteSerializer, SoDLogReadSerializer, SoDDeleteStatusNewVersionSerializer, SoDWriteSerializer, \
     SoDReadSerializer, UsersPassword, EmailDeleteSerializer, EmailLogReadSerializer, EmailReadWriteSerializer, \
     UserProfile, TagsReadWriteSerializer, TagsDeleteSerializer, TagsLogReadSerializer
-from .decorators import perm_required, auth_required
+from urp.decorators import perm_required, auth_required
 from basics.models import StatusLog, CentralLog, SettingsLog, Settings, CHAR_MAX
 from basics.custom import get_model_by_string, unique_items, render_email_from_template
-from .backends.Email import send_email
-from .backends.User import write_access_log, activate_user
-from .vault import validate_password_input, create_update_vault
+from urp.backends.Email import send_email
+from urp.backends.User import write_access_log, activate_user
+from urp.vault import validate_password_input, create_update_vault
 
 # django imports
 from django.core.exceptions import ValidationError
@@ -143,6 +143,11 @@ def api_root(request):
                                                      'patch': True,
                                                      'delete': True,
                                                      'version': False},
+                                            'spaces': {'url': reverse('spaces-list', request=request),
+                                                       'post': True,
+                                                       'patch': True,
+                                                       'delete': True,
+                                                       'version': False},
                                             'email': {'url': reverse('email-list', request=request),
                                                       'post': True,
                                                       'patch': True,
@@ -1158,28 +1163,30 @@ def meta_list(request, dialog):
                                    'format': _format}
 
         # add post information
-        if dialog in ['users', 'roles', 'ldap', 'settings', 'sod', 'email', 'passwords']:
+        if dialog in ['users', 'roles', 'ldap', 'settings', 'sod', 'email', 'passwords', 'tags', 'spaces']:
             exclude = model.objects.POST_BASE_EXCLUDE + model.objects.POST_MODEL_EXCLUDE
             fields = [i for i in model._meta.get_fields() if i.name not in exclude]
             for f in fields:
+                data['post'][f.name] = {'verbose_name': f.verbose_name,
+                                        'help_text': f.help_text,
+                                        'max_length': f.max_length,
+                                        'data_type': f.get_internal_type(),
+                                        'required': not f.blank,
+                                        'unique': f.unique,
+                                        'lookup': None}
                 if dialog == 'users' and f.name == 'roles':
-                    data['post'][f.name] = {'verbose_name': f.verbose_name,
-                                            'help_text': f.help_text,
-                                            'max_length': f.max_length,
-                                            'data_type': f.get_internal_type(),
-                                            'required': not f.blank,
-                                            'unique': f.unique,
-                                            'lookup': {'url': reverse('roles-list'),
-                                                       'field': 'role',
-                                                       'multi': True}}
-                else:
-                    data['post'][f.name] = {'verbose_name': f.verbose_name,
-                                            'help_text': f.help_text,
-                                            'max_length': f.max_length,
-                                            'data_type': f.get_internal_type(),
-                                            'required': not f.blank,
-                                            'unique': f.unique,
-                                            'lookup': None}
+                    data['post'][f.name]['lookup'] = {'url': reverse('roles-list'),
+                                                      'field': 'role',
+                                                      'multi': True}
+                if dialog == 'spaces' and f.name == 'users':
+                    data['post'][f.name]['lookup'] = {'url': reverse('users-list'),
+                                                      'field': 'username',
+                                                      'multi': True}
+                if dialog == 'spaces' and f.name == 'tags':
+                    data['post'][f.name]['lookup'] = {'url': reverse('tags-list'),
+                                                      'field': 'tag',
+                                                      'multi': True}
+
             if dialog == 'users':
                 # add calculated field "password_verification"
                 data['post']['password_verification'] = {'verbose_name': 'Password verification',

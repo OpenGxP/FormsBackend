@@ -29,7 +29,7 @@ from .views import permissions_list, roles_list, roles_detail, status_list, \
     settings_detail, settings_log_list, logout_auto_view, sod_list, sod_detail, sod_log_list, sod_status, \
     users_password_list, change_password_view, user_change_password_view, user_change_questions_view, \
     request_password_reset_email_view, password_reset_email_view, email_detail, email_list, email_log_list, \
-    user_profile_list, tags_detail, tags_list, tags_log_list
+    user_profile_list, tags_detail, tags_list, tags_log_list, spaces_list, spaces_detail, spaces_log_list
 
 
 urlpatterns = [
@@ -65,12 +65,16 @@ urlpatterns = [
     path('{}logs/email'.format(settings.BASE_URL), email_log_list, name='email-log-list'),
     path('{}logs/settings'.format(settings.BASE_URL), settings_log_list, name='settings-log-list'),
     path('{}logs/tags'.format(settings.BASE_URL), tags_log_list, name='tags-log-list'),
+    path('{}logs/spaces'.format(settings.BASE_URL), spaces_log_list, name='spaces-log-list'),
     # ldap
     path('{}admin/ldap'.format(settings.BASE_URL), ldap_list, name='ldap-list'),
     path('{}admin/ldap/<str:host>'.format(settings.BASE_URL), ldap_detail, name='ldap-detail'),
     # tags
     path('{}admin/tags'.format(settings.BASE_URL), tags_list, name='tags-list'),
     path('{}admin/tags/<str:tag>'.format(settings.BASE_URL), tags_detail, name='tags-detail'),
+    # tags
+    path('{}admin/spaces'.format(settings.BASE_URL), spaces_list, name='spaces-list'),
+    path('{}admin/spaces/<str:space>'.format(settings.BASE_URL), spaces_detail, name='spaces-detail'),
     # email
     path('{}admin/email'.format(settings.BASE_URL), email_list, name='email-list'),
     path('{}admin/email/<str:host>'.format(settings.BASE_URL), email_detail, name='email-detail'),

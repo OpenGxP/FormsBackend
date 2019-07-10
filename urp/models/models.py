@@ -33,14 +33,14 @@ from django.contrib.auth.password_validation import password_validators_help_tex
 from django.contrib.auth.hashers import make_password, check_password
 
 # app imports
-from .validators import validate_no_space, validate_no_specials, validate_no_specials_reduced, SPECIALS_REDUCED, \
+from urp.validators import validate_no_space, validate_no_specials, validate_no_specials_reduced, SPECIALS_REDUCED, \
     validate_no_numbers, validate_only_ascii, validate_only_positive_numbers
-from .custom import create_log_record
+from urp.custom import create_log_record
 from basics.custom import generate_checksum, generate_to_hash
 from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, CHAR_MAX, FIELD_VERSION, Status, \
     LOG_HASH_SEQUENCE, CHAR_BIG, Settings
-from .backends.ldap import init_server, connect, search
-from .crypto import decrypt
+from urp.backends.ldap import init_server, connect, search
+from urp.crypto import decrypt
 
 
 ########
