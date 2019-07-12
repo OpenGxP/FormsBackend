@@ -89,6 +89,16 @@ class GlobalManager(models.Manager):
         else:
             return query
 
+    def get_by_natural_key_productive_list(self, key):
+        status_effective_id = Status.objects.productive
+        if self.HAS_STATUS:
+            query = self.filter(status__id=status_effective_id).order_by(key).values_list(key, flat=True).distinct()
+        else:
+            query = self.order_by(key).values_list(key, flat=True).distinct()
+        if not query:
+            return []
+        return query
+
     def get_by_natural_key_not_draft(self, key):
         status_draft_id = Status.objects.draft
         query = self.filter(~Q(status__id=status_draft_id)).filter(**{self.model.UNIQUE: key}).all()

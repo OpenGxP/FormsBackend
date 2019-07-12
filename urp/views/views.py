@@ -1175,16 +1175,13 @@ def meta_list(request, dialog):
                                         'unique': f.unique,
                                         'lookup': None}
                 if dialog == 'users' and f.name == 'roles':
-                    data['post'][f.name]['lookup'] = {'url': reverse('roles-list'),
-                                                      'field': 'role',
+                    data['post'][f.name]['lookup'] = {'data': Roles.objects.get_by_natural_key_productive_list('role'),
                                                       'multi': True}
                 if dialog == 'spaces' and f.name == 'users':
-                    data['post'][f.name]['lookup'] = {'url': reverse('users-list'),
-                                                      'field': 'username',
+                    data['post'][f.name]['lookup'] = {'data': Users.objects.get_by_natural_key_productive_list('username'),
                                                       'multi': True}
                 if dialog == 'spaces' and f.name == 'tags':
-                    data['post'][f.name]['lookup'] = {'url': reverse('tags-list'),
-                                                      'field': 'tag',
+                    data['post'][f.name]['lookup'] = {'data': Tags.objects.get_by_natural_key_productive_list('tag'),
                                                       'multi': True}
 
             if dialog == 'users':
