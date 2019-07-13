@@ -441,7 +441,6 @@ class SettingsManager(GlobalManager):
 
     # meta
     GET_MODEL_ORDER = SettingsLogManager.GET_MODEL_ORDER
-    POST_MODEL_EXCLUDE = ('key', 'default')
 
     @property
     def auth_maxloginattempts(self):

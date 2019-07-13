@@ -1173,42 +1173,66 @@ def meta_list(request, dialog):
                                         'data_type': f.get_internal_type(),
                                         'required': not f.blank,
                                         'unique': f.unique,
-                                        'lookup': None}
+                                        'lookup': None,
+                                        'editable': True}
+                if f.name == 'password':
+                    data['post'][f.name]['data_type'] = 'PasswordField'
                 if dialog == 'users' and f.name == 'roles':
                     data['post'][f.name]['lookup'] = {'data': Roles.objects.get_by_natural_key_productive_list('role'),
                                                       'multi': True}
+                # settings
+                if dialog == 'settings' and f.name == 'key':
+                    data['post'][f.name]['editable'] = False
+                if dialog == 'settings' and f.name == 'default':
+                    data['post'][f.name]['editable'] = False
+
+                # spaces
                 if dialog == 'spaces' and f.name == 'users':
-                    data['post'][f.name]['lookup'] = {'data': Users.objects.get_by_natural_key_productive_list('username'),
-                                                      'multi': True}
+                    data['post'][f.name]['lookup'] = {
+                        'data': Users.objects.get_by_natural_key_productive_list('username'),
+                        'multi': True}
                 if dialog == 'spaces' and f.name == 'tags':
                     data['post'][f.name]['lookup'] = {'data': Tags.objects.get_by_natural_key_productive_list('tag'),
                                                       'multi': True}
+
+                # sod
+                if dialog == 'sod' and f.name == 'base':
+                    data['post'][f.name]['lookup'] = {
+                        'data': Roles.objects.get_by_natural_key_productive_list('role'),
+                        'multi': False}
+                if dialog == 'sod' and f.name == 'conflict':
+                    data['post'][f.name]['lookup'] = {
+                        'data': Roles.objects.get_by_natural_key_productive_list('role'),
+                        'multi': False}
 
             if dialog == 'users':
                 # add calculated field "password_verification"
                 data['post']['password_verification'] = {'verbose_name': 'Password verification',
                                                          'help_text': '{}'.format(password_validators_help_texts()),
                                                          'max_length': CHAR_MAX,
-                                                         'data_type': 'CharField',
+                                                         'data_type': 'PasswordField',
                                                          'required': True,
                                                          'unique': False,
-                                                         'lookup': None}
+                                                         'lookup': None,
+                                                         'editable': True}
             if dialog == 'passwords':
                 # add calculated fields for manual password reset
                 data['post']['password_new'] = {'verbose_name': 'New password',
                                                 'help_text': '{}'.format(password_validators_help_texts()),
                                                 'max_length': CHAR_MAX,
-                                                'data_type': 'CharField',
+                                                'data_type': 'PasswordField',
                                                 'required': True,
                                                 'unique': False,
-                                                'lookup': None}
+                                                'lookup': None,
+                                                'editable': True}
                 data['post']['password_new_verification'] = {'verbose_name': 'New password verification',
                                                              'help_text': '{}'.format(password_validators_help_texts()),
                                                              'max_length': CHAR_MAX,
-                                                             'data_type': 'CharField',
+                                                             'data_type': 'PasswordField',
                                                              'required': True,
                                                              'unique': False,
-                                                             'lookup': None}
+                                                             'lookup': None,
+                                                             'editable': True}
         return Response(data=data, status=http_status.HTTP_200_OK)
 
     if request.method == 'GET':
