@@ -25,7 +25,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 # app imports
-from ..models import Users, Roles, Status
+from urp.models import Users
 from ..serializers import UsersReadSerializer
 
 # test imports
@@ -59,18 +59,23 @@ class PostNewUsers(PostNew):
         self.valid_payload = {'username': 'testtest',
                               'password': 'test12345test',
                               'password_verification': 'test12345test',
-                              'roles': 'all',
+                              'roles': ['all'],
                               'email': 'example@example.com',
                               'ldap': False}
         self.invalid_payloads = [dict(),
                                  {'username': 'testtest',
-                                  'roles': 'all',
+                                  'roles': ['all'],
                                   'password': '',
                                   'email': 'example@example.com'},
                                  {'username': 'testtest',
                                   'password': 'test12345test',
                                   'roles': '',
-                                  'email': 'example@example.com'}]
+                                  'email': 'example@example.com'},
+                                 {'username': 'testtest',
+                                  'password': 'test12345test',
+                                  'roles': [],
+                                  'email': 'example@example.com'},
+                                 ]
         self.execute = True
 
 
@@ -89,7 +94,7 @@ class GetOneUser(GetOne):
         self.ok_object_data = {'username': 'testtest',
                                'password': 'test12345test',
                                'password_verification': 'test12345test',
-                               'roles': 'all',
+                               'roles': ['all'],
                                'email': 'example@example.com',
                                'ldap': False}
         self.execute = True
@@ -106,19 +111,19 @@ class PostNewVersionUser(PostNewVersion):
         self.ok_object_data = {'username': 'testtest',
                                'password': 'test12345test',
                                'password_verification': 'test12345test',
-                               'roles': 'all',
+                               'roles': ['all'],
                                'email': 'example@example.com',
                                'ldap': False}
         self.fail_object_draft_data = {'username': 'testtestzwei',
                                        'password': 'test12345test',
                                        'password_verification': 'test12345test',
-                                       'roles': 'all',
+                                       'roles': ['all'],
                                        'email': 'example@example.com',
                                        'ldap': False}
         self.fail_object_circulation_data = {'username': 'testtestdrei',
                                              'password': 'test12345test',
                                              'password_verification': 'test12345test',
-                                             'roles': 'all',
+                                             'roles': ['all'],
                                              'email': 'example@example.com',
                                              'ldap': False}
         self.execute = True
@@ -135,7 +140,7 @@ class DeleteOneUser(DeleteOne):
         self.ok_object_data = {'username': 'testtest',
                                'password': 'test12345test',
                                'password_verification': 'test12345test',
-                               'roles': 'all',
+                               'roles': ['all'],
                                'email': 'example@example.com',
                                'ldap': False}
         self.execute = True
@@ -152,20 +157,20 @@ class PatchOneUser(PatchOne):
         self.ok_object_data = {'username': 'testtest',
                                'password': 'test12345test',
                                'password_verification': 'test12345test',
-                               'roles': 'all',
+                               'roles': ['all'],
                                'email': 'example@example.com',
                                'ldap': False}
         self.valid_payload = {'username': 'testtestanders',
-                              'roles': 'all_two',
+                              'roles': ['all_two'],
                               'email': 'example@example.com',
                               'ldap': False}
         self.invalid_payload = {'username': '',
                                 'password': 'test12345test',
-                                'roles': 'all',
+                                'roles': ['all'],
                                 'email': 'example@example.com',
                                 'ldap': False}
         self.unique_invalid_payload = {'username': 'anders',
-                                       'roles': 'all',
+                                       'roles': ['all'],
                                        'email': 'example@example.com',
                                        'ldap': False}
         self.execute = True
@@ -186,7 +191,7 @@ class PatchOneStatusUser(PatchOneStatus):
         self.ok_object_data = {'username': 'testtest',
                                'password': 'test12345test',
                                'password_verification': 'test12345test',
-                               'roles': 'all',
+                               'roles': ['all'],
                                'email': 'example@example.com',
                                'ldap': False}
         self.execute = True
@@ -206,7 +211,7 @@ class UsersMiscellaneous(APITestCase):
         self.ok_object_data = {'username': self.username,
                                'password': self.password,
                                'password_verification': self.password,
-                               'roles': 'all',
+                               'roles': ['all'],
                                'ldap': False,
                                'email': 'example@example.com'}
         self.draft_role_id = 'newrole'
@@ -216,19 +221,19 @@ class UsersMiscellaneous(APITestCase):
         self.valid_payload = {'username': 'testtest',
                               'password': 'test12345test',
                               'password_verification': 'test12345test',
-                              'roles': self.draft_role_id,
+                              'roles': [self.draft_role_id],
                               'ldap': False,
                               'email': 'example@example.com'}
         self.valid_payload_two_roles = {'username': 'testtest',
                                         'password': 'test12345test',
                                         'password_verification': 'test12345test',
-                                        'roles': 'all,{}'.format(self.draft_role_id),
+                                        'roles': ['all,{}'.format(self.draft_role_id)],
                                         'ldap': False,
                                         'email': 'example@example.com'}
         self.valid_payload_three = {'username': 'testtest',
                                     'password': 'test12345test',
                                     'password_verification': 'test12345test',
-                                    'roles': 'all',
+                                    'roles': ['all'],
                                     'ldap': False,
                                     'email': 'example@example.com'}
 
@@ -398,7 +403,7 @@ class UsersMiscellaneous(APITestCase):
         data = {'username': self.username,
                 'password': new_password,
                 'password_two': new_password,
-                'roles': 'all',
+                'roles': ['all'],
                 'ldap': False,
                 'email': 'example@example.com'}
         path = '{}/{}/{}'.format(self.base_path, response.data['lifecycle_id'], 1)

@@ -213,6 +213,9 @@ class GlobalModel(models.Model):
         '12': 'version_archived'
     }
 
+    # lookup fields
+    LOOKUP = {}
+
 
 ##########
 # STATUS #

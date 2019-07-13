@@ -53,8 +53,8 @@ class GetOneNoStatusTag(GetOneNoStatus):
         self.serializer = SpacesReadWriteSerializer
         self.execute = True
         self.ok_object_data = {'space': 'all',
-                               'tags': 'all,qc,ops',
-                               'users': 'userone,usertwo'}
+                               'tags': ['all,qc,ops'],
+                               'users': ['userone,usertwo']}
         self.ok_object_data_unique = 'space'
 
 
@@ -66,10 +66,17 @@ class PostNewTag(PostNew):
         self.model = Spaces
         self.prerequisites = Prerequisites(base_path=self.base_path)
         self.valid_payload = {'space': 'all',
-                              'tags': 'all,qc,ops',
-                              'users': 'userone,usertwo'}
+                              'tags': ['all,qc,ops'],
+                              'users': ['userone,usertwo']}
         invalid_payload = {'space': ''}
-        self.invalid_payloads = [dict(), invalid_payload]
+        self.invalid_payloads = [dict(),
+                                 invalid_payload,
+                                 {'space': 'all1234',
+                                  'tags': ['all,qc,ops']},
+                                 {'space': 'all222222d',
+                                  'tags': [],
+                                  'users': ['userone,usertwo']}
+                                 ]
         self.execute = True
         self.status = False
 
@@ -83,8 +90,8 @@ class DeleteOneTag(DeleteOneNoStatus):
         self.prerequisites = Prerequisites(base_path=self.base_path)
         self.serializer = SpacesReadWriteSerializer
         self.ok_object_data = {'space': 'all',
-                               'tags': 'all,qc,ops',
-                               'users': 'userone,usertwo'}
+                               'tags': ['all,qc,ops'],
+                               'users': ['userone,usertwo']}
         self.ok_object_data_unique = 'space'
         self.execute = True
 
@@ -99,10 +106,10 @@ class PatchOneTag(PatchOneNoStatus):
         self.serializer = SpacesReadWriteSerializer
         self.ok_object_data_unique = 'space'
         self.ok_object_data = {'space': 'all',
-                               'tags': 'all,qc,ops',
-                               'users': 'userone,usertwo'}
+                               'tags': ['all,qc,ops'],
+                               'users': ['userone,usertwo']}
         self.valid_payload = {'space': 'all',
-                              'tags': 'all,qc,ops,etc',
-                              'users': 'userone,usertwo,userthree'}
+                              'tags': ['all,qc,ops,etc'],
+                              'users': ['userone,usertwo,userthree']}
         self.invalid_payload = {'space': ''}
         self.execute = True

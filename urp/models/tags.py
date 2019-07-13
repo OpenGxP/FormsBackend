@@ -21,42 +21,35 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 # app imports
-from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, LOG_HASH_SEQUENCE, CHAR_BIG
-from urp.models.tags import Tags
-from urp.models.users import Users
-from urp.fields import LookupField
+from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, LOG_HASH_SEQUENCE
 
 
 # log manager
-class SpacesLogManager(GlobalManager):
+class TagsLogManager(GlobalManager):
     # flags
     HAS_VERSION = False
     HAS_STATUS = False
 
     # meta
-    GET_MODEL_ORDER = ('space',
-                       'users',
-                       'tags')
+    GET_MODEL_ORDER = ('tag',)
 
 
 # log table
-class SpacesLog(GlobalModel):
+class TagsLog(GlobalModel):
     # custom fields
-    space = models.CharField(_('Space'), max_length=CHAR_DEFAULT)
-    users = models.CharField(_('Users'), max_length=CHAR_BIG)
-    tags = models.CharField(_('Tags'), max_length=CHAR_BIG)
+    tag = models.CharField(_('Tag'), max_length=CHAR_DEFAULT)
     # log specific fields
     user = models.CharField(_('User'), max_length=CHAR_DEFAULT)
     timestamp = models.DateTimeField()
     action = models.CharField(_('Action'), max_length=CHAR_DEFAULT)
 
     # manager
-    objects = SpacesLogManager()
+    objects = TagsLogManager()
 
     # integrity check
     def verify_checksum(self):
-        to_hash_payload = 'space:{};users:{};tags:{};user:{};timestamp:{};action:{};' \
-            .format(self.space, self.users, self.tags, self.user, self.timestamp, self.action)
+        to_hash_payload = 'tag:{};user:{};timestamp:{};action:{};' \
+            .format(self.tag, self.user, self.timestamp, self.action)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
 
     valid_from = None
@@ -64,40 +57,38 @@ class SpacesLog(GlobalModel):
     lifecycle_id = None
 
     # hashing
-    HASH_SEQUENCE = ['space', 'users', 'tags'] + LOG_HASH_SEQUENCE
+    HASH_SEQUENCE = ['tag'] + LOG_HASH_SEQUENCE
 
     # permissions
-    MODEL_ID = '23'
-    MODEL_CONTEXT = 'SpacesLog'
+    MODEL_ID = '21'
+    MODEL_CONTEXT = 'TagsLog'
     perms = {
             '01': 'read',
         }
 
 
 # manager
-class SpacesManager(GlobalManager):
+class TagsManager(GlobalManager):
     # flags
     HAS_VERSION = False
     HAS_STATUS = False
-    LOG_TABLE = SpacesLog
+    LOG_TABLE = TagsLog
 
     # meta
-    GET_MODEL_ORDER = SpacesLogManager.GET_MODEL_ORDER
+    GET_MODEL_ORDER = TagsLogManager.GET_MODEL_ORDER
 
 
 # table
-class Spaces(GlobalModel):
+class Tags(GlobalModel):
     # custom fields
-    space = models.CharField(_('Space'), max_length=CHAR_DEFAULT, unique=True)
-    users = LookupField(_('Users'), max_length=CHAR_BIG)
-    tags = LookupField(_('Tags'), max_length=CHAR_BIG)
+    tag = models.CharField(_('Tag'), max_length=CHAR_DEFAULT, unique=True)
 
     # manager
-    objects = SpacesManager()
+    objects = TagsManager()
 
     # integrity check
     def verify_checksum(self):
-        to_hash_payload = 'space:{};users:{};tags:{};'.format(self.space, self.users, self.tags)
+        to_hash_payload = 'tag:{};'.format(self.tag)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
 
     valid_from = None
@@ -105,11 +96,11 @@ class Spaces(GlobalModel):
     lifecycle_id = None
 
     # hashing
-    HASH_SEQUENCE = ['space', 'users', 'tags']
+    HASH_SEQUENCE = ['tag']
 
     # permissions
-    MODEL_ID = '22'
-    MODEL_CONTEXT = 'Spaces'
+    MODEL_ID = '20'
+    MODEL_CONTEXT = 'Tags'
     perms = {
         '01': 'read',
         '02': 'add',
@@ -118,12 +109,4 @@ class Spaces(GlobalModel):
     }
 
     # unique field
-    UNIQUE = 'space'
-
-    # lookup fields
-    LOOKUP = {'tags': {'model': Tags,
-                       'key': 'tag',
-                       'multi': True},
-              'users': {'model': Users,
-                        'key': 'username',
-                        'multi': True}}
+    UNIQUE = 'tag'

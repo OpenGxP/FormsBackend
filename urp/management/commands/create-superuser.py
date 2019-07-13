@@ -88,7 +88,7 @@ class Command(BaseCommand):
         if not role:
             self.stderr.write("Error: Role is mandatory.")
         else:
-            role = self.clean_input(self.role_field, role)
+            role = self.clean_input(self.role_field, [role])
             if role:
                 # verify if selected role exists and is in status "productive"
                 try:

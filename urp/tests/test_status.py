@@ -20,7 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from django.urls import reverse
 
 # app imports
-from ..models import Status
+from basics.models import Status
 from ..serializers import StatusReadWriteSerializer
 
 # test imports

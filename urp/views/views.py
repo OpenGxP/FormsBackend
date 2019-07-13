@@ -28,7 +28,7 @@ from rest_framework.reverse import reverse
 from rest_framework import serializers
 
 # custom imports
-from urp.models import Status, Roles, Permissions, Users, AccessLog, PermissionsLog, RolesLog, UsersLog, LDAP, LDAPLog, \
+from urp.models import Roles, Permissions, Users, AccessLog, PermissionsLog, RolesLog, UsersLog, LDAP, LDAPLog, \
     SoD, SoDLog, Vault, Tokens, Email, EmailLog, Tags, TagsLog
 from urp.serializers import StatusReadWriteSerializer, PermissionsReadWriteSerializer, RolesReadSerializer, \
     RolesWriteSerializer, UsersReadSerializer, RolesDeleteStatusSerializer, RolesNewVersionSerializer, \
@@ -40,7 +40,7 @@ from urp.serializers import StatusReadWriteSerializer, PermissionsReadWriteSeria
     SoDReadSerializer, UsersPassword, EmailDeleteSerializer, EmailLogReadSerializer, EmailReadWriteSerializer, \
     UserProfile, TagsReadWriteSerializer, TagsDeleteSerializer, TagsLogReadSerializer
 from urp.decorators import perm_required, auth_required
-from basics.models import StatusLog, CentralLog, SettingsLog, Settings, CHAR_MAX
+from basics.models import Status, StatusLog, CentralLog, SettingsLog, Settings, CHAR_MAX
 from basics.custom import get_model_by_string, unique_items, render_email_from_template
 from urp.backends.Email import send_email
 from urp.backends.User import write_access_log, activate_user
@@ -1177,33 +1177,20 @@ def meta_list(request, dialog):
                                         'editable': True}
                 if f.name == 'password':
                     data['post'][f.name]['data_type'] = 'PasswordField'
-                if dialog == 'users' and f.name == 'roles':
-                    data['post'][f.name]['lookup'] = {'data': Roles.objects.get_by_natural_key_productive_list('role'),
-                                                      'multi': True}
-                # settings
+
+                # create lookup data
+                if model.LOOKUP:
+                    if f.name in model.LOOKUP:
+                        data_model = model.LOOKUP[f.name]['model']
+                        data['post'][f.name]['lookup'] = {
+                            'data': data_model.objects.get_by_natural_key_productive_list(model.LOOKUP[f.name]['key']),
+                            'multi': model.LOOKUP[f.name]['multi']}
+
+                # settings non-editable field for better visualisation
                 if dialog == 'settings' and f.name == 'key':
                     data['post'][f.name]['editable'] = False
                 if dialog == 'settings' and f.name == 'default':
                     data['post'][f.name]['editable'] = False
-
-                # spaces
-                if dialog == 'spaces' and f.name == 'users':
-                    data['post'][f.name]['lookup'] = {
-                        'data': Users.objects.get_by_natural_key_productive_list('username'),
-                        'multi': True}
-                if dialog == 'spaces' and f.name == 'tags':
-                    data['post'][f.name]['lookup'] = {'data': Tags.objects.get_by_natural_key_productive_list('tag'),
-                                                      'multi': True}
-
-                # sod
-                if dialog == 'sod' and f.name == 'base':
-                    data['post'][f.name]['lookup'] = {
-                        'data': Roles.objects.get_by_natural_key_productive_list('role'),
-                        'multi': False}
-                if dialog == 'sod' and f.name == 'conflict':
-                    data['post'][f.name]['lookup'] = {
-                        'data': Roles.objects.get_by_natural_key_productive_list('role'),
-                        'multi': False}
 
             if dialog == 'users':
                 # add calculated field "password_verification"
