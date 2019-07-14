@@ -68,6 +68,19 @@ class Prerequisites(object):
             raise AssertionError('Error Code: {}, Can not create prerequisite record.'
                                  .format(response.status_code))
 
+    def create_record_manual(self, ext_client, data, path):
+        # authenticate
+        self.auth(ext_client)
+        # get csrf
+        csrf_token = self.get_csrf(ext_client)
+        # get API response
+        response = ext_client.post(path, data=data, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        if response.status_code == status.HTTP_201_CREATED:
+            return response.data
+        else:
+            raise AssertionError('Error Code: {}, Can not create manual prerequisite record.'
+                                 .format(response.status_code))
+
     def role_superuser(self):
         call_command('initialize-settings')
         call_command('initialize-status')
@@ -472,6 +485,7 @@ class GetOneNoStatus(APITestCase):
         self.ok_object_data_unique = str()
         self.data_available = False
         self.test_data = str()
+        self.pre_data = None
 
         # flag for execution
         self.execute = False
@@ -481,6 +495,9 @@ class GetOneNoStatus(APITestCase):
             self.client = Client()
             self.prerequisites.role_superuser()
             self.prerequisites.role_no_permissions()
+            if self.pre_data:
+                for record in self.pre_data:
+                    self.prerequisites.create_record_manual(self.client, record['data'], record['path'])
             if not self.data_available:
                 # create ok object
                 self.ok_object = self.prerequisites.create_record(self.client, self.ok_object_data)
@@ -569,6 +586,7 @@ class PostNew(APITestCase):
         self.prerequisites = None
         self.valid_payload = None
         self.invalid_payloads = None
+        self.pre_data = None
 
         # flag for execution
         self.execute = False
@@ -582,6 +600,9 @@ class PostNew(APITestCase):
             self.prerequisites.role_superuser()
             self.prerequisites.role_no_write_permissions()
             self.ok_path = self.base_path
+            if self.pre_data:
+                for record in self.pre_data:
+                    self.prerequisites.create_record_manual(self.client, record['data'], record['path'])
 
     def test_401(self):
         if self.execute:
@@ -1159,6 +1180,7 @@ class DeleteOneNoStatus(APITestCase):
         self.ok_object_data = None
         self.ok_object_data_unique = str()
         self.prerequisites = None
+        self.pre_data = None
 
         # flag for execution
         self.execute = False
@@ -1169,6 +1191,9 @@ class DeleteOneNoStatus(APITestCase):
             self.prerequisites.role_superuser()
             self.prerequisites.role_superuser_two()
             self.prerequisites.role_no_write_permissions()
+            if self.pre_data:
+                for record in self.pre_data:
+                    self.prerequisites.create_record_manual(self.client, record['data'], record['path'])
             # create ok object in status draft
             self.ok_object = self.prerequisites.create_record(self.client, self.ok_object_data)
             # create ok path
@@ -1559,6 +1584,7 @@ class PatchOneNoStatus(APITestCase):
         self.invalid_payload = None
         self.data_available = False
         self.test_data = str()
+        self.pre_data = None
 
         # flag for execution
         self.execute = False
@@ -1569,6 +1595,9 @@ class PatchOneNoStatus(APITestCase):
             self.prerequisites.role_superuser()
             self.prerequisites.role_superuser_two()
             self.prerequisites.role_no_write_permissions()
+            if self.pre_data:
+                for record in self.pre_data:
+                    self.prerequisites.create_record_manual(self.client, record['data'], record['path'])
             if not self.data_available:
                 # create ok object in status draft
                 self.ok_object = self.prerequisites.create_record(self.client, self.ok_object_data)

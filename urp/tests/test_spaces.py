@@ -44,30 +44,35 @@ class GetAllSpaces(GetAll):
         self.execute = True
 
 
-class GetOneNoStatusTag(GetOneNoStatus):
+class GetOneNoStatusSpaces(GetOneNoStatus):
     def __init__(self, *args, **kwargs):
-        super(GetOneNoStatusTag, self).__init__(*args, **kwargs)
+        super(GetOneNoStatusSpaces, self).__init__(*args, **kwargs)
         self.base_path = BASE_PATH
         self.prerequisites = Prerequisites(base_path=self.base_path)
+
         self.model = Spaces
         self.serializer = SpacesReadWriteSerializer
         self.execute = True
         self.ok_object_data = {'space': 'all',
-                               'tags': ['all,qc,ops'],
-                               'users': ['userone,usertwo']}
+                               'tags': ['all', 'two'],
+                               'users': ['superuser']}
         self.ok_object_data_unique = 'space'
+        self.pre_data = [{'data': {'tag': 'all'},
+                          'path': reverse('tags-list')},
+                         {'data': {'tag': 'two'},
+                          'path': reverse('tags-list')}]
 
 
 # post
-class PostNewTag(PostNew):
+class PostNewSpaces(PostNew):
     def __init__(self, *args, **kwargs):
-        super(PostNewTag, self).__init__(*args, **kwargs)
+        super(PostNewSpaces, self).__init__(*args, **kwargs)
         self.base_path = BASE_PATH
         self.model = Spaces
         self.prerequisites = Prerequisites(base_path=self.base_path)
         self.valid_payload = {'space': 'all',
-                              'tags': ['all,qc,ops'],
-                              'users': ['userone,usertwo']}
+                              'tags': ['all,two'],
+                              'users': ['superuser']}
         invalid_payload = {'space': ''}
         self.invalid_payloads = [dict(),
                                  invalid_payload,
@@ -75,41 +80,52 @@ class PostNewTag(PostNew):
                                   'tags': ['all,qc,ops']},
                                  {'space': 'all222222d',
                                   'tags': [],
-                                  'users': ['userone,usertwo']}
-                                 ]
+                                  'users': ['userone,usertwo']}]
+        self.pre_data = [{'data': {'tag': 'all'},
+                          'path': reverse('tags-list')},
+                         {'data': {'tag': 'two'},
+                          'path': reverse('tags-list')}]
         self.execute = True
         self.status = False
 
 
 # delete
-class DeleteOneTag(DeleteOneNoStatus):
+class DeleteOneSpaces(DeleteOneNoStatus):
     def __init__(self, *args, **kwargs):
-        super(DeleteOneTag, self).__init__(*args, **kwargs)
+        super(DeleteOneSpaces, self).__init__(*args, **kwargs)
         self.base_path = BASE_PATH
         self.model = Spaces
         self.prerequisites = Prerequisites(base_path=self.base_path)
         self.serializer = SpacesReadWriteSerializer
         self.ok_object_data = {'space': 'all',
-                               'tags': ['all,qc,ops'],
-                               'users': ['userone,usertwo']}
+                               'tags': ['all,two'],
+                               'users': ['superuser']}
+        self.pre_data = [{'data': {'tag': 'all'},
+                          'path': reverse('tags-list')},
+                         {'data': {'tag': 'two'},
+                          'path': reverse('tags-list')}]
         self.ok_object_data_unique = 'space'
         self.execute = True
 
 
 # patch
-class PatchOneTag(PatchOneNoStatus):
+class PatchOneSpaces(PatchOneNoStatus):
     def __init__(self, *args, **kwargs):
-        super(PatchOneTag, self).__init__(*args, **kwargs)
+        super(PatchOneSpaces, self).__init__(*args, **kwargs)
         self.base_path = BASE_PATH
         self.model = Spaces
         self.prerequisites = Prerequisites(base_path=self.base_path)
         self.serializer = SpacesReadWriteSerializer
         self.ok_object_data_unique = 'space'
         self.ok_object_data = {'space': 'all',
-                               'tags': ['all,qc,ops'],
-                               'users': ['userone,usertwo']}
+                               'tags': ['all,two'],
+                               'users': ['superuser']}
         self.valid_payload = {'space': 'all',
-                              'tags': ['all,qc,ops,etc'],
-                              'users': ['userone,usertwo,userthree']}
+                              'tags': ['all'],
+                              'users': ['superuser']}
+        self.pre_data = [{'data': {'tag': 'all'},
+                          'path': reverse('tags-list')},
+                         {'data': {'tag': 'two'},
+                          'path': reverse('tags-list')}]
         self.invalid_payload = {'space': ''}
         self.execute = True

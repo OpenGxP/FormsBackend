@@ -558,6 +558,22 @@ class SpacesReadWriteSerializer(GlobalReadWriteSerializer):
         model = Spaces
         fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_CALCULATED
 
+    def validate_users(self, value):
+        allowed = Users.objects.get_by_natural_key_productive_list('username')
+        value_list = value.split(',')
+        for item in value_list:
+            if item not in allowed:
+                raise serializers.ValidationError('Not allowed to use "{}".'.format(item))
+        return value
+
+    def validate_tags(self, value):
+        allowed = Tags.objects.get_by_natural_key_productive_list('tag')
+        value_list = value.split(',')
+        for item in value_list:
+            if item not in allowed:
+                raise serializers.ValidationError('Not allowed to use "{}".'.format(item))
+        return value
+
 
 # delete
 class SpacesDeleteSerializer(GlobalReadWriteSerializer):
@@ -839,6 +855,14 @@ class UsersWriteSerializer(GlobalReadWriteSerializer):
         # to control field order in response
         fields = Users.objects.GET_MODEL_ORDER + Users.objects.GET_BASE_ORDER_STATUS_MANAGED + \
             Users.objects.GET_BASE_CALCULATED + ('password_verification',)
+
+    def validate_roles(self, value):
+        allowed = Roles.objects.get_by_natural_key_productive_list('role')
+        value_list = value.split(',')
+        for item in value_list:
+            if item not in allowed:
+                raise serializers.ValidationError('Not allowed to use "{}".'.format(item))
+        return value
 
 
 class UsersNewVersionSerializer(GlobalReadWriteSerializer):
