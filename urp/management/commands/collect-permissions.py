@@ -42,7 +42,8 @@ class Command(BaseCommand):
         models = apps.all_models['urp']
         models.update(apps.all_models['basics'])
         for model in models:
-            if model == 'tokens':
+            if model == 'tokens' or model == 'vault' or model == 'status' or model == 'permissions' \
+                    or model == 'permissionslog' or model == 'statuslog':
                 continue
             for key, value in models[model].perms.items():
                 data = {'model': model,

@@ -381,7 +381,7 @@ def request_password_reset_email_view(request):
         token = Tokens.objects.create_token(username=user.username, email=email)
         data = {'fullname': user.get_full_name(),
                 'url': '{}{}'.format(settings.EMAIL_BASE_URL,
-                                     reverse('password-reset-email-view', kwargs={'token': token.id})),
+                                     reverse('public-password-reset-email-view', kwargs={'token': token.id})),
                 'expiry_timestamp': token.expiry_timestamp}
         html_message = render_email_from_template(template_file_name='email_password_reset_ok.html', data=data)
     else:
@@ -397,81 +397,9 @@ def request_password_reset_email_view(request):
 # PASSWORD_RESET_EMAIL #
 ########################
 
-@api_view(['GET', 'POST'])
+@csrf_exempt
+@api_view(['POST'])
 def password_reset_email_view(request, token):
-    @csrf_exempt
-    def post(_request):
-        # data and field validation
-        if not hasattr(request, 'data'):
-            raise serializers.ValidationError('Fields "token", "password_new" and "password_new_verification" '
-                                              'are required.')
-
-        error_dict = dict()
-        field_error = ['This filed is required.']
-
-        if 'password_new' not in request.data:
-            error_dict['password_new'] = field_error
-        if 'password_new_verification' not in request.data:
-            error_dict['password_new_verification'] = field_error
-
-        # validate if at least one question is answered
-        flag = False
-        question_answer_fields = vault.question_answers_fields()
-        for answer in question_answer_fields.values():
-            if answer in request.data:
-                flag = True
-                break
-
-        if not flag:
-            error_dict['answer_one'] = 'At least one answer field is required.'
-            error_dict['answer_two'] = 'At least one answer field is required.'
-            error_dict['answer_three'] = 'At least one answer field is required.'
-
-        if error_dict:
-            raise serializers.ValidationError(error_dict)
-
-        # validate security questions
-        answers = vault.get_answers
-        for answer in question_answer_fields.values():
-            if answer in request.data:
-                raw_answer = request.data[answer]
-                if not check_password(raw_answer, answers[answer]):
-                    error = {answer: 'Security question was not answered correctly.'}
-                    raise serializers.ValidationError(error)
-
-        # validate password data
-        validate_password_input(request.data)
-
-        # FO-147: new password can not be equal to previous password
-        raw_pw = request.data['password_new']
-        if check_password(raw_pw, vault.password):
-            raise serializers.ValidationError('New password is identical to old password. Password must be changed.')
-
-        # update vault with new password
-        now = timezone.now()
-        create_update_vault(data=request.data, instance=vault, action=settings.DEFAULT_LOG_PASSWORD,
-                            user=vault.username, now=now, self_pw=True)
-
-        # in case user is in status blocked, set effective
-        user = Users.objects.get_valid_by_key(vault.username)
-        if user.status.id == Status.objects.blocked:
-            activate_user(user=user, action_user=user.username, now=now)
-
-        # inform user about successful password change
-        email_data = {'fullname': user.get_full_name()}
-        html_message = render_email_from_template(template_file_name='email_password_changed.html', data=email_data)
-        send_email(subject='OpenGxP Password Changed', html_message=html_message, email=token.email)
-
-        # delete token
-        token.delete()
-
-        return Response(status=http_status.HTTP_200_OK)
-
-    def get(_request):
-        # return questions to be answered
-        questions = vault.get_questions
-        return Response(data=questions, status=http_status.HTTP_200_OK)
-
     try:
         uuid_token = UUID(token)
     except ValueError:
@@ -491,10 +419,101 @@ def password_reset_email_view(request, token):
     except ValidationError:
         return Response(status=http_status.HTTP_400_BAD_REQUEST)
 
-    if request.method == 'GET':
-        return get(request)
-    if request.method == 'POST':
-        return post(request)
+    # data and field validation
+    if not hasattr(request, 'data'):
+        raise serializers.ValidationError('Fields "token", "password_new" and "password_new_verification" '
+                                          'are required.')
+
+    error_dict = dict()
+    field_error = ['This filed is required.']
+
+    if 'password_new' not in request.data:
+        error_dict['password_new'] = field_error
+    if 'password_new_verification' not in request.data:
+        error_dict['password_new_verification'] = field_error
+
+    # validate if at least one question is answered
+    flag = False
+    question_answer_fields = vault.question_answers_fields()
+    for answer in question_answer_fields.values():
+        if answer in request.data:
+            flag = True
+            break
+
+    if not flag:
+        error_dict['answer_one'] = 'At least one answer field is required.'
+        error_dict['answer_two'] = 'At least one answer field is required.'
+        error_dict['answer_three'] = 'At least one answer field is required.'
+
+    if error_dict:
+        raise serializers.ValidationError(error_dict)
+
+    # validate security questions
+    answers = vault.get_answers
+    for answer in question_answer_fields.values():
+        if answer in request.data:
+            raw_answer = request.data[answer]
+            if not check_password(raw_answer, answers[answer]):
+                error = {answer: 'Security question was not answered correctly.'}
+                raise serializers.ValidationError(error)
+
+    # validate password data
+    validate_password_input(request.data)
+
+    # FO-147: new password can not be equal to previous password
+    raw_pw = request.data['password_new']
+    if check_password(raw_pw, vault.password):
+        raise serializers.ValidationError('New password is identical to old password. Password must be changed.')
+
+    # update vault with new password
+    now = timezone.now()
+    create_update_vault(data=request.data, instance=vault, action=settings.DEFAULT_LOG_PASSWORD,
+                        user=vault.username, now=now, self_pw=True)
+
+    # in case user is in status blocked, set effective
+    user = Users.objects.get_valid_by_key(vault.username)
+    if user.status.id == Status.objects.blocked:
+        activate_user(user=user, action_user=user.username, now=now)
+
+    # inform user about successful password change
+    email_data = {'fullname': user.get_full_name()}
+    html_message = render_email_from_template(template_file_name='email_password_changed.html', data=email_data)
+    send_email(subject='OpenGxP Password Changed', html_message=html_message, email=token.email)
+
+    # delete token
+    token.delete()
+
+    return Response(status=http_status.HTTP_200_OK)
+
+
+###############################
+# PUBLIC_PASSWORD_RESET_EMAIL #
+###############################
+
+@api_view(['GET'])
+def public_password_reset_email_view(request, token):
+    try:
+        uuid_token = UUID(token)
+    except ValueError:
+        return Response(status=http_status.HTTP_400_BAD_REQUEST)
+
+    try:
+        token = Tokens.objects.get(id=uuid_token)
+        # check if token exists and is valid
+        if not Tokens.objects.check_token_valid(token=uuid_token):
+            raise serializers.ValidationError('Token is expired. Please request new password reset.')
+
+        # get user instance
+        vault = Vault.objects.get(username=token.username)
+
+    except Tokens.DoesNotExist:
+        return Response(status=http_status.HTTP_404_NOT_FOUND)
+    except ValidationError:
+        return Response(status=http_status.HTTP_400_BAD_REQUEST)
+
+    # return questions to be answered
+    questions = vault.get_questions
+    return Response(data=questions, status=http_status.HTTP_200_OK)
 
 
 ########
@@ -576,7 +595,7 @@ def status_log_list(request):
 @api_view(['GET'])
 @auth_required()
 @auto_logout()
-@perm_required('02.01')
+@perm_required('{}.01'.format(Roles.MODEL_ID))
 def permissions_list(request):
     """
     List all permissions.
@@ -594,7 +613,7 @@ def permissions_list(request):
 @api_view(['GET'])
 @auth_required()
 @auto_logout()
-@perm_required('08.01')
+@perm_required('{}.01'.format(RolesLog.MODEL_ID))
 def permissions_log_list(request):
     """
     List all permissions log records.
@@ -1189,8 +1208,10 @@ def meta_list(request, dialog):
                 # settings non-editable field for better visualisation
                 if dialog == 'settings' and f.name == 'key':
                     data['post'][f.name]['editable'] = False
+                    data['post'][f.name]['required'] = False
                 if dialog == 'settings' and f.name == 'default':
                     data['post'][f.name]['editable'] = False
+                    data['post'][f.name]['required'] = False
 
             if dialog == 'users':
                 # add calculated field "password_verification"
