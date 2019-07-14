@@ -16,6 +16,9 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+# python imports
+from os import path
+
 # crypto imports
 from cryptography.fernet import Fernet
 
@@ -31,11 +34,14 @@ class Command(BaseCommand):
     help = 'Generate AES key.'
 
     def handle(self, *args, **options):
-        # generate key
-        key = Fernet.generate_key()
+        if path.isfile(CRYPTO_KEY):
+            self.stdout.write(self.style.SUCCESS('Crypto key already exists.'))
+        else:
+            # generate key
+            key = Fernet.generate_key()
 
-        # save key to file
-        with open(CRYPTO_KEY, 'wb') as file:
-            file.write(key)
+            # save key to file
+            with open(CRYPTO_KEY, 'wb') as file:
+                file.write(key)
 
-        self.stdout.write(self.style.SUCCESS('Successfully generated crypto key.'))
+            self.stdout.write(self.style.SUCCESS('Successfully generated crypto key.'))
