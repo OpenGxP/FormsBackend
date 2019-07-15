@@ -39,7 +39,6 @@ def init_server(host, port, use_ssl):
             # generate tls object
             tls = Tls(validate=ssl.CERT_REQUIRED,
                       ca_certs_file='{}ca_certs_file.pem'.format(settings.LDAP_CA_CERTS_DIR),
-                      valid_names='test',
                       version=ssl.PROTOCOL_TLS)
 
             return Server(host=host,
