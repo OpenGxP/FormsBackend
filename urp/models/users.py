@@ -330,7 +330,9 @@ class Users(AbstractBaseUser, GlobalModel):
     MODEL_CONTEXT = 'Users'
 
     def get_full_name(self):
-        return _('{} {}').format(self.first_name, self.last_name)
+        if self.first_name == '' and self.last_name == '':
+            return self.username
+        return _('{} {} ({})').format(self.first_name, self.last_name, self.username)
 
     def get_short_name(self):
         return _('{} - {} {}').format(self.username)

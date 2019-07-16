@@ -29,8 +29,7 @@ from .views import permissions_list, roles_list, roles_detail, status_list, \
     settings_detail, settings_log_list, logout_auto_view, sod_list, sod_detail, sod_log_list, sod_status, \
     users_password_list, change_password_view, user_change_password_view, user_change_questions_view, \
     request_password_reset_email_view, password_reset_email_view, email_detail, email_list, email_log_list, \
-    user_profile_list, tags_detail, tags_list, tags_log_list, spaces_list, spaces_detail, spaces_log_list, \
-    public_password_reset_email_view
+    user_profile_list, tags_detail, tags_list, tags_log_list, spaces_list, spaces_detail, spaces_log_list
 
 
 urlpatterns = [
@@ -43,9 +42,6 @@ urlpatterns = [
          name='request-password-reset-email-view'),
     path('{}password_reset_email/<str:token>'.format(settings.BASE_URL), password_reset_email_view,
          name='password-reset-email-view'),
-    # for public use from email
-    path('public/password_reset_email/<str:token>'.format(settings.BASE_URL), public_password_reset_email_view,
-         name='public-password-reset-email-view'),
     # user profile
     path('{}user/profile'.format(settings.BASE_URL), user_profile_list,
          name='user-profile-list'),
