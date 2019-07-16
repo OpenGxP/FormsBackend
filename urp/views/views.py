@@ -222,6 +222,18 @@ def login_view(request):
         return Response(status=http_status.HTTP_400_BAD_REQUEST)
 
 
+#############
+# CASL_ONLY #
+#############
+
+@api_view(['GET'])
+@auth_required()
+@auto_logout()
+def casl_view(request):
+    data = {'casl': Roles.objects.casl(request.user.roles.split(','))}
+    return Response(data=data, status=http_status.HTTP_200_OK)
+
+
 ###################
 # PASSWORD_CHANGE #
 ###################
