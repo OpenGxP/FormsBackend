@@ -402,7 +402,7 @@ def request_password_reset_email_view(request):
         # create token and send email with token url
         token = Tokens.objects.create_token(username=user.username, email=email)
         data = {'fullname': user.get_full_name(),
-                'url': '{}/password_reset_email/{}'.format(settings.EMAIL_BASE_URL, token.id),
+                'url': '{}/#/password_reset_email/{}'.format(settings.EMAIL_BASE_URL, token.id),
                 'expiry_timestamp': token.expiry_timestamp}
         html_message = render_email_from_template(template_file_name='email_password_reset_ok.html', data=data)
     else:
