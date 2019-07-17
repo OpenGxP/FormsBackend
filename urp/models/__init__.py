@@ -27,3 +27,4 @@ from .spaces import Spaces, SpacesLog
 from .users import Users, UsersLog
 from .ldap import LDAP, LDAPLog
 from .email import Email, EmailLog
+from .lists import Lists, ListsLog

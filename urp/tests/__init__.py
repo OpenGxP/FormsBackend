@@ -370,6 +370,7 @@ class GetOne(APITestCase):
         self.prerequisites = None
         self.serializer = None
         self.ok_object_data = None
+        self.pre_data = None
 
         # flag for execution
         self.execute = False
@@ -380,6 +381,9 @@ class GetOne(APITestCase):
             self.prerequisites.role_superuser()
             self.prerequisites.role_no_permissions()
             # create ok object
+            if self.pre_data:
+                for record in self.pre_data:
+                    self.prerequisites.create_record_manual(self.client, record['data'], record['path'])
             self.ok_object = self.prerequisites.create_record(self.client, self.ok_object_data)
             # create ok path
             self.ok_path = '{}/{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], self.ok_object['version'])
@@ -712,6 +716,7 @@ class PostNewVersion(APITestCase):
         self.fail_object_draft_data = None
         self.fail_object_circulation_data = None
         self.prerequisites = None
+        self.pre_data = None
 
         # flag for execution
         self.execute = False
@@ -724,6 +729,9 @@ class PostNewVersion(APITestCase):
             self.prerequisites.role_no_write_permissions()
             self.prerequisites.role_no_version_archived()
             # create ok object in status draft
+            if self.pre_data:
+                for record in self.pre_data:
+                    self.prerequisites.create_record_manual(self.client, record['data'], record['path'])
             self.ok_object = self.prerequisites.create_record(self.client, self.ok_object_data)
             # push ok object to ok status
             # authenticate
@@ -943,6 +951,7 @@ class DeleteOne(APITestCase):
         self.serializer = None
         self.ok_object_data = None
         self.prerequisites = None
+        self.pre_data = None
 
         # flag for execution
         self.execute = False
@@ -954,6 +963,9 @@ class DeleteOne(APITestCase):
             self.prerequisites.role_superuser_two()
             self.prerequisites.role_no_write_permissions()
             # create ok object in status draft
+            if self.pre_data:
+                for record in self.pre_data:
+                    self.prerequisites.create_record_manual(self.client, record['data'], record['path'])
             self.ok_object = self.prerequisites.create_record(self.client, self.ok_object_data)
             # create ok path
             self.ok_path = '{}/{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], self.ok_object['version'])
@@ -1296,6 +1308,7 @@ class PatchOne(APITestCase):
         self.valid_payload = None
         self.invalid_payload = None
         self.unique_invalid_payload = None
+        self.pre_data = None
 
         # flag for execution
         self.execute = False
@@ -1307,6 +1320,9 @@ class PatchOne(APITestCase):
             self.prerequisites.role_superuser_two()
             self.prerequisites.role_no_write_permissions()
             # create ok object in status draft
+            if self.pre_data:
+                for record in self.pre_data:
+                    self.prerequisites.create_record_manual(self.client, record['data'], record['path'])
             self.ok_object = self.prerequisites.create_record(self.client, self.ok_object_data)
             # create ok path
             self.ok_path = '{}/{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], self.ok_object['version'])
@@ -1711,6 +1727,7 @@ class PatchOneStatus(APITestCase):
         self.serializer = None
         self.ok_object_data = None
         self.prerequisites = None
+        self.pre_data = None
 
         # flag for execution
         self.execute = False
@@ -1734,6 +1751,9 @@ class PatchOneStatus(APITestCase):
             self.prerequisites.role_superuser_two()
             self.prerequisites.role_no_write_permissions()
             # create ok object in status draft
+            if self.pre_data:
+                for record in self.pre_data:
+                    self.prerequisites.create_record_manual(self.client, record['data'], record['path'])
             self.ok_object = self.prerequisites.create_record(self.client, self.ok_object_data)
             # create ok path
             self.ok_path = '{}/{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], self.ok_object['version'])

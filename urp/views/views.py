@@ -56,6 +56,7 @@ from django.middleware.csrf import get_token
 from django.contrib.auth.hashers import make_password, check_password
 from django.contrib.auth.password_validation import password_validators_help_texts
 from django.core.validators import validate_email
+from django.db.models.base import ModelBase
 
 
 ###############
@@ -173,6 +174,12 @@ def api_root(request):
                                                          'patch': True,
                                                          'delete': False,
                                                          'version': False}}},
+            'md': {'root': '/md/',
+                   'subjects': {'lists': {'url': reverse('lists-list', request=request),
+                                          'post': True,
+                                          'patch': True,
+                                          'delete': True,
+                                          'version': True}}},
             'logs': {'root': '/logs/',
                      'subjects': {'central': {'url': reverse('central-log-list', request=request)},
                                   'access': {'url': reverse('access-log-list', request=request)},
@@ -183,7 +190,8 @@ def api_root(request):
                                   'tags': {'url': reverse('tags-log-list', request=request)},
                                   'spaces': {'url': reverse('spaces-log-list', request=request)},
                                   'sod': {'url': reverse('sod-log-list', request=request)},
-                                  'settings': {'url': reverse('settings-log-list', request=request)}}}}
+                                  'settings': {'url': reverse('settings-log-list', request=request)},
+                                  'lists': {'url': reverse('lists-log-list', request=request)}}}}
 
     return Response(root)
 
@@ -1176,7 +1184,7 @@ def meta_list(request, dialog):
                                    'format': _format}
 
         # add post information
-        if dialog in ['users', 'roles', 'ldap', 'settings', 'sod', 'email', 'passwords', 'tags', 'spaces']:
+        if dialog in ['users', 'roles', 'ldap', 'settings', 'sod', 'email', 'passwords', 'tags', 'spaces', 'lists']:
             exclude = model.objects.POST_BASE_EXCLUDE + model.objects.POST_MODEL_EXCLUDE
             fields = [i for i in model._meta.get_fields() if i.name not in exclude]
             for f in fields:
@@ -1195,9 +1203,17 @@ def meta_list(request, dialog):
                 if model.LOOKUP:
                     if f.name in model.LOOKUP:
                         data_model = model.LOOKUP[f.name]['model']
-                        data['post'][f.name]['lookup'] = {
-                            'data': data_model.objects.get_by_natural_key_productive_list(model.LOOKUP[f.name]['key']),
-                            'multi': model.LOOKUP[f.name]['multi']}
+                        if not isinstance(data_model, ModelBase):
+                            data['post'][f.name]['lookup'] = {
+                                'data': data_model,
+                                'multi': model.LOOKUP[f.name]['multi'],
+                                'method': model.LOOKUP[f.name]['method']}
+                        else:
+                            data['post'][f.name]['lookup'] = {
+                                'data': data_model.objects.get_by_natural_key_productive_list(
+                                    model.LOOKUP[f.name]['key']),
+                                'multi': model.LOOKUP[f.name]['multi'],
+                                'method': model.LOOKUP[f.name]['method']}
 
                 # settings non-editable field for better visualisation
                 if dialog == 'settings' and f.name == 'key':

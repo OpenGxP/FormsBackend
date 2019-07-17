@@ -30,7 +30,7 @@ from .views import permissions_list, roles_list, roles_detail, status_list, \
     users_password_list, change_password_view, user_change_password_view, user_change_questions_view, \
     request_password_reset_email_view, password_reset_email_view, email_detail, email_list, email_log_list, \
     user_profile_list, tags_detail, tags_list, tags_log_list, spaces_list, spaces_detail, spaces_log_list, \
-    casl_view
+    casl_view, lists_list, lists_detail, lists_log_list, lists_status
 
 
 urlpatterns = [
@@ -68,13 +68,14 @@ urlpatterns = [
     path('{}logs/settings'.format(settings.BASE_URL), settings_log_list, name='settings-log-list'),
     path('{}logs/tags'.format(settings.BASE_URL), tags_log_list, name='tags-log-list'),
     path('{}logs/spaces'.format(settings.BASE_URL), spaces_log_list, name='spaces-log-list'),
+    path('{}logs/lists'.format(settings.BASE_URL), lists_log_list, name='lists-log-list'),
     # ldap
     path('{}admin/ldap'.format(settings.BASE_URL), ldap_list, name='ldap-list'),
     path('{}admin/ldap/<str:host>'.format(settings.BASE_URL), ldap_detail, name='ldap-detail'),
     # tags
     path('{}admin/tags'.format(settings.BASE_URL), tags_list, name='tags-list'),
     path('{}admin/tags/<str:tag>'.format(settings.BASE_URL), tags_detail, name='tags-detail'),
-    # tags
+    # spaces
     path('{}admin/spaces'.format(settings.BASE_URL), spaces_list, name='spaces-list'),
     path('{}admin/spaces/<str:space>'.format(settings.BASE_URL), spaces_detail, name='spaces-detail'),
     # email
@@ -101,6 +102,11 @@ urlpatterns = [
     path('{}admin/passwords'.format(settings.BASE_URL), users_password_list, name='users-password-list'),
     path('{}admin/passwords/<str:username>'.format(settings.BASE_URL), change_password_view,
          name='change-password-view'),
+    # lists
+    path('{}md/lists'.format(settings.BASE_URL), lists_list, name='lists-list'),
+    path('{}md/lists/<str:lifecycle_id>/<int:version>'.format(settings.BASE_URL), lists_detail),
+    path('{}md/lists/<str:lifecycle_id>/<int:version>/<str:status>'.format(settings.BASE_URL), lists_status,
+         name='lists-status'),
     # root
     path('{}'.format(settings.BASE_URL[:-1]), api_root),
     # audit trails

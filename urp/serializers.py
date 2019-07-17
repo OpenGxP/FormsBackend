@@ -21,7 +21,7 @@ from rest_framework import serializers
 
 # custom imports
 from urp.models import Permissions, Users, Roles, AccessLog, PermissionsLog, RolesLog, UsersLog, LDAP, LDAPLog, \
-    SoD, SoDLog, Vault, Email, EmailLog, Tags, TagsLog, Spaces, SpacesLog
+    SoD, SoDLog, Vault, Email, EmailLog, Tags, TagsLog, Spaces, SpacesLog, Lists, ListsLog
 from basics.custom import generate_checksum, generate_to_hash, value_to_int
 from basics.models import Status, AVAILABLE_STATUS, StatusLog, CentralLog, Settings, SettingsLog
 from .decorators import require_STATUS_CHANGE, require_POST, require_DELETE, require_PATCH, require_NONE, \
@@ -587,6 +587,65 @@ class SpacesLogReadSerializer(GlobalReadWriteSerializer):
     class Meta:
         model = SpacesLog
         fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_ORDER_LOG + model.objects.GET_BASE_CALCULATED
+
+
+#########
+# LISTS #
+#########
+
+# read / add / edit
+class ListsReadWriteSerializer(GlobalReadWriteSerializer):
+    status = serializers.CharField(source='get_status', read_only=True)
+
+    class Meta:
+        model = Lists
+        extra_kwargs = {'version': {'required': False}}
+        fields = model.objects.GET_MODEL_ORDER + Roles.objects.GET_BASE_ORDER_STATUS_MANAGED + \
+            model.objects.GET_BASE_CALCULATED
+
+    def validate_type(self, value):
+        allowed = Lists.LOOKUP['type']['model']
+        if value not in allowed:
+            raise serializers.ValidationError('Not allowed to use "{}".'.format(value))
+        return value
+
+    def validate_tag(self, value):
+        allowed = Tags.objects.get_by_natural_key_productive_list('tag')
+        if value not in allowed:
+            raise serializers.ValidationError('Not allowed to use "{}".'.format(value))
+        return value
+
+
+# new version / status
+class ListsNewVersionStatusSerializer(GlobalReadWriteSerializer):
+    status = serializers.CharField(source='get_status', read_only=True)
+
+    class Meta:
+        model = Lists
+        extra_kwargs = {'version': {'required': False},
+                        'list': {'required': False},
+                        'type': {'required': False},
+                        'tag': {'required': False},
+                        'elements': {'required': False}}
+        fields = model.objects.GET_MODEL_ORDER + Roles.objects.GET_BASE_ORDER_STATUS_MANAGED + \
+            model.objects.GET_BASE_CALCULATED
+
+
+# delete
+class ListsDeleteSerializer(GlobalReadWriteSerializer):
+    class Meta:
+        model = Lists
+        fields = ()
+
+
+# read logs
+class ListsLogReadSerializer(GlobalReadWriteSerializer):
+    status = serializers.CharField(source='get_status', read_only=True)
+
+    class Meta:
+        model = ListsLog
+        fields = model.objects.GET_MODEL_ORDER + Roles.objects.GET_BASE_ORDER_STATUS_MANAGED + \
+            model.objects.GET_BASE_ORDER_LOG + model.objects.GET_BASE_CALCULATED
 
 
 ###############

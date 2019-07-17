@@ -133,7 +133,9 @@ class SoD(GlobalModel):
     # lookup fields
     LOOKUP = {'base': {'model': Roles,
                        'key': 'role',
-                       'multi': False},
+                       'multi': False,
+                       'method': 'select'},
               'conflict': {'model': Roles,
                            'key': 'role',
-                           'multi': False}}
+                           'multi': False,
+                           'method': 'select'}}

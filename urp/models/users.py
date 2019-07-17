@@ -355,4 +355,5 @@ class Users(AbstractBaseUser, GlobalModel):
     # lookup fields
     LOOKUP = {'roles': {'model': Roles,
                         'key': 'role',
-                        'multi': True}}
+                        'multi': True,
+                        'method': 'select'}}

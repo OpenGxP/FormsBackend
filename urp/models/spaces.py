@@ -123,7 +123,9 @@ class Spaces(GlobalModel):
     # lookup fields
     LOOKUP = {'tags': {'model': Tags,
                        'key': 'tag',
-                       'multi': True},
+                       'multi': True,
+                       'method': 'select'},
               'users': {'model': Users,
                         'key': 'username',
-                        'multi': True}}
+                        'multi': True,
+                        'method': 'select'}}
