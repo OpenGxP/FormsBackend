@@ -28,6 +28,7 @@ from urp.serializers import ListsReadWriteSerializer, ListsDeleteSerializer, Lis
     ListsLogReadSerializer
 from urp.decorators import perm_required, auth_required
 from basics.models import Status
+from urp.models.spaces import Spaces
 
 # django imports
 from django.core.exceptions import ValidationError
@@ -59,8 +60,12 @@ def lists_list(request):
     @perm_required('{}.01'.format(Lists.MODEL_ID))
     @ensure_csrf_cookie
     def get(_request):
-        roles = Lists.objects.all()
-        serializer = ListsReadWriteSerializer(roles, many=True)
+        # get tags as , separated string
+        tags_str = Spaces.objects.get_tags_by_username(username=_request.user.username)
+        # make a list to pass in queryset
+        tags_list = tags_str[0].split(',')
+        lists = Lists.objects.filter(tag__in=tags_list).all()
+        serializer = ListsReadWriteSerializer(lists, many=True)
         return Response(serializer.data)
 
     if request.method == 'GET':
@@ -216,6 +221,10 @@ def lists_status(request, lifecycle_id, version, status):
 @auto_logout()
 @perm_required('{}.01'.format(ListsLog.MODEL_ID))
 def lists_log_list(request):
-    logs = ListsLog.objects.all()
+    # get tags as , separated string
+    tags_str = Spaces.objects.get_tags_by_username(username=request.user.username)
+    # make a list to pass in queryset
+    tags_list = tags_str[0].split(',')
+    logs = ListsLog.objects.filter(tag__in=tags_list).all()
     serializer = ListsLogReadSerializer(logs, many=True)
     return Response(serializer.data)

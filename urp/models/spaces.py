@@ -84,6 +84,9 @@ class SpacesManager(GlobalManager):
     # meta
     GET_MODEL_ORDER = SpacesLogManager.GET_MODEL_ORDER
 
+    def get_tags_by_username(self, username):
+        return self.filter(users__contains=username).values_list('tags', flat=True)
+
 
 # table
 class Spaces(GlobalModel):
