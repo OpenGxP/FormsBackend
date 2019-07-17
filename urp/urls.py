@@ -30,14 +30,13 @@ from .views import permissions_list, roles_list, roles_detail, status_list, \
     users_password_list, change_password_view, user_change_password_view, user_change_questions_view, \
     request_password_reset_email_view, password_reset_email_view, email_detail, email_list, email_log_list, \
     user_profile_list, tags_detail, tags_list, tags_log_list, spaces_list, spaces_detail, spaces_log_list, \
-    casl_view, lists_list, lists_detail, lists_log_list, lists_status
+    user_permissions_view, lists_list, lists_detail, lists_log_list, lists_status
 
 
 urlpatterns = [
     # auth
     path('{}login'.format(settings.BASE_URL), login_view, name='login-view'),
     path('{}csrftoken'.format(settings.BASE_URL), get_csrf_token, name='get_csrf_token'),
-    path('{}casl'.format(settings.BASE_URL), casl_view, name='casl-view'),
     path('{}logout'.format(settings.BASE_URL), logout_view, name='logout-view'),
     path('{}logout_auto'.format(settings.BASE_URL), logout_auto_view, name='logout-auto-view'),
     path('{}request_password_reset_email'.format(settings.BASE_URL), request_password_reset_email_view,
@@ -51,6 +50,7 @@ urlpatterns = [
          name='user-change-questions-view'),
     path('{}user/change_password'.format(settings.BASE_URL), user_change_password_view,
          name='user-change-password-view'),
+    path('{}user/permissions'.format(settings.BASE_URL), user_permissions_view, name='user-permissions-view'),
     # status
     path('{}admin/status'.format(settings.BASE_URL), status_list, name='status-list'),
     # permissions

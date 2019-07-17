@@ -136,6 +136,19 @@ class RolesManager(GlobalManager):
                              'actions': [perm_obj.permission]})
         return casl
 
+    def permissions(self, roles):
+        permissions = []
+        # check all roles of valid user
+        for role in roles:
+            # get all productive versions of each role
+            prod_roles = self.get_by_natural_key_productive(role)
+            # catch the valid version
+            for valid_prod_role in prod_roles:
+                if valid_prod_role.verify_validity_range:
+                    # merge permissions of valid role into permission list
+                    permissions = list(set(permissions + valid_prod_role.permissions.split(',')))
+        return permissions
+
 
 # table
 class Roles(GlobalModel):
