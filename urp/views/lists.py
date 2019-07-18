@@ -63,7 +63,9 @@ def lists_list(request):
         # get tags as , separated string
         tags_str = Spaces.objects.get_tags_by_username(username=_request.user.username)
         # make a list to pass in queryset
-        tags_list = tags_str[0].split(',')
+        tags_list = []
+        if tags_str:
+            tags_list = tags_str[0].split(',')
         lists = Lists.objects.filter(tag__in=tags_list).all()
         serializer = ListsReadWriteSerializer(lists, many=True)
         return Response(serializer.data)
