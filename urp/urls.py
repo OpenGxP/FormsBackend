@@ -103,9 +103,9 @@ urlpatterns = [
     path('{}admin/passwords/<str:username>'.format(settings.BASE_URL), change_password_view,
          name='change-password-view'),
     # lists
-    path('{}md/lists'.format(settings.BASE_URL), lists_list, name='lists-list'),
-    path('{}md/lists/<str:lifecycle_id>/<int:version>'.format(settings.BASE_URL), lists_detail),
-    path('{}md/lists/<str:lifecycle_id>/<int:version>/<str:status>'.format(settings.BASE_URL), lists_status,
+    path('{}admin/lists'.format(settings.BASE_URL), lists_list, name='lists-list'),
+    path('{}admin/lists/<str:lifecycle_id>/<int:version>'.format(settings.BASE_URL), lists_detail),
+    path('{}admin/lists/<str:lifecycle_id>/<int:version>/<str:status>'.format(settings.BASE_URL), lists_status,
          name='lists-status'),
     # root
     path('{}'.format(settings.BASE_URL[:-1]), api_root),
