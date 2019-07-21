@@ -400,6 +400,15 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                     if self.instance.ldap:
                         validate_password_input(data=data, initial=True)
 
+            # FO-156: for user updates email shall only be used by own lifecycle record, not by other users
+            @require_NONE
+            @require_USERS
+            def validate_email_not_used_by_other_lifecycle_id(self):
+                references = Users.objects.filter(email__contains=data['email']).values_list('lifecycle_id', flat=True)
+                for ref in references:
+                    if ref != self.instance.lifecycle_id:
+                        raise serializers.ValidationError('Email is is use by another user used.')
+
             @require_NONE
             @require_SETTINGS
             def validate_settings(self):
@@ -476,6 +485,13 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 if not data['ldap']:
                     # perform password check
                     validate_password_input(data=data, initial=True)
+
+            # FO-156: for new users email must not yet be used by other users
+            @require_NEW
+            @require_USERS
+            def validate_email_not_used_by_other_lifecycle_id(self):
+                if Users.objects.filter(email__contains=data['email']):
+                    raise serializers.ValidationError('Email is is use by another user used.')
 
             @require_NEW
             @require_SOD
