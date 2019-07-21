@@ -42,17 +42,23 @@ class Prerequisites(object):
         # second superuser
         self.username_two = 'superusertesttwo'
         self.password_two = 'test123123123asd'
+        self.email_two = 'usertwo@opengxp.org'
         # third superuser
         self.username_three = 'superuserthree'
         self.password_three = 'test123123123asd'
+        self.email_three = 'userthree@opengxp.org'
         # user for tests without permissions
         self.username_no_perm = 'usernoperms'
+        self.email_four = 'userfour@opengxp.org'
         # user for valid from tests
         self.username_valid_from = 'uservalidfrom'
+        self.email_five = 'userfive@opengxp.org'
         # user for read only permissions
         self.username_no_write_perm = 'usernowriteperms'
+        self.email_six = 'usersix@opengxp.org'
         # user for no new version_archived permission
         self.username_no_version_archived = 'usernoversionarchived'
+        self.email_seven = 'userseven@opengxp.org'
 
     def create_record(self, ext_client, data):
         # authenticate
@@ -94,19 +100,19 @@ class Prerequisites(object):
         role = 'all_two'
         call_command('create-role', name=role)
         Users.objects.create_superuser(username=self.username_two, password=self.password_two, role=role,
-                                       email=self.email, initial_password=False)
+                                       email=self.email_two, initial_password=False)
 
     def role_superuser_three(self):
         role = 'all_three'
         call_command('create-role', name=role)
         Users.objects.create_superuser(username=self.username_three, password=self.password_three, role=role,
-                                       email=self.email, initial_password=False)
+                                       email=self.email_three, initial_password=False)
 
     def role_no_permissions(self):
         role = 'no_perms'
         call_command('create-role', name=role, permissions='xx.xx,xx.xx')
         Users.objects.create_superuser(username=self.username_no_perm, password=self.password, role=role,
-                                       email=self.email, initial_password=False)
+                                       email=self.email_four, initial_password=False)
 
     def role_no_write_permissions(self):
         models = apps.all_models['urp']
@@ -118,7 +124,7 @@ class Prerequisites(object):
         role = 'no_write_perms'
         call_command('create-role', name=role, permissions=perms[:-1])
         Users.objects.create_superuser(username=self.username_no_write_perm, password=self.password, role=role,
-                                       email=self.email, initial_password=False)
+                                       email=self.email_six, initial_password=False)
 
     def role_no_version_archived(self):
         models = apps.all_models['urp']
@@ -132,13 +138,13 @@ class Prerequisites(object):
         role = 'no_version_archived'
         call_command('create-role', name=role, permissions=perms[:-1])
         Users.objects.create_superuser(username=self.username_no_version_archived, password=self.password, role=role,
-                                       email=self.email, initial_password=False)
+                                       email=self.email_seven, initial_password=False)
 
     def role_past_valid_from(self):
         role = 'past_valid_from'
         call_command('create-role', name=role, valid_from='01-01-2016 00:00:00')
         Users.objects.create_superuser(username=self.username_valid_from, password=self.password, role=role,
-                                       email=self.email, initial_password=False)
+                                       email=self.email_five, initial_password=False)
 
     def auth(self, ext_client):
         ext_client.logout()
@@ -237,7 +243,7 @@ class Prerequisites(object):
         path = '{}/{}/2'.format(reverse('users-list'), user.lifecycle_id)
         data = {'username': self.username,
                 'roles': ['all'],
-                'email': 'example@example.com',
+                'email': 'test@opengxp.org',
                 'valid_from': timezone.now(),
                 'valid_to': timezone.now(),
                 'ldap': False}

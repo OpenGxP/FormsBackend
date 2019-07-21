@@ -14,5 +14,5 @@ python manage.py initialize-status
 python manage.py collect-permissions
 python manage.py create-role --name all
 python manage.py create-superuser --username initial --role all --email test@opengxp.org --pwfile
-python manage.py create-superuser --username usertwo --role all --email test@opengxp.org --pwfile
+python manage.py create-superuser --username usertwo --role all --email new@opengxp.org --pwfile
 python manage.py runserver

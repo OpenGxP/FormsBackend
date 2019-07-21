@@ -118,13 +118,13 @@ class PostNewVersionUser(PostNewVersion):
                                        'password': 'test12345test',
                                        'password_verification': 'test12345test',
                                        'roles': ['all'],
-                                       'email': 'example@example.com',
+                                       'email': 'exampletwo@example.com',
                                        'ldap': False}
         self.fail_object_circulation_data = {'username': 'testtestdrei',
                                              'password': 'test12345test',
                                              'password_verification': 'test12345test',
                                              'roles': ['all'],
-                                             'email': 'example@example.com',
+                                             'email': 'examplethree@example.com',
                                              'ldap': False}
         self.execute = True
 
