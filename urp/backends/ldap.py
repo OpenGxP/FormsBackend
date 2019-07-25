@@ -73,6 +73,9 @@ def connect(server, bind_dn, password):
                           read_only=settings.LDAP_CON_READ_ONLY)
     except exceptions.LDAPBindError as e:
         raise ValidationError('LDAP Error: "{}"'.format(e))
+    # FO-172: catch exception for invalid server certificate and raise validation error
+    except exceptions.LDAPSocketOpenError as e:
+        raise ValidationError('LDAP Error: "{}"'.format(e))
 
 
 def search(con, base, ldap_filter, attributes):
