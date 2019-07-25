@@ -1118,31 +1118,34 @@ def meta_list(request, dialog):
     # determine the model instance from string parameter
 
     if dialog == 'profile':
-        data = {'get': dict()}
-        # add calculated field "valid"
-        data['get']['valid'] = {'verbose_name': 'Valid',
-                                'data_type': 'CharField',
-                                'render': False,
-                                'format': None}
-        # add calculated field "unique"
-        data['get']['unique'] = {'verbose_name': 'Unique',
-                                 'data_type': 'CharField',
-                                 'render': False,
-                                 'format': None}
+        ldap = request.user.ldap
+        data = {'get': {},
+                'ldap': ldap}
+        if not ldap:
+            # add calculated field "valid"
+            data['get']['valid'] = {'verbose_name': 'Valid',
+                                    'data_type': 'CharField',
+                                    'render': False,
+                                    'format': None}
+            # add calculated field "unique"
+            data['get']['unique'] = {'verbose_name': 'Unique',
+                                     'data_type': 'CharField',
+                                     'render': False,
+                                     'format': None}
 
-        # add questions fields
-        data['get']['question_one'] = {'verbose_name': 'Question one',
-                                       'data_type': 'CharField',
-                                       'render': True,
-                                       'format': None}
-        data['get']['question_two'] = {'verbose_name': 'Question two',
-                                       'data_type': 'CharField',
-                                       'render': True,
-                                       'format': None}
-        data['get']['question_three'] = {'verbose_name': 'Question three',
-                                         'data_type': 'CharField',
-                                         'render': True,
-                                         'format': None}
+            # add questions fields
+            data['get']['question_one'] = {'verbose_name': 'Question one',
+                                           'data_type': 'CharField',
+                                           'render': True,
+                                           'format': None}
+            data['get']['question_two'] = {'verbose_name': 'Question two',
+                                           'data_type': 'CharField',
+                                           'render': True,
+                                           'format': None}
+            data['get']['question_three'] = {'verbose_name': 'Question three',
+                                             'data_type': 'CharField',
+                                             'render': True,
+                                             'format': None}
         return Response(data=data, status=http_status.HTTP_200_OK)
 
     try:
