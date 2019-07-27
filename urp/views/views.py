@@ -16,20 +16,15 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-# python imports
-from functools import wraps
-from uuid import UUID
-
 # rest imports
 from rest_framework.response import Response
 from rest_framework import status as http_status
 from rest_framework.decorators import api_view
-from rest_framework.reverse import reverse
 from rest_framework import serializers
 
 # custom imports
 from urp.models import Roles, Permissions, Users, AccessLog, PermissionsLog, RolesLog, UsersLog, LDAP, LDAPLog, \
-    SoD, SoDLog, Vault, Tokens, Email, EmailLog, Tags, TagsLog
+    SoD, SoDLog, Vault, Email, EmailLog, Tags, TagsLog
 from urp.serializers import StatusReadWriteSerializer, PermissionsReadWriteSerializer, RolesReadSerializer, \
     RolesWriteSerializer, UsersReadSerializer, RolesDeleteStatusSerializer, RolesNewVersionSerializer, \
     UsersWriteSerializer, UsersNewVersionSerializer, UsersDeleteStatusSerializer, \
@@ -40,193 +35,19 @@ from urp.serializers import StatusReadWriteSerializer, PermissionsReadWriteSeria
     SoDReadSerializer, UsersPassword, EmailDeleteSerializer, EmailLogReadSerializer, EmailReadWriteSerializer, \
     UserProfile, TagsReadWriteSerializer, TagsDeleteSerializer, TagsLogReadSerializer
 from urp.decorators import perm_required, auth_required
-from basics.models import Status, StatusLog, CentralLog, SettingsLog, Settings, CHAR_MAX
+from basics.models import Status, StatusLog, CentralLog, SettingsLog, Settings
 from basics.custom import get_model_by_string, unique_items, render_email_from_template
 from urp.backends.Email import send_email
-from urp.backends.User import write_access_log, activate_user
 from urp.vault import validate_password_input, create_update_vault
+from urp.views.base import auto_logout
 
 # django imports
 from django.core.exceptions import ValidationError
-from django.contrib.auth import authenticate, login, logout
-from django.utils import timezone
+from django.contrib.auth import authenticate
 from django.conf import settings
-from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie, csrf_exempt
+from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
 from django.middleware.csrf import get_token
-from django.contrib.auth.hashers import make_password, check_password
-from django.contrib.auth.password_validation import password_validators_help_texts
-from django.core.validators import validate_email
-from django.db.models.base import ModelBase
-
-
-###############
-# AUTO_LOGOUT #
-###############
-
-def refresh_time(request, active=True):
-    now = timezone.now()
-    if now - request.session['last_touch'] > timezone.timedelta(minutes=Settings.objects.core_auto_logout):
-        data = {
-            'user': request.user.username,
-            'timestamp': now,
-            'mode': 'automatic',
-            'method': Settings.objects.core_devalue,
-            'action': settings.DEFAULT_LOG_LOGOUT,
-            'attempt': Settings.objects.core_devalue,
-            'active': Settings.objects.core_devalue
-        }
-        logout(request)
-        if request.user.is_anonymous:
-            write_access_log(data)
-    else:
-        # only refresh if user was active (default for request)
-        if active:
-            request.session['last_touch'] = now
-        return True
-
-
-def auto_logout():
-    def decorator(view_func):
-        @wraps(view_func)
-        def wrapper(request, *args, **kwargs):
-            # use method
-            if refresh_time(request=request):
-                return view_func(request, *args, **kwargs)
-            else:
-                return Response(status=http_status.HTTP_401_UNAUTHORIZED)
-        return wrapper
-    return decorator
-
-
-@api_view(['PATCH'])
-@auth_required(initial_password_check=False)
-def logout_auto_view(request):
-    if not hasattr(request, 'data'):
-        raise serializers.ValidationError('Field "active" required.')
-    if 'active' not in request.data:
-        raise serializers.ValidationError('Field "active" required.')
-    active = request.data['active']
-    if not isinstance(active, bool):
-        raise serializers.ValidationError('Data type bool required for field "active".')
-    if refresh_time(request=request, active=active):
-        return Response(status=http_status.HTTP_200_OK)
-    else:
-        return Response(status=http_status.HTTP_401_UNAUTHORIZED)
-
-
-########
-# ROOT #
-########
-
-@api_view(['GET'])
-def api_root(request):
-    root = {'base': {'root': '/',
-                     'subjects': {'login': {'url': reverse('login-view', request=request)},
-                                  'csrftoken': {'url': reverse('get_csrf_token', request=request)},
-                                  'logout': {'url': reverse('logout-view', request=request)}}},
-            'user': {'root': '/user/',
-                     'subjects': {'profile': {'url': reverse('user-profile-list', request=request)},
-                                  'change_password': {'url': reverse('user-change-password-view', request=request)},
-                                  'change_questions': {'url': reverse('user-change-questions-view', request=request)}}},
-            'administration': {'root': '/admin/',
-                               'subjects': {'roles': {'url': reverse('roles-list', request=request),
-                                                      'post': True,
-                                                      'patch': True,
-                                                      'delete': True,
-                                                      'version': True},
-                                            'ldap': {'url': reverse('ldap-list', request=request),
-                                                     'post': True,
-                                                     'patch': True,
-                                                     'delete': True,
-                                                     'version': False},
-                                            'email': {'url': reverse('email-list', request=request),
-                                                      'post': True,
-                                                      'patch': True,
-                                                      'delete': True,
-                                                      'version': False},
-                                            'users': {'url': reverse('users-list', request=request),
-                                                      'post': True,
-                                                      'patch': True,
-                                                      'delete': True,
-                                                      'version': True},
-                                            'passwords': {'url': reverse('users-password-list', request=request),
-                                                          'post': False,
-                                                          'patch': True,
-                                                          'delete': False,
-                                                          'version': False},
-                                            'tags': {'url': reverse('tags-list', request=request),
-                                                     'post': True,
-                                                     'patch': True,
-                                                     'delete': True,
-                                                     'version': False},
-                                            'spaces': {'url': reverse('spaces-list', request=request),
-                                                       'post': True,
-                                                       'patch': True,
-                                                       'delete': True,
-                                                       'version': False},
-                                            'sod': {'url': reverse('sod-list', request=request),
-                                                    'post': True,
-                                                    'patch': True,
-                                                    'delete': True,
-                                                    'version': True},
-                                            'lists': {'url': reverse('lists-list', request=request),
-                                                      'post': True,
-                                                      'patch': True,
-                                                      'delete': True,
-                                                      'version': True},
-                                            'settings': {'url': reverse('settings-list', request=request),
-                                                         'post': False,
-                                                         'patch': True,
-                                                         'delete': False,
-                                                         'version': False}}},
-            'logs': {'root': '/logs/',
-                     'subjects': {'central': {'url': reverse('central-log-list', request=request)},
-                                  'access': {'url': reverse('access-log-list', request=request)},
-                                  'roles': {'url': reverse('roles-log-list', request=request)},
-                                  'ldap': {'url': reverse('ldap-log-list', request=request)},
-                                  'email': {'url': reverse('email-log-list', request=request)},
-                                  'users': {'url': reverse('users-log-list', request=request)},
-                                  'tags': {'url': reverse('tags-log-list', request=request)},
-                                  'spaces': {'url': reverse('spaces-log-list', request=request)},
-                                  'sod': {'url': reverse('sod-log-list', request=request)},
-                                  'settings': {'url': reverse('settings-log-list', request=request)},
-                                  'lists': {'url': reverse('lists-log-list', request=request)}}}}
-
-    return Response(root)
-
-
-#########
-# LOGIN #
-#########
-
-@api_view(['POST'])
-@csrf_exempt
-def login_view(request):
-    # FO-137: adapted validation properly and raise serializer validation error (including 400 response)
-    if not hasattr(request, 'data'):
-        raise serializers.ValidationError('Fields "{}" and "password" are required.'.format(Users.USERNAME_FIELD))
-    if Users.USERNAME_FIELD in request.data and 'password' in request.data:
-        # FO-137: adapted validation properly and raise serializer validation error (including 400 response)
-        if not isinstance(request.data['username'], str) or not isinstance(request.data['password'], str):
-            raise serializers.ValidationError('Fields "{}" and "password" must be strings.'
-                                              .format(Users.USERNAME_FIELD))
-        # authenticate user
-        user = authenticate(request=request, username=request.data['username'], password=request.data['password'])
-    else:
-        # FO-137: raise serializer validation error (including 400 response)
-        raise serializers.ValidationError('Fields "{}" and "password" are required.'.format(Users.USERNAME_FIELD))
-    if user:
-        login(request, user)
-        request.session['last_touch'] = timezone.now()
-        # pass authenticated user roles to casl method, split to parse
-        data = dict()
-        # get initial password fag of user
-        data['initial_password'] = user.initial_password
-        casl = Roles.objects.casl(user.roles.split(','))
-        data['casl'] = casl
-        return Response(data=data, status=http_status.HTTP_200_OK)
-    else:
-        return Response(status=http_status.HTTP_400_BAD_REQUEST)
+from django.contrib.auth.hashers import make_password
 
 
 ####################
@@ -375,148 +196,6 @@ def user_change_questions_view(request):
     return Response(status=http_status.HTTP_200_OK)
 
 
-################################
-# PASSWORD_RESET_EMAIL_REQUEST #
-################################
-
-@api_view(['POST'])
-@csrf_exempt
-def request_password_reset_email_view(request):
-    # data and field validation
-    if not hasattr(request, 'data'):
-        raise serializers.ValidationError('Field "email" is required.')
-    if 'email' not in request.data:
-        raise serializers.ValidationError('Field "email" is required.')
-    email = request.data['email']
-
-    # validate email string in general, no check if this email is used, but just a valid mail address
-    try:
-        validate_email(email)
-    except ValidationError as e:
-        raise serializers.ValidationError(e.message)
-
-    # check if account with this email available
-    user = Users.objects.get_valid_user_by_email(email)
-    if user:
-        # create token and send email with token url
-        token = Tokens.objects.create_token(username=user.username, email=email)
-        data = {'fullname': user.get_full_name(),
-                'url': '{}/#/password_reset_email/{}'.format(settings.EMAIL_BASE_URL, token.id),
-                'expiry_timestamp': token.expiry_timestamp}
-        html_message = render_email_from_template(template_file_name='email_password_reset_ok.html', data=data)
-    else:
-        html_message = render_email_from_template(template_file_name='email_password_reset_nok.html')
-
-    send_email(subject='OpenGxP Password Reset', html_message=html_message, email=email)
-
-    # 100% positive inform requester that email was send
-    return Response(data=['Email has been sent.'], status=http_status.HTTP_200_OK)
-
-
-########################
-# PASSWORD_RESET_EMAIL #
-########################
-
-@api_view(['GET', 'POST'])
-def password_reset_email_view(request, token):
-    @csrf_exempt
-    def post(_request):
-        # data and field validation
-        if not hasattr(request, 'data'):
-            raise serializers.ValidationError('Fields "token", "password_new" and "password_new_verification" '
-                                              'are required.')
-
-        error_dict = dict()
-        field_error = ['This filed is required.']
-
-        if 'password_new' not in request.data:
-            error_dict['password_new'] = field_error
-        if 'password_new_verification' not in request.data:
-            error_dict['password_new_verification'] = field_error
-
-        # validate if at least one question is answered
-        flag = False
-        question_answer_fields = vault.question_answers_fields()
-        for answer in question_answer_fields.values():
-            if answer in request.data:
-                flag = True
-                break
-
-        if not flag:
-            error_dict['answer_one'] = 'At least one answer field is required.'
-            error_dict['answer_two'] = 'At least one answer field is required.'
-            error_dict['answer_three'] = 'At least one answer field is required.'
-
-        if error_dict:
-            raise serializers.ValidationError(error_dict)
-
-        # validate security questions
-        answers = vault.get_answers
-        for answer in question_answer_fields.values():
-            if answer in request.data:
-                raw_answer = request.data[answer]
-                if not check_password(raw_answer, answers[answer]):
-                    error = {answer: 'Security question was not answered correctly.'}
-                    raise serializers.ValidationError(error)
-
-        # validate password data
-        validate_password_input(request.data)
-
-        # FO-147: new password can not be equal to previous password
-        raw_pw = request.data['password_new']
-        if check_password(raw_pw, vault.password):
-            raise serializers.ValidationError('New password is identical to old password. Password must be changed.')
-
-        # update vault with new password
-        now = timezone.now()
-        create_update_vault(data=request.data, instance=vault, action=settings.DEFAULT_LOG_PASSWORD,
-                            user=vault.username, now=now, self_pw=True)
-
-        # in case user is in status blocked, set effective
-        user = Users.objects.get_valid_by_key(vault.username)
-        if user.status.id == Status.objects.blocked:
-            activate_user(user=user, action_user=user.username, now=now)
-
-        # inform user about successful password change
-        email_data = {'fullname': user.get_full_name()}
-        html_message = render_email_from_template(template_file_name='email_password_changed.html', data=email_data)
-        send_email(subject='OpenGxP Password Changed', html_message=html_message, email=token.email)
-
-        # delete token
-        token.delete()
-
-        return Response(status=http_status.HTTP_200_OK)
-
-    def get(_request):
-        # return questions to be answered
-        questions = vault.get_questions
-        return Response(data=questions, status=http_status.HTTP_200_OK)
-
-    try:
-        uuid_token = UUID(token)
-    except ValueError:
-        return Response(status=http_status.HTTP_400_BAD_REQUEST)
-
-    try:
-        token = Tokens.objects.get(id=uuid_token)
-        # check if token exists and is valid
-        if not Tokens.objects.check_token_valid(token=uuid_token):
-            raise serializers.ValidationError('Token is expired. Please request new password reset.')
-
-        # get user instance
-        vault = Vault.objects.get(username=token.username)
-
-    except Tokens.DoesNotExist:
-        return Response(status=http_status.HTTP_404_NOT_FOUND)
-    except ValidationError:
-        return Response(status=http_status.HTTP_400_BAD_REQUEST)
-
-    if request.method == 'GET':
-        return get(request)
-    if request.method == 'POST':
-        return post(request)
-
-
 ########
 # CSRF #
 ########
@@ -526,30 +205,6 @@ def password_reset_email_view(request, token):
 def get_csrf_token(request):
     token = {settings.CSRF_COOKIE_NAME: get_token(request)}
     return Response(data=token, status=http_status.HTTP_200_OK)
-
-
-##########
-# LOGOUT #
-##########
-
-@api_view(['GET'])
-@auth_required()
-def logout_view(request):
-    data = {
-        'user': request.user.username,
-        'timestamp': timezone.now(),
-        'mode': 'manual',
-        'method': Settings.objects.core_devalue,
-        'action': settings.DEFAULT_LOG_LOGOUT,
-        'attempt': Settings.objects.core_devalue,
-        'active': Settings.objects.core_devalue
-    }
-    logout(request)
-    if request.user.is_anonymous:
-        write_access_log(data)
-        return Response(status=http_status.HTTP_200_OK)
-    else:
-        return Response(status=http_status.HTTP_400_BAD_REQUEST)
 
 
 ##########
@@ -1101,162 +756,6 @@ def user_profile_list(request):
         raise serializers.ValidationError('Profile for ldap managed users does not exist.')
     serializer = UserProfile(user)
     return Response(serializer.data)
-
-
-########
-# META #
-########
-
-@api_view(['GET'])
-@auth_required()
-def meta_list(request, dialog):
-    # lower all inputs for dialog
-    dialog = dialog.lower()
-    # filter out status because no public dialog
-    if dialog in ['status', 'tokens']:
-        return Response(status=http_status.HTTP_400_BAD_REQUEST)
-    # determine the model instance from string parameter
-
-    if dialog == 'profile':
-        ldap = request.user.ldap
-        data = {'get': {},
-                'ldap': ldap}
-        if not ldap:
-            # add calculated field "valid"
-            data['get']['valid'] = {'verbose_name': 'Valid',
-                                    'data_type': 'CharField',
-                                    'render': False,
-                                    'format': None}
-            # add calculated field "unique"
-            data['get']['unique'] = {'verbose_name': 'Unique',
-                                     'data_type': 'CharField',
-                                     'render': False,
-                                     'format': None}
-
-            # add questions fields
-            data['get']['question_one'] = {'verbose_name': 'Question one',
-                                           'data_type': 'CharField',
-                                           'render': True,
-                                           'format': None}
-            data['get']['question_two'] = {'verbose_name': 'Question two',
-                                           'data_type': 'CharField',
-                                           'render': True,
-                                           'format': None}
-            data['get']['question_three'] = {'verbose_name': 'Question three',
-                                             'data_type': 'CharField',
-                                             'render': True,
-                                             'format': None}
-        return Response(data=data, status=http_status.HTTP_200_OK)
-
-    try:
-        model = get_model_by_string(dialog)
-    except ValidationError:
-        return Response(status=http_status.HTTP_400_BAD_REQUEST)
-
-    def get(_request):
-        data = {'get': dict(),
-                'post': dict()}
-        # add get information
-        exclude = model.objects.GET_BASE_EXCLUDE + model.objects.GET_MODEL_EXCLUDE
-        fields = [i for i in model._meta.get_fields() if i.name not in exclude]
-        not_render = model.objects.GET_BASE_NOT_RENDER + model.objects.GET_MODEL_NOT_RENDER
-        # add calculated field "valid"
-        data['get']['valid'] = {'verbose_name': 'Valid',
-                                'data_type': 'CharField',
-                                'render': False,
-                                'format': None}
-        # add calculated field "unique"
-        data['get']['unique'] = {'verbose_name': 'Unique',
-                                 'data_type': 'CharField',
-                                 'render': False,
-                                 'format': None}
-        for f in fields:
-            if f.name in not_render:
-                render = False
-            else:
-                render = True
-            # add format for timestamp
-            if f.name in ['timtestamp', 'valid_from', 'valid_to']:
-                _format = Settings.objects.core_timestamp_format
-            else:
-                _format = None
-            data['get'][f.name] = {'verbose_name': f.verbose_name,
-                                   'data_type': f.get_internal_type(),
-                                   'render': render,
-                                   'format': _format}
-
-        # add post information
-        if dialog in ['users', 'roles', 'ldap', 'settings', 'sod', 'email', 'passwords', 'tags', 'spaces', 'lists']:
-            exclude = model.objects.POST_BASE_EXCLUDE + model.objects.POST_MODEL_EXCLUDE
-            fields = [i for i in model._meta.get_fields() if i.name not in exclude]
-            for f in fields:
-                data['post'][f.name] = {'verbose_name': f.verbose_name,
-                                        'help_text': f.help_text,
-                                        'max_length': f.max_length,
-                                        'data_type': f.get_internal_type(),
-                                        'required': not f.blank,
-                                        'unique': f.unique,
-                                        'lookup': None,
-                                        'editable': True}
-                if f.name == 'password':
-                    data['post'][f.name]['data_type'] = 'PasswordField'
-
-                # create lookup data
-                if model.LOOKUP:
-                    if f.name in model.LOOKUP:
-                        data_model = model.LOOKUP[f.name]['model']
-                        if not isinstance(data_model, ModelBase):
-                            data['post'][f.name]['lookup'] = {
-                                'data': data_model,
-                                'multi': model.LOOKUP[f.name]['multi'],
-                                'method': model.LOOKUP[f.name]['method']}
-                        else:
-                            data['post'][f.name]['lookup'] = {
-                                'data': data_model.objects.get_by_natural_key_productive_list(
-                                    model.LOOKUP[f.name]['key']),
-                                'multi': model.LOOKUP[f.name]['multi'],
-                                'method': model.LOOKUP[f.name]['method']}
-
-                # settings non-editable field for better visualisation
-                if dialog == 'settings' and f.name == 'key':
-                    data['post'][f.name]['editable'] = False
-                    data['post'][f.name]['required'] = False
-                if dialog == 'settings' and f.name == 'default':
-                    data['post'][f.name]['editable'] = False
-                    data['post'][f.name]['required'] = False
-
-            if dialog == 'users':
-                # add calculated field "password_verification"
-                data['post']['password_verification'] = {'verbose_name': 'Password verification',
-                                                         'help_text': '{}'.format(password_validators_help_texts()),
-                                                         'max_length': CHAR_MAX,
-                                                         'data_type': 'PasswordField',
-                                                         'required': True,
-                                                         'unique': False,
-                                                         'lookup': None,
-                                                         'editable': True}
-            if dialog == 'passwords':
-                # add calculated fields for manual password reset
-                data['post']['password_new'] = {'verbose_name': 'New password',
-                                                'help_text': '{}'.format(password_validators_help_texts()),
-                                                'max_length': CHAR_MAX,
-                                                'data_type': 'PasswordField',
-                                                'required': True,
-                                                'unique': False,
-                                                'lookup': None,
-                                                'editable': True}
-                data['post']['password_new_verification'] = {'verbose_name': 'New password verification',
-                                                             'help_text': '{}'.format(password_validators_help_texts()),
-                                                             'max_length': CHAR_MAX,
-                                                             'data_type': 'PasswordField',
-                                                             'required': True,
-                                                             'unique': False,
-                                                             'lookup': None,
-                                                             'editable': True}
-        return Response(data=data, status=http_status.HTTP_200_OK)
-
-    if request.method == 'GET':
-        return get(request)
 
 
 #########

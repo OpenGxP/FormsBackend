@@ -16,13 +16,23 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-# public
+# django imports
+from django.urls import path
+from django.conf import settings
+
+# app imports
+from urp.views.public.root import public_root_view
 from urp.views.public.login import login_view
 from urp.views.public.password_reset import request_password_reset_email_view, password_reset_email_view
 
-from urp.views.views import *
 
-from urp.views.private.meta import meta_list
-from urp.views.private.spaces import spaces_list, spaces_detail, spaces_log_list
-from urp.views.private.lists import lists_list, lists_detail, lists_status, lists_log_list
-from urp.views.private.logout import logout_view, logout_auto_view
+urls_public = [
+    # root
+    path('{}'.format(settings.BASE_URL), public_root_view, name='public-root-view'),
+    # endpoints
+    path('{}login'.format(settings.BASE_URL), login_view, name='login-view'),
+    path('{}request_password_reset_email'.format(settings.BASE_URL), request_password_reset_email_view,
+         name='request-password-reset-email-view'),
+    path('{}password_reset_email/<str:token>'.format(settings.BASE_URL), password_reset_email_view,
+         name='password-reset-email-view'),
+]

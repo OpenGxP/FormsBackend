@@ -16,33 +16,31 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-
 # django imports
 from django.urls import path
 from django.conf import settings
 
 # app imports
-from .views import permissions_list, roles_list, roles_detail, status_list, \
-    roles_status, users_list, users_detail, api_root, users_status, access_log_list, central_log_list, \
+from urp.views.private.root import private_root_view
+
+# app imports
+from urp.views import permissions_list, roles_list, roles_detail, status_list, \
+    roles_status, users_list, users_detail, users_status, access_log_list, central_log_list, \
     permissions_log_list, users_log_list, roles_log_list, audit_trail_list, status_log_list, \
-    ldap_list, ldap_detail, ldap_log_list, login_view, logout_view, meta_list, get_csrf_token, settings_list, \
+    ldap_list, ldap_detail, ldap_log_list, logout_view, meta_list, get_csrf_token, settings_list, \
     settings_detail, settings_log_list, logout_auto_view, sod_list, sod_detail, sod_log_list, sod_status, \
     users_password_list, change_password_view, user_change_password_view, user_change_questions_view, \
-    request_password_reset_email_view, password_reset_email_view, email_detail, email_list, email_log_list, \
+    email_detail, email_list, email_log_list, \
     user_profile_list, tags_detail, tags_list, tags_log_list, spaces_list, spaces_detail, spaces_log_list, \
     user_permissions_view, lists_list, lists_detail, lists_log_list, lists_status
 
-
-urlpatterns = [
+urls_private = [
+    # root
+    path('{}_root'.format(settings.BASE_URL), private_root_view, name='private-root-view'),
     # auth
-    path('{}login'.format(settings.BASE_URL), login_view, name='login-view'),
     path('{}csrftoken'.format(settings.BASE_URL), get_csrf_token, name='get_csrf_token'),
     path('{}logout'.format(settings.BASE_URL), logout_view, name='logout-view'),
     path('{}logout_auto'.format(settings.BASE_URL), logout_auto_view, name='logout-auto-view'),
-    path('{}request_password_reset_email'.format(settings.BASE_URL), request_password_reset_email_view,
-         name='request-password-reset-email-view'),
-    path('{}password_reset_email/<str:token>'.format(settings.BASE_URL), password_reset_email_view,
-         name='password-reset-email-view'),
     # user profile
     path('{}user/profile'.format(settings.BASE_URL), user_profile_list,
          name='user-profile-list'),
@@ -50,7 +48,6 @@ urlpatterns = [
          name='user-change-questions-view'),
     path('{}user/change_password'.format(settings.BASE_URL), user_change_password_view,
          name='user-change-password-view'),
-    path('{}user/permissions'.format(settings.BASE_URL), user_permissions_view, name='user-permissions-view'),
     # status
     path('{}admin/status'.format(settings.BASE_URL), status_list, name='status-list'),
     # permissions
@@ -103,12 +100,10 @@ urlpatterns = [
     path('{}admin/passwords/<str:username>'.format(settings.BASE_URL), change_password_view,
          name='change-password-view'),
     # lists
-    path('{}admin/lists'.format(settings.BASE_URL), lists_list, name='lists-list'),
-    path('{}admin/lists/<str:lifecycle_id>/<int:version>'.format(settings.BASE_URL), lists_detail),
-    path('{}admin/lists/<str:lifecycle_id>/<int:version>/<str:status>'.format(settings.BASE_URL), lists_status,
+    path('{}md/lists'.format(settings.BASE_URL), lists_list, name='lists-list'),
+    path('{}md/lists/<str:lifecycle_id>/<int:version>'.format(settings.BASE_URL), lists_detail),
+    path('{}md/lists/<str:lifecycle_id>/<int:version>/<str:status>'.format(settings.BASE_URL), lists_status,
          name='lists-status'),
-    # root
-    path('{}'.format(settings.BASE_URL[:-1]), api_root),
     # audit trails
     path('{}at/<str:dialog>/<str:lifecycle_id>'.format(settings.BASE_URL), audit_trail_list, name='audit-trail-list'),
     # meta views
