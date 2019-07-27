@@ -45,7 +45,7 @@ class ListsLog(GlobalModel):
     # custom fields
     list = models.CharField(_('List'), max_length=CHAR_DEFAULT)
     type = models.CharField(_('Type'), max_length=CHAR_DEFAULT)
-    tag = models.CharField(_('Tag'), max_length=CHAR_DEFAULT)
+    tag = models.CharField(_('Tag'), max_length=CHAR_DEFAULT, blank=True)
     elements = models.CharField(_('Elements'), max_length=CHAR_BIG)
     # defaults
     status = models.ForeignKey(Status, on_delete=models.PROTECT)
@@ -99,7 +99,7 @@ class Lists(GlobalModel):
     # custom fields
     list = models.CharField(_('List'), max_length=CHAR_DEFAULT)
     type = models.CharField(_('Type'), max_length=CHAR_DEFAULT)
-    tag = models.CharField(_('Tag'), max_length=CHAR_DEFAULT)
+    tag = models.CharField(_('Tag'), max_length=CHAR_DEFAULT, blank=True)
     elements = LookupField(_('Elements'), max_length=CHAR_BIG)
     # defaults
     status = models.ForeignKey(Status, on_delete=models.PROTECT)

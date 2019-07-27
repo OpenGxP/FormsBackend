@@ -88,7 +88,6 @@ class GetOneList(GetOne):
         self.serializer = ListsReadWriteSerializer
         self.ok_object_data = {'list': 'test',
                                'type': 'copy',
-                               'tag': 'mytag',
                                'elements': ['test1', 'test2', 'test3']}
         self.execute = True
         self.pre_data = [{'data': {'tag': 'mytag'},
