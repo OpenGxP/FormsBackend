@@ -16,14 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-# public
-from urp.views.public.login import login_view
-from urp.views.public.password_reset import request_password_reset_email_view, password_reset_email_view
 
-from urp.views.views import *
-
-from urp.views.private.meta import meta_list
-from urp.views.private.spaces import spaces_list, spaces_detail, spaces_log_list
-from urp.views.private.lists import lists_list, lists_detail, lists_status, lists_log_list
-from urp.views.private.logout import logout_view, logout_auto_view
-from urp.views.private.workflows import workflows_list, workflows_detail, workflows_status, workflows_log_list
+from .serializers import *
+from .workflows import WorkflowsReadWriteSerializer, WorkflowsNewVersionStatusSerializer, WorkflowsDeleteSerializer, \
+    WorkflowsLogReadSerializer

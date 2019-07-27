@@ -32,7 +32,8 @@ from urp.views import permissions_list, roles_list, roles_detail, status_list, \
     users_password_list, change_password_view, user_change_password_view, user_change_questions_view, \
     email_detail, email_list, email_log_list, \
     user_profile_list, tags_detail, tags_list, tags_log_list, spaces_list, spaces_detail, spaces_log_list, \
-    user_permissions_view, lists_list, lists_detail, lists_log_list, lists_status
+    lists_list, lists_detail, lists_log_list, lists_status, workflows_list, workflows_detail, workflows_status, \
+    workflows_log_list
 
 urls_private = [
     # root
@@ -66,6 +67,7 @@ urls_private = [
     path('{}logs/tags'.format(settings.BASE_URL), tags_log_list, name='tags-log-list'),
     path('{}logs/spaces'.format(settings.BASE_URL), spaces_log_list, name='spaces-log-list'),
     path('{}logs/lists'.format(settings.BASE_URL), lists_log_list, name='lists-log-list'),
+    path('{}logs/workflows'.format(settings.BASE_URL), workflows_log_list, name='workflows-log-list'),
     # ldap
     path('{}admin/ldap'.format(settings.BASE_URL), ldap_list, name='ldap-list'),
     path('{}admin/ldap/<str:host>'.format(settings.BASE_URL), ldap_detail, name='ldap-detail'),
@@ -104,6 +106,11 @@ urls_private = [
     path('{}md/lists/<str:lifecycle_id>/<int:version>'.format(settings.BASE_URL), lists_detail),
     path('{}md/lists/<str:lifecycle_id>/<int:version>/<str:status>'.format(settings.BASE_URL), lists_status,
          name='lists-status'),
+    # workflows
+    path('{}md/workflows'.format(settings.BASE_URL), workflows_list, name='workflows-list'),
+    path('{}md/workflows/<str:lifecycle_id>/<int:version>'.format(settings.BASE_URL), workflows_detail),
+    path('{}md/workflows/<str:lifecycle_id>/<int:version>/<str:status>'.format(settings.BASE_URL), workflows_status,
+         name='workflows-status'),
     # audit trails
     path('{}at/<str:dialog>/<str:lifecycle_id>'.format(settings.BASE_URL), audit_trail_list, name='audit-trail-list'),
     # meta views

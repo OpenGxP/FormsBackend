@@ -24,14 +24,14 @@ from urp.models import Permissions, Users, Roles, AccessLog, PermissionsLog, Rol
     SoD, SoDLog, Vault, Email, EmailLog, Tags, TagsLog, Spaces, SpacesLog, Lists, ListsLog
 from basics.custom import generate_checksum, generate_to_hash, value_to_int
 from basics.models import Status, AVAILABLE_STATUS, StatusLog, CentralLog, Settings, SettingsLog
-from .decorators import require_STATUS_CHANGE, require_POST, require_DELETE, require_PATCH, require_NONE, \
+from urp.decorators import require_STATUS_CHANGE, require_POST, require_DELETE, require_PATCH, require_NONE, \
     require_NEW_VERSION, require_status, require_LDAP, require_USERS, require_NEW, require_SETTINGS, require_SOD, \
     require_EMAIL
-from .custom import create_log_record, create_central_log_record
-from .backends.ldap import server_check
-from .backends.Email import MyEmailBackend
-from .vault import create_update_vault, validate_password_input
-from .crypto import encrypt
+from urp.custom import create_log_record, create_central_log_record
+from urp.backends.ldap import server_check
+from urp.backends.Email import MyEmailBackend
+from urp.vault import create_update_vault, validate_password_input
+from urp.crypto import encrypt
 
 # django imports
 from django.utils import timezone
@@ -616,7 +616,7 @@ class ListsReadWriteSerializer(GlobalReadWriteSerializer):
     class Meta:
         model = Lists
         extra_kwargs = {'version': {'required': False}}
-        fields = model.objects.GET_MODEL_ORDER + Roles.objects.GET_BASE_ORDER_STATUS_MANAGED + \
+        fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_ORDER_STATUS_MANAGED + \
             model.objects.GET_BASE_CALCULATED
 
     def validate_type(self, value):
@@ -643,7 +643,7 @@ class ListsNewVersionStatusSerializer(GlobalReadWriteSerializer):
                         'type': {'required': False},
                         'tag': {'required': False},
                         'elements': {'required': False}}
-        fields = model.objects.GET_MODEL_ORDER + Roles.objects.GET_BASE_ORDER_STATUS_MANAGED + \
+        fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_ORDER_STATUS_MANAGED + \
             model.objects.GET_BASE_CALCULATED
 
 
@@ -660,7 +660,7 @@ class ListsLogReadSerializer(GlobalReadWriteSerializer):
 
     class Meta:
         model = ListsLog
-        fields = model.objects.GET_MODEL_ORDER + Roles.objects.GET_BASE_ORDER_STATUS_MANAGED + \
+        fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_ORDER_STATUS_MANAGED + \
             model.objects.GET_BASE_ORDER_LOG + model.objects.GET_BASE_CALCULATED
 
 
