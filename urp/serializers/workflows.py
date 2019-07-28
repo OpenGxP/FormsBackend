@@ -42,9 +42,10 @@ class WorkflowsReadWriteSerializer(GlobalReadWriteSerializer):
             model.objects.GET_BASE_CALCULATED
 
     def validate_tag(self, value):
-        allowed = Tags.objects.get_by_natural_key_productive_list('tag')
-        if value not in allowed:
-            raise serializers.ValidationError('Not allowed to use "{}".'.format(value))
+        if value:
+            allowed = Tags.objects.get_by_natural_key_productive_list('tag')
+            if value not in allowed:
+                raise serializers.ValidationError('Not allowed to use "{}".'.format(value))
         return value
 
     def validate_steps(self, value):
