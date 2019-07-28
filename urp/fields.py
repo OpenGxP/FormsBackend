@@ -21,6 +21,9 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import ValidationError
 
+# rest imports
+from rest_framework import serializers
+
 
 class LookupField(models.Field):
     description = 'CharField that accepts arrays and transform them to comma separated string.'
@@ -39,3 +42,23 @@ class LookupField(models.Field):
                 raise ValidationError(_('Value of array not a valid string.'))
             string_value += '{},'.format(item)
         return string_value[:-1]
+
+
+class StepsField(serializers.Field):
+    def to_representation(self, value):
+        steps = []
+        for record in value:
+
+            steps.append({'step': record.step,
+                          'role': record.role,
+                          'predecessors': record.predecessors.split(','),
+                          'text': record.text})
+        return steps
+
+    def to_internal_value(self, data):
+        if not isinstance(data, list):
+            raise serializers.ValidationError(_('Not a valid array.'))
+        for item in data:
+            if not isinstance(item, dict):
+                raise serializers.ValidationError(_('Value of array not a valid object.'))
+        return data

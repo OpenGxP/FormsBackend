@@ -22,6 +22,7 @@ from rest_framework import serializers
 # custom imports
 from urp.models import Permissions, Users, Roles, AccessLog, PermissionsLog, RolesLog, UsersLog, LDAP, LDAPLog, \
     SoD, SoDLog, Vault, Email, EmailLog, Tags, TagsLog, Spaces, SpacesLog, Lists, ListsLog
+from urp.models.workflows import WorkflowsSteps
 from basics.custom import generate_checksum, generate_to_hash, value_to_int
 from basics.models import Status, AVAILABLE_STATUS, StatusLog, CentralLog, Settings, SettingsLog
 from urp.decorators import require_STATUS_CHANGE, require_POST, require_DELETE, require_PATCH, require_NONE, \
@@ -90,6 +91,25 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
 
                     # create vault record
                     create_update_vault(data=validated_data, log=False, initial=True)
+
+            # for workflows
+            if obj.MODEL_ID == '26':
+                for record in validated_data['linked_steps']:
+                    record['version'] = validated_data['version']
+                    step = WorkflowsSteps()
+                    steps_hash_sequence = step.HASH_SEQUENCE
+                    setattr(step, 'lifecycle_id', obj.lifecycle_id)
+                    # passed keys
+                    keys = record.keys()
+                    # set attributes of validated data
+                    for attr in steps_hash_sequence:
+                        if attr in keys:
+                            setattr(step, attr, record[attr])
+                    # generate hash
+                    to_hash = generate_to_hash(fields=record, hash_sequence=steps_hash_sequence, unique_id=step.id,
+                                               lifecycle_id=step.lifecycle_id)
+                    step.checksum = generate_checksum(to_hash)
+                    step.save()
 
             # for access log
             if obj.MODEL_ID == '05':

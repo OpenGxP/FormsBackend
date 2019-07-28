@@ -21,8 +21,11 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 # app imports
-from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, Status, LOG_HASH_SEQUENCE, FIELD_VERSION
+from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, Status, LOG_HASH_SEQUENCE, FIELD_VERSION, CHAR_BIG
 from urp.models.tags import Tags
+from urp.models.roles import Roles
+from urp.fields import LookupField
+from urp.validators import validate_no_space, validate_no_specials, validate_no_numbers, validate_only_ascii
 
 
 # log manager
@@ -92,7 +95,11 @@ class WorkflowsManager(GlobalManager):
 # table
 class Workflows(GlobalModel):
     # custom fields
-    workflow = models.CharField(_('Workflow'), max_length=CHAR_DEFAULT, help_text=_('tbd'))
+    workflow = models.CharField(_('Workflow'), max_length=CHAR_DEFAULT, help_text=_('tbd'),
+                                validators=[validate_no_specials,
+                                            validate_no_space,
+                                            validate_no_numbers,
+                                            validate_only_ascii])
     tag = models.CharField(_('Tag'), max_length=CHAR_DEFAULT, blank=True)
     # defaults
     status = models.ForeignKey(Status, on_delete=models.PROTECT)
@@ -107,6 +114,10 @@ class Workflows(GlobalModel):
     @property
     def get_status(self):
         return self.status.status
+
+    @property
+    def linked_steps(self):
+        return WorkflowsSteps.objects.filter(lifecycle_id=self.lifecycle_id, version=self.version).all()
 
     # manager
     objects = WorkflowsManager()
@@ -131,6 +142,40 @@ class Workflows(GlobalModel):
                       'method': 'select'}}
 
 
+# manager
+class WorkflowsStepsManager(GlobalManager):
+    pass
+
+
 # sub table
 class WorkflowsSteps(GlobalModel):
-    pass
+    step = models.CharField(_('Step'), max_length=CHAR_DEFAULT)
+    role = models.CharField(_('Role'), max_length=CHAR_DEFAULT)
+    predecessors = LookupField(_('Predecessors'), max_length=CHAR_BIG, blank=True)
+    text = models.CharField(_('Text'), max_length=CHAR_BIG, blank=True)
+    # defaults
+    version = FIELD_VERSION
+
+    valid_to = None
+    valid_from = None
+
+    # integrity check
+    def verify_checksum(self):
+        to_hash_payload = 'step:{};role:{};predecessors:{};text:{};version:{};'.\
+            format(self.step, self.role, self.predecessors, self.text, self.version)
+        return self._verify_checksum(to_hash_payload=to_hash_payload)
+
+    # manager
+    objects = WorkflowsStepsManager()
+
+    # hashing
+    HASH_SEQUENCE = ['step', 'role', 'predecessors', 'text', 'version']
+
+    class Meta:
+        unique_together = ('lifecycle_id', 'version', 'step')
+
+    # lookup fields
+    LOOKUP = {'role': {'model': Roles,
+                       'key': 'role',
+                       'multi': False,
+                       'method': 'select'}}
