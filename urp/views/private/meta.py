@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from urp.decorators import auth_required
 from basics.models import Settings, CHAR_MAX
 from basics.custom import get_model_by_string
+from urp.models.workflows import WorkflowsSteps
 
 # rest imports
 from rest_framework.response import Response
@@ -150,6 +151,27 @@ def meta_list(request, dialog):
                 if dialog == 'settings' and f.name == 'default':
                     data['post'][f.name]['editable'] = False
                     data['post'][f.name]['required'] = False
+
+            if dialog == 'workflows':
+                exclude = WorkflowsSteps.objects.POST_BASE_EXCLUDE + WorkflowsSteps.objects.POST_MODEL_EXCLUDE
+                fields = [i for i in WorkflowsSteps._meta.get_fields() if i.name not in exclude]
+                data['post']['steps'] = {}
+                for f in fields:
+                    data['post']['steps'][f.name] = {'verbose_name': f.verbose_name,
+                                                     'help_text': f.help_text,
+                                                     'max_length': f.max_length,
+                                                     'data_type': f.get_internal_type(),
+                                                     'required': not f.blank,
+                                                     'unique': f.unique,
+                                                     'lookup': None,
+                                                     'editable': True}
+
+                    if f.name == 'role':
+                        data_model = WorkflowsSteps.LOOKUP[f.name]['model']
+                        data['post']['steps'][f.name]['lookup'] = {'data': data_model.objects.
+                            get_by_natural_key_productive_list(WorkflowsSteps.LOOKUP[f.name]['key']),
+                                                                   'multi': WorkflowsSteps.LOOKUP[f.name]['multi'],
+                                                                   'method': WorkflowsSteps.LOOKUP[f.name]['method']}
 
             if dialog == 'users':
                 # add calculated field "password_verification"
