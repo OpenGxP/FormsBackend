@@ -241,6 +241,11 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         for attr in hash_sequence:
             fields[attr] = getattr(self.instance, attr)
         self.instance.delete()
+
+        if model.MODEL_ID == '26':
+            WorkflowsSteps.objects.filter(version=self.instance.version,
+                                          lifecycle_id=self.instance.lifecycle_id).delete()
+
         if model.objects.LOG_TABLE:
             if model.MODEL_ID == '04':
                 if not self.instance.ldap:
