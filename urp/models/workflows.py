@@ -36,7 +36,11 @@ class WorkflowsLogManager(GlobalManager):
 
     # meta
     GET_MODEL_ORDER = ('workflow',
-                       'tag')
+                       'tag',
+                       'step',
+                       'role',
+                       'predecessors',
+                       'text')
 
 
 # log table
@@ -46,6 +50,11 @@ class WorkflowsLog(GlobalModel):
     # custom fields
     workflow = models.CharField(_('Workflow'), max_length=CHAR_DEFAULT)
     tag = models.CharField(_('Tag'), max_length=CHAR_DEFAULT, blank=True)
+    # step fields
+    step = models.CharField(_('Step'), max_length=CHAR_DEFAULT)
+    role = models.CharField(_('Role'), max_length=CHAR_DEFAULT)
+    predecessors = LookupField(_('Predecessors'), max_length=CHAR_BIG, blank=True)
+    text = models.CharField(_('Text'), max_length=CHAR_BIG, blank=True)
     # defaults
     status = models.ForeignKey(Status, on_delete=models.PROTECT)
     version = FIELD_VERSION
@@ -59,9 +68,11 @@ class WorkflowsLog(GlobalModel):
 
     # integrity check
     def verify_checksum(self):
-        to_hash_payload = 'workflow:{};tag:{};status_id:{};version:{};valid_from:{};valid_to:{};' \
+        to_hash_payload = 'workflow:{};tag:{};step:{};role:{};predecessors:{};text:{};' \
+                          'status_id:{};version:{};valid_from:{};valid_to:{};' \
                           'user:{};timestamp:{};action:{};'. \
-            format(self.workflow, self.tag, self.status_id, self.version, self.valid_from, self.valid_to,
+            format(self.workflow, self.tag, self.step, self.role, self.predecessors, self.text,
+                   self.status_id, self.version, self.valid_from, self.valid_to,
                    self.user, self.timestamp, self.action)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
 
@@ -70,7 +81,8 @@ class WorkflowsLog(GlobalModel):
         return self.status.status
 
     # hashing
-    HASH_SEQUENCE = ['workflow', 'tag', 'status_id', 'version', 'valid_from', 'valid_to'] + LOG_HASH_SEQUENCE
+    HASH_SEQUENCE = ['workflow', 'tag', 'step', 'role', 'predecessors', 'text', 'status_id', 'version', 'valid_from',
+                     'valid_to'] + LOG_HASH_SEQUENCE
 
     # permissions
     MODEL_ID = '27'
@@ -89,7 +101,8 @@ class WorkflowsManager(GlobalManager):
     LOG_TABLE = WorkflowsLog
 
     # meta
-    GET_MODEL_ORDER = WorkflowsLogManager.GET_MODEL_ORDER
+    GET_MODEL_ORDER = ('workflow',
+                       'tag')
 
 
 # table

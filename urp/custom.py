@@ -70,6 +70,8 @@ def create_log_record(model, context, action, validated_data, obj=None, now=None
         if attr in validated_data.keys():
             setattr(log_obj, attr, validated_data[attr])
         else:
+            if log_obj.MODEL_ID == '27':
+                continue
             setattr(log_obj, attr, getattr(obj, attr))
             validated_data[attr] = getattr(obj, attr)
     setattr(log_obj, 'lifecycle_id', obj.lifecycle_id)

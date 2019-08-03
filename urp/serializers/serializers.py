@@ -141,8 +141,20 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
             obj.save()
             # log record
             if model.objects.LOG_TABLE:
-                create_log_record(model=model, context=self.context, obj=obj, validated_data=validated_data,
-                                  action=settings.DEFAULT_LOG_CREATE)
+                # for workflows
+                if obj.MODEL_ID == '26':
+                    for record in validated_data['linked_steps']:
+                        workflow_log_data = {}
+                        for field in model.objects.LOG_TABLE.HASH_SEQUENCE:
+                            if field in validated_data:
+                                workflow_log_data[field] = validated_data[field]
+                            if field in record:
+                                workflow_log_data[field] = record[field]
+                        create_log_record(model=model, context=self.context, obj=obj, validated_data=workflow_log_data,
+                                          action=settings.DEFAULT_LOG_CREATE)
+                else:
+                    create_log_record(model=model, context=self.context, obj=obj, validated_data=validated_data,
+                                      action=settings.DEFAULT_LOG_CREATE)
         except IntegrityError as e:
             if 'UNIQUE constraint' in e.args[0]:
                 raise serializers.ValidationError('Object already exists.')
@@ -244,10 +256,6 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
             fields[attr] = getattr(self.instance, attr)
         self.instance.delete()
 
-        if model.MODEL_ID == '26':
-            WorkflowsSteps.objects.filter(version=self.instance.version,
-                                          lifecycle_id=self.instance.lifecycle_id).delete()
-
         if model.objects.LOG_TABLE:
             if model.MODEL_ID == '04':
                 if not self.instance.ldap:
@@ -260,8 +268,20 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 if not self.instance.ldap and self.instance.version == 1:
                     vault = Vault.objects.filter(username=self.instance.username).get()
                     vault.delete()
-            create_log_record(model=model, context=self.context, obj=self.instance, validated_data=fields,
-                              action=settings.DEFAULT_LOG_DELETE)
+
+            if model.MODEL_ID == '26':
+                steps = WorkflowsSteps.objects.filter(version=self.instance.version,
+                                                      lifecycle_id=self.instance.lifecycle_id).all()
+                for step in steps:
+                    workflow_fields = fields.copy()
+                    for attr in model.objects.LOG_TABLE.HASH_SEQUENCE:
+                        if hasattr(step, attr):
+                            workflow_fields[attr] = getattr(step, attr)
+                    create_log_record(model=model, context=self.context, obj=self.instance,
+                                      validated_data=workflow_fields, action=settings.DEFAULT_LOG_DELETE)
+            else:
+                create_log_record(model=model, context=self.context, obj=self.instance, validated_data=fields,
+                                  action=settings.DEFAULT_LOG_DELETE)
 
     def validate(self, data):
         if self.context['function'] == 'init':
