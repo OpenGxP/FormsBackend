@@ -38,7 +38,9 @@ from urp.crypto import encrypt
 from django.utils import timezone
 from django.db import IntegrityError
 from django.conf import settings
+from django.core.validators import validate_email
 from django.core.exceptions import ImproperlyConfigured
+from django.core.exceptions import ValidationError as DjangoValidationError
 
 
 ##########
@@ -449,6 +451,13 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                     except ValueError:
                         raise serializers.ValidationError('Setting "{}" must be a positive integer.'
                                                           .format(self.instance.key))
+
+                # FO-177: added validation for sender email setting
+                if self.instance.key == 'email.sender':
+                    try:
+                        validate_email(data['value'])
+                    except DjangoValidationError as e:
+                        raise serializers.ValidationError(e.message)
 
             @require_NONE
             @require_SOD
