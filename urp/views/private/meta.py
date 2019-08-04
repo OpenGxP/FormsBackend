@@ -152,6 +152,10 @@ def meta_list(request, dialog):
                     data['post'][f.name]['editable'] = False
                     data['post'][f.name]['required'] = False
 
+                # for unique fields that shall not be updated during life cycle editable must be false
+                if f.name == model.UNIQUE:
+                    data['post'][f.name]['editable'] = False
+
             if dialog == 'workflows':
                 exclude = WorkflowsSteps.objects.POST_BASE_EXCLUDE + WorkflowsSteps.objects.POST_MODEL_EXCLUDE
                 fields = [i for i in WorkflowsSteps._meta.get_fields() if i.name not in exclude]
