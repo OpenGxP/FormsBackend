@@ -28,6 +28,7 @@ from rest_framework.test import APITestCase
 # app imports
 from ..models import Roles
 from ..serializers import RolesReadSerializer
+from basics.models import Settings
 
 # test imports
 from . import Prerequisites, GetAll, PostNew, GetOne, PostNewVersion, DeleteOne, PatchOne, PatchOneStatus
@@ -508,3 +509,25 @@ class RolesMiscellaneous(APITestCase):
         query = Roles.objects.filter(lifecycle_id=response.data['lifecycle_id'], version=1).get()
         serializer = RolesReadSerializer(query)
         self.assertEqual(old_valid_to, serializer.data['valid_to'])
+
+    def test_initial_role(self):
+        """
+        This test shall show that initial role can not be blocked, archived or set inactive as well as no new version.
+        """
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get attributes of initial role
+        initial_role = Roles.objects.filter(role=Settings.objects.core_initial_role).get()
+
+        # try to change status of initial role
+        for item in ['blocked', 'inactive', 'archived']:
+            path = '{}/{}/{}/{}'.format(self.base_path, initial_role.lifecycle_id, 1, item)
+            response = self.client.patch(path, data={}, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        # try to create new version
+        path = '{}/{}/{}'.format(self.base_path, initial_role.lifecycle_id, 1)
+        response = self.client.post(path, data={}, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

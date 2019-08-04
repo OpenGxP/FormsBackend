@@ -27,7 +27,7 @@ from basics.custom import generate_checksum, generate_to_hash, value_to_int
 from basics.models import Status, AVAILABLE_STATUS, StatusLog, CentralLog, Settings, SettingsLog
 from urp.decorators import require_STATUS_CHANGE, require_POST, require_DELETE, require_PATCH, require_NONE, \
     require_NEW_VERSION, require_status, require_LDAP, require_USERS, require_NEW, require_SETTINGS, require_SOD, \
-    require_EMAIL
+    require_EMAIL, require_ROLES
 from urp.custom import create_log_record, create_central_log_record
 from urp.backends.ldap import server_check
 from urp.backends.Email import MyEmailBackend
@@ -373,6 +373,15 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                                                       'allowed.')
 
             @require_STATUS_CHANGE
+            @require_ROLES
+            @require_productive
+            def validate_initial_all_role(self):
+                if self.instance.role == Settings.objects.core_initial_role:
+                    if self.context['status'] in ['blocked', 'inactive', 'archived']:
+                        raise serializers.ValidationError('Initial role {} can not be changed.'
+                                                          .format(self.instance.role))
+
+            @require_STATUS_CHANGE
             @require_blocked
             def validate_blocked(self):
                 if self.context['status'] != 'productive':
@@ -510,6 +519,13 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                         self.instance.status.id == Status.objects.circulation:
                     raise serializers.ValidationError('New versions can only be created in status productive, '
                                                       'blocked, inactive or archived.')
+
+            @require_NEW_VERSION
+            @require_ROLES
+            def validate_initial_all_role(self):
+                if self.instance.role == Settings.objects.core_initial_role:
+                    raise serializers.ValidationError('No new version of initial role {} can be changed.'
+                                                      .format(self.instance.role))
 
             @require_NEW
             @require_LDAP

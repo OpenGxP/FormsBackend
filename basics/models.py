@@ -494,6 +494,13 @@ class SettingsManager(GlobalManager):
         except self.model.DoesNotExist:
             return settings.DEFAULT_EMAIL_SENDER
 
+    @property
+    def core_initial_role(self):
+        try:
+            return self.filter(key='core.initial_role').get().value
+        except self.model.DoesNotExist:
+            return settings.DEFAULT_INITIAL_ROLE
+
 
 # table
 class Settings(GlobalModel):

@@ -66,6 +66,7 @@ DEFAULT_FRONT_TIMESTAMP = 'DD-MM-YYYYTHH:MM:SS Z'
 DEFAULT_AUTO_LOGOUT = 5  # in minutes
 DEFAULT_PASSWORD_RESET_TIME = 5  # in minutes
 DEFAULT_EMAIL_SENDER = 'noreply@opengxp.com'
+DEFAULT_INITIAL_ROLE = 'all'
 
 #########
 # PATHS #
@@ -281,7 +282,8 @@ INITIALIZE_SETTINGS = {'auth.max_login_attempts': MAX_LOGIN_ATTEMPTS,
                        'core.timestamp_format': DEFAULT_FRONT_TIMESTAMP,
                        'core.auto_logout': DEFAULT_AUTO_LOGOUT,
                        'core.password_reset_time': DEFAULT_PASSWORD_RESET_TIME,
-                       'email.sender': DEFAULT_EMAIL_SENDER}
+                       'email.sender': DEFAULT_EMAIL_SENDER,
+                       'core.initial_role': DEFAULT_INITIAL_ROLE}
 
 EMAIL_BASE_URL = 'https://{}'.format(ALLOWED_HOSTS[0])
 EMAIL_BACKEND = 'urp.backends.Email.MyEmailBackend'
