@@ -53,7 +53,8 @@ class WorkflowsLog(GlobalModel):
     # step fields
     step = models.CharField(_('Step'), max_length=CHAR_DEFAULT)
     role = models.CharField(_('Role'), max_length=CHAR_DEFAULT)
-    predecessors = LookupField(_('Predecessors'), max_length=CHAR_BIG, blank=True)
+    # FO-187: changed log field to char field because lookup field to python was already called on main object
+    predecessors = models.CharField(_('Predecessors'), max_length=CHAR_BIG, blank=True)
     text = models.CharField(_('Text'), max_length=CHAR_BIG, blank=True)
     # defaults
     status = models.ForeignKey(Status, on_delete=models.PROTECT)
