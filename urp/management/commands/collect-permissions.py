@@ -43,7 +43,7 @@ class Command(BaseCommand):
         models.update(apps.all_models['basics'])
         for model in models:
             if model == 'tokens' or model == 'vault' or model == 'status' or model == 'permissions' \
-                    or model == 'permissionslog' or model == 'statuslog':
+                    or model == 'permissionslog' or model == 'statuslog' or model == 'workflowssteps':
                 continue
             for key, value in models[model].perms.items():
                 data = {'model': model,
