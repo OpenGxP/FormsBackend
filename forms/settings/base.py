@@ -22,6 +22,9 @@ import os
 # basic imports
 from basics.custom import value_to_int, value_to_bool, require_file
 
+# django imports
+from django.utils.translation import gettext_lazy as _
+
 #########
 # PATHS #
 #########
@@ -42,3 +45,20 @@ ALL_PERMISSIONS = '00.00'
 DEFAULT_LOG_PASSWORD = 'password'
 DEFAULT_LOG_QUESTIONS = 'questions'
 CRYPTO_KEY = 'CRYPTO_KEY'
+
+####################
+# PROFILE DEFAULTS #
+####################
+
+PROFILE_TIMEZONE = 'UTC'
+PROFILE_LANGUAGE = 'en_EN'
+
+
+PROFILE_DATA = [{'key': 'loc.timezone',
+                 'default': PROFILE_TIMEZONE,
+                 'human_readable': _('Timezone'),
+                 'value': PROFILE_TIMEZONE},
+                {'key': 'loc.language',
+                 'default': PROFILE_LANGUAGE,
+                 'human_readable': _('Language'),
+                 'value': PROFILE_LANGUAGE}]

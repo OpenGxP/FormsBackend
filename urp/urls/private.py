@@ -22,6 +22,7 @@ from django.conf import settings
 
 # app imports
 from urp.views.private.root import private_root_view
+from urp.views.private.profile import profile_detail, profile_list, profile_log_list
 
 # app imports
 from urp.views import permissions_list, roles_list, roles_detail, status_list, \
@@ -43,12 +44,15 @@ urls_private = [
     path('{}logout'.format(settings.BASE_URL), logout_view, name='logout-view'),
     path('{}logout_auto'.format(settings.BASE_URL), logout_auto_view, name='logout-auto-view'),
     # user profile
-    path('{}user/profile'.format(settings.BASE_URL), user_profile_list,
+    path('{}user/profile_questions'.format(settings.BASE_URL), user_profile_list,
          name='user-profile-list'),
     path('{}user/change_questions'.format(settings.BASE_URL), user_change_questions_view,
          name='user-change-questions-view'),
     path('{}user/change_password'.format(settings.BASE_URL), user_change_password_view,
          name='user-change-password-view'),
+    # general user profile
+    path('{}user/profile'.format(settings.BASE_URL), profile_list, name='profile-list'),
+    path('{}user/profile/<str:key>'.format(settings.BASE_URL), profile_detail, name='profile-detail'),
     # status
     path('{}admin/status'.format(settings.BASE_URL), status_list, name='status-list'),
     # permissions
@@ -68,6 +72,7 @@ urls_private = [
     path('{}logs/spaces'.format(settings.BASE_URL), spaces_log_list, name='spaces-log-list'),
     path('{}logs/lists'.format(settings.BASE_URL), lists_log_list, name='lists-log-list'),
     path('{}logs/workflows'.format(settings.BASE_URL), workflows_log_list, name='workflows-log-list'),
+    path('{}logs/profile'.format(settings.BASE_URL), profile_log_list, name='profile-log-list'),
     # ldap
     path('{}admin/ldap'.format(settings.BASE_URL), ldap_list, name='ldap-list'),
     path('{}admin/ldap/<str:host>'.format(settings.BASE_URL), ldap_detail, name='ldap-detail'),

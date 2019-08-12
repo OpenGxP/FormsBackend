@@ -40,6 +40,7 @@ from urp.models.vault import Vault
 from urp.models.roles import Roles
 from urp.models.sod import SoD
 from urp.fields import LookupField
+from urp.models.profile import Profile
 
 
 # log manager
@@ -193,6 +194,10 @@ class UsersManager(BaseUserManager, GlobalManager):
         fields['initial_password'] = initial_password
         create_log_record(model=self.model, context=context, obj=user,
                           validated_data=fields, action=settings.DEFAULT_LOG_CREATE)
+
+        # create profile
+        Profile.objects.generate_profile(username=username)
+
         return user
 
 

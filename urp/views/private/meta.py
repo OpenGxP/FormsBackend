@@ -43,7 +43,7 @@ def meta_list(request, dialog):
         return Response(status=http_status.HTTP_400_BAD_REQUEST)
     # determine the model instance from string parameter
 
-    if dialog == 'profile':
+    if dialog == 'profile_questions':
         ldap = request.user.ldap
         data = {'get': {},
                 'ldap': ldap}
@@ -113,7 +113,7 @@ def meta_list(request, dialog):
 
         # add post information
         if dialog in ['users', 'roles', 'ldap', 'settings', 'sod', 'email', 'passwords', 'tags', 'spaces', 'lists',
-                      'workflows']:
+                      'workflows', 'profile']:
             exclude = model.objects.POST_BASE_EXCLUDE + model.objects.POST_MODEL_EXCLUDE
             fields = [i for i in model._meta.get_fields() if i.name not in exclude]
             for f in fields:
@@ -151,6 +151,12 @@ def meta_list(request, dialog):
                 if dialog == 'settings' and f.name == 'default':
                     data['post'][f.name]['editable'] = False
                     data['post'][f.name]['required'] = False
+
+                # profile settings
+                if dialog == 'profile':
+                    if f.name in ['key', 'username', 'default', 'human_readable']:
+                        data['post'][f.name]['editable'] = False
+                        data['post'][f.name]['required'] = False
 
                 # for unique fields that shall not be updated during life cycle editable must be false
                 if f.name == model.UNIQUE:

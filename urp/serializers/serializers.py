@@ -33,6 +33,7 @@ from urp.backends.ldap import server_check
 from urp.backends.Email import MyEmailBackend
 from urp.vault import create_update_vault, validate_password_input
 from urp.crypto import encrypt
+from urp.models.profile import Profile
 
 # django imports
 from django.utils import timezone
@@ -93,6 +94,9 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
 
                     # create vault record
                     create_update_vault(data=validated_data, log=False, initial=True)
+
+                # create profile
+                Profile.objects.generate_profile(username=validated_data['username'], log_user=self.context['user'])
 
             # for workflows
             if obj.MODEL_ID == '26':
@@ -281,6 +285,9 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 if not self.instance.ldap and self.instance.version == 1:
                     vault = Vault.objects.filter(username=self.instance.username).get()
                     vault.delete()
+
+                # delete profile
+                Profile.objects.delete_profile(username=self.instance.username, log_user=self.context['user'])
 
             if model.MODEL_ID == '26':
                 steps = WorkflowsSteps.objects.filter(version=self.instance.version,
