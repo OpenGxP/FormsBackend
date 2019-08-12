@@ -232,19 +232,32 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         instance.save()
         # log record
         if model.objects.LOG_TABLE:
-            if model.MODEL_ID == '04':
-                if not instance.ldap:
-                    # add initial password to validated data for logging
-                    vault = Vault.objects.filter(username=instance.username).get()
-                    fields['initial_password'] = vault.initial_password
-                else:
-                    # ldap is always false
-                    fields['initial_password'] = False
-            # route now for activate user and set password at same time
-            if 'now' in self.context.keys():
-                now = self.context['now']
-            create_log_record(model=model, context=self.context, obj=instance, validated_data=fields,
-                              action=action, now=now)
+            # for workflows
+            if instance.MODEL_ID == '26':
+                for record in instance.linked_steps:
+                    workflow_log_data = {}
+                    for field in model.objects.LOG_TABLE.HASH_SEQUENCE:
+                        if hasattr(instance, field):
+                            workflow_log_data[field] = getattr(instance, field)
+                        else:
+                            if hasattr(record, field):
+                                workflow_log_data[field] = getattr(record, field)
+                    create_log_record(model=model, context=self.context, obj=instance, validated_data=workflow_log_data,
+                                      action=action, now=now)
+            else:
+                if model.MODEL_ID == '04':
+                    if not instance.ldap:
+                        # add initial password to validated data for logging
+                        vault = Vault.objects.filter(username=instance.username).get()
+                        fields['initial_password'] = vault.initial_password
+                    else:
+                        # ldap is always false
+                        fields['initial_password'] = False
+                # route now for activate user and set password at same time
+                if 'now' in self.context.keys():
+                    now = self.context['now']
+                create_log_record(model=model, context=self.context, obj=instance, validated_data=fields,
+                                  action=action, now=now)
         return instance
 
     def delete(self):

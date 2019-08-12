@@ -25,7 +25,7 @@ from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, Status, LOG_
 from urp.models.tags import Tags
 from urp.models.roles import Roles
 from urp.fields import LookupField
-from urp.validators import validate_no_space, validate_no_specials, validate_no_numbers, validate_only_ascii
+from urp.validators import validate_no_space, validate_no_specials_reduced, validate_no_numbers, validate_only_ascii
 
 
 # log manager
@@ -40,7 +40,8 @@ class WorkflowsLogManager(GlobalManager):
                        'step',
                        'role',
                        'predecessors',
-                       'text')
+                       'text',
+                       'sequence')
 
 
 # log table
@@ -56,6 +57,7 @@ class WorkflowsLog(GlobalModel):
     # FO-187: changed log field to char field because lookup field to python was already called on main object
     predecessors = models.CharField(_('Predecessors'), max_length=CHAR_BIG, blank=True)
     text = models.CharField(_('Text'), max_length=CHAR_BIG, blank=True)
+    sequence = models.IntegerField(_('Sequence'))
     # defaults
     status = models.ForeignKey(Status, on_delete=models.PROTECT)
     version = FIELD_VERSION
@@ -69,10 +71,10 @@ class WorkflowsLog(GlobalModel):
 
     # integrity check
     def verify_checksum(self):
-        to_hash_payload = 'workflow:{};tag:{};step:{};role:{};predecessors:{};text:{};' \
+        to_hash_payload = 'workflow:{};tag:{};step:{};role:{};predecessors:{};text:{};sequence:{};' \
                           'status_id:{};version:{};valid_from:{};valid_to:{};' \
                           'user:{};timestamp:{};action:{};'. \
-            format(self.workflow, self.tag, self.step, self.role, self.predecessors, self.text,
+            format(self.workflow, self.tag, self.step, self.role, self.predecessors, self.text, self.sequence,
                    self.status_id, self.version, self.valid_from, self.valid_to,
                    self.user, self.timestamp, self.action)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
@@ -82,8 +84,8 @@ class WorkflowsLog(GlobalModel):
         return self.status.status
 
     # hashing
-    HASH_SEQUENCE = ['workflow', 'tag', 'step', 'role', 'predecessors', 'text', 'status_id', 'version', 'valid_from',
-                     'valid_to'] + LOG_HASH_SEQUENCE
+    HASH_SEQUENCE = ['workflow', 'tag', 'step', 'role', 'predecessors', 'text', 'sequence', 'status_id', 'version',
+                     'valid_from', 'valid_to'] + LOG_HASH_SEQUENCE
 
     # permissions
     MODEL_ID = '27'
@@ -110,7 +112,7 @@ class WorkflowsManager(GlobalManager):
 class Workflows(GlobalModel):
     # custom fields
     workflow = models.CharField(_('Workflow'), max_length=CHAR_DEFAULT, help_text=_('tbd'),
-                                validators=[validate_no_specials,
+                                validators=[validate_no_specials_reduced,
                                             validate_no_space,
                                             validate_no_numbers,
                                             validate_only_ascii])
@@ -167,6 +169,7 @@ class WorkflowsSteps(GlobalModel):
     role = models.CharField(_('Role'), max_length=CHAR_DEFAULT)
     predecessors = LookupField(_('Predecessors'), max_length=CHAR_BIG, blank=True)
     text = models.CharField(_('Text'), max_length=CHAR_BIG, blank=True)
+    sequence = models.IntegerField(_('Sequence'))
     # defaults
     version = FIELD_VERSION
 
@@ -175,15 +178,15 @@ class WorkflowsSteps(GlobalModel):
 
     # integrity check
     def verify_checksum(self):
-        to_hash_payload = 'step:{};role:{};predecessors:{};text:{};version:{};'.\
-            format(self.step, self.role, self.predecessors, self.text, self.version)
+        to_hash_payload = 'step:{};role:{};predecessors:{};text:{};sequence:{};version:{};'.\
+            format(self.step, self.role, self.predecessors, self.text, self.sequence, self.version)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
 
     # manager
     objects = WorkflowsStepsManager()
 
     # hashing
-    HASH_SEQUENCE = ['step', 'role', 'predecessors', 'text', 'version']
+    HASH_SEQUENCE = ['step', 'role', 'predecessors', 'text', 'sequence', 'version']
 
     class Meta:
         unique_together = ('lifecycle_id', 'version', 'step')

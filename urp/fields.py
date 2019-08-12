@@ -52,7 +52,8 @@ class StepsField(serializers.Field):
             steps.append({'step': record.step,
                           'role': record.role,
                           'predecessors': record.predecessors.split(','),
-                          'text': record.text})
+                          'text': record.text,
+                          'sequence': record.sequence})
         return steps
 
     def to_internal_value(self, data):

@@ -265,7 +265,7 @@ class Prerequisites(object):
         return csrf_token
 
 
-def log_records(model, action, data, access_log=None, _status=True):
+def log_records(model, action, data, access_log=None, _status=True, sub_table=False):
     data['action'] = action
     # remove valid field, because its read only and not in db
     del data['valid']
@@ -279,12 +279,35 @@ def log_records(model, action, data, access_log=None, _status=True):
         log_model = model.objects.LOG_TABLE
     else:
         log_model = access_log
-    try:
-        query = log_model.objects.filter(**data).all()[0]
-    except model.DoesNotExist:
-        assert 'No log record found for "{}".'.format(data)
+
+    # build query structure if sub_table
+    if sub_table:
+        # individual for workflows
+        if model.MODEL_ID == '26':
+            for step in data['steps']:
+                # transform predecessors to string
+                if 'predecessors' in step:
+                    string_value = ''
+                    for pred in step['predecessors']:
+                        string_value += '{},'.format(pred)
+                    step['predecessors'] = string_value[:-1]
+
+                data_no_steps = data.copy()
+                data_no_steps.pop('steps')
+                data_step = {**data_no_steps, **step}
+                try:
+                    log_model.objects.filter(**data_step).all()[0]
+                except log_model.DoesNotExist or IndexError:
+                    assert 'No log record found for "{}".'.format(data_step)
+            return True
+
     else:
-        return CentralLog.objects.filter(log_id=query.id).exists()
+        try:
+            query = log_model.objects.filter(**data).all()[0]
+        except model.DoesNotExist or IndexError:
+            assert 'No log record found for "{}".'.format(data)
+        else:
+            return CentralLog.objects.filter(log_id=query.id).exists()
 
 
 class GetAll(APITestCase):
@@ -597,6 +620,7 @@ class PostNew(APITestCase):
         self.valid_payload = None
         self.invalid_payloads = None
         self.pre_data = None
+        self.sub_table = False
 
         # flag for execution
         self.execute = False
@@ -668,7 +692,7 @@ class PostNew(APITestCase):
                 self.assertEqual(response.data['status'], 'draft')
             # verify log record
             self.assertEqual(log_records(model=self.model, data=response.data, action=settings.DEFAULT_LOG_CREATE,
-                                         _status=self.status), True)
+                                         _status=self.status, sub_table=self.sub_table), True)
 
     # FO-121: new test to verify user cannot proceed when blocked
     def test_401_blocked(self):
@@ -723,6 +747,7 @@ class PostNewVersion(APITestCase):
         self.fail_object_circulation_data = None
         self.prerequisites = None
         self.pre_data = None
+        self.sub_table = False
 
         # flag for execution
         self.execute = False
@@ -884,8 +909,8 @@ class PostNewVersion(APITestCase):
                 self.assertEqual(response.data[self.model.UNIQUE], serializer.data[self.model.UNIQUE])
             self.assertEqual(response.data['valid_from'], serializer.data['valid_from'])
             # verify log record
-            self.assertEqual(log_records(model=self.model, data=response.data, action=settings.DEFAULT_LOG_CREATE),
-                             True)
+            self.assertEqual(log_records(model=self.model, data=response.data, action=settings.DEFAULT_LOG_CREATE,
+                                         sub_table=self.sub_table), True)
 
     # FO-121: new test to verify user cannot proceed when blocked
     def test_401_blocked(self):
@@ -958,6 +983,7 @@ class DeleteOne(APITestCase):
         self.ok_object_data = None
         self.prerequisites = None
         self.pre_data = None
+        self.sub_table = False
 
         # flag for execution
         self.execute = False
@@ -1059,8 +1085,8 @@ class DeleteOne(APITestCase):
             except self.model.DoesNotExist:
                 pass
             # verify log record
-            self.assertEqual(log_records(model=self.model, data=self.ok_object, action=settings.DEFAULT_LOG_DELETE),
-                             True)
+            self.assertEqual(log_records(model=self.model, data=self.ok_object, action=settings.DEFAULT_LOG_DELETE,
+                                         sub_table=self.sub_table), True)
 
     # FO-121: new test to verify user cannot proceed when blocked
     def test_401_blocked(self):
@@ -1199,6 +1225,7 @@ class DeleteOneNoStatus(APITestCase):
         self.ok_object_data_unique = str()
         self.prerequisites = None
         self.pre_data = None
+        self.sub_table = False
 
         # flag for execution
         self.execute = False
@@ -1273,7 +1300,7 @@ class DeleteOneNoStatus(APITestCase):
                 pass
             # verify log record
             self.assertEqual(log_records(model=self.model, data=self.ok_object, action=settings.DEFAULT_LOG_DELETE,
-                                         _status=False), True)
+                                         _status=False, sub_table=self.sub_table), True)
 
     # FO-121: new test to verify user cannot proceed when blocked
     def test_401_blocked(self):
@@ -1315,6 +1342,7 @@ class PatchOne(APITestCase):
         self.invalid_payload = None
         self.unique_invalid_payload = None
         self.pre_data = None
+        self.sub_table = False
 
         # flag for execution
         self.execute = False
@@ -1529,8 +1557,8 @@ class PatchOne(APITestCase):
             self.assertEqual(response.status_code, status.HTTP_200_OK)
             self.assertEqual(response.data, serializer.data)
             # verify log record
-            self.assertEqual(log_records(model=self.model, data=response.data, action=settings.DEFAULT_LOG_UPDATE),
-                             True)
+            self.assertEqual(log_records(model=self.model, data=response.data, action=settings.DEFAULT_LOG_UPDATE,
+                                         sub_table=self.sub_table), True)
     
     # FO-121: new test to verify user cannot proceed when blocked
     def test_401_blocked(self):
@@ -1607,6 +1635,7 @@ class PatchOneNoStatus(APITestCase):
         self.data_available = False
         self.test_data = str()
         self.pre_data = None
+        self.sub_table = False
 
         # flag for execution
         self.execute = False
@@ -1693,7 +1722,7 @@ class PatchOneNoStatus(APITestCase):
             self.assertEqual(response.data, serializer.data)
             # verify log record
             self.assertEqual(log_records(model=self.model, data=response.data, action=settings.DEFAULT_LOG_UPDATE,
-                                         _status=False), True)
+                                         _status=False, sub_table=self.sub_table), True)
     
     # FO-121: new test to verify user cannot proceed when blocked
     def test_401_blocked(self):
@@ -1734,6 +1763,7 @@ class PatchOneStatus(APITestCase):
         self.ok_object_data = None
         self.prerequisites = None
         self.pre_data = None
+        self.sub_table = False
 
         # flag for execution
         self.execute = False
@@ -1747,8 +1777,8 @@ class PatchOneStatus(APITestCase):
         self.assertEqual(response.data, serializer.data)
         self.assertEqual(response.data['status'], _status)
         # verify log record
-        self.assertEqual(log_records(model=self.model, data=response.data, action=settings.DEFAULT_LOG_STATUS),
-                         True)
+        self.assertEqual(log_records(model=self.model, data=response.data, action=settings.DEFAULT_LOG_STATUS,
+                                     sub_table=self.sub_table), True)
 
     def setUp(self):
         if self.execute:

@@ -25,7 +25,7 @@ from urp.models.tags import Tags
 from urp.serializers import GlobalReadWriteSerializer
 from urp.fields import StepsField
 from urp.models.roles import Roles
-from urp.validators import validate_no_space, validate_no_specials, validate_no_numbers, validate_only_ascii
+from urp.validators import validate_no_space, validate_no_specials_reduced, validate_no_numbers, validate_only_ascii
 from basics.models import CHAR_BIG
 
 
@@ -53,16 +53,35 @@ class WorkflowsReadWriteSerializer(GlobalReadWriteSerializer):
         # get all steps
         steps = []
         predecessors = []
+        has_sequence_zero = False
+        sequences = []
         for item in value:
             if 'step' not in item.keys():
                 raise serializers.ValidationError('Step ist required.')
             steps.append(item['step'])
+
+            # validate that mandatory field sequence is in payload and collect for later unique check
+            if 'sequence' not in item.keys():
+                raise serializers.ValidationError('Sequence is required.')
+            sequences.append(item['sequence'])
 
             # predecessors are optional
             if 'predecessors' in item.keys():
                 if not isinstance(item['predecessors'], list):
                     raise serializers.ValidationError('Predecessor not a valid array.')
                 predecessors.append(item['predecessors'])
+
+            # check that all steps except first have predecessors
+            if item['sequence'] != 0:
+                if 'predecessors' not in item.keys():
+                    raise serializers.ValidationError('Steps after initial step need predecessors.')
+
+            # check if item has sequence zero, if it may not have predecessors, skip if sequence 0 was already checked
+            if not has_sequence_zero:
+                if item['sequence'] == 0:
+                    has_sequence_zero = True
+                    if 'predecessors' in item.keys() and item['predecessors']:
+                        raise serializers.ValidationError('First step can not have predecessors.')
 
             # validate role field
             if 'role' not in item.keys():
@@ -73,7 +92,7 @@ class WorkflowsReadWriteSerializer(GlobalReadWriteSerializer):
             # validate step
             try:
                 validate_only_ascii(item['step'])
-                validate_no_specials(item['step'])
+                validate_no_specials_reduced(item['step'])
                 validate_no_space(item['step'])
                 validate_no_numbers(item['step'])
             except serializers.ValidationError as e:
@@ -93,6 +112,14 @@ class WorkflowsReadWriteSerializer(GlobalReadWriteSerializer):
                     string_value += '{},'.format(pred)
                 item['predecessors'] = string_value[:-1]
 
+        # raise error if no step was sequence 0
+        if not has_sequence_zero:
+            raise serializers.ValidationError('First step without predecessors required.')
+
+        # validate sequence unique characteristic
+        if len(sequences) != len(set(sequences)):
+            raise serializers.ValidationError('Sequence of steps must be unique within a workflow.')
+
         # validate step unique characteristic
         if len(steps) != len(set(steps)):
             raise serializers.ValidationError('Steps must be unique within a workflow.')
@@ -108,16 +135,15 @@ class WorkflowsReadWriteSerializer(GlobalReadWriteSerializer):
 
 # new version / status
 class WorkflowsNewVersionStatusSerializer(GlobalReadWriteSerializer):
+    steps = StepsField(source='linked_steps', read_only=True)
     status = serializers.CharField(source='get_status', read_only=True)
 
     class Meta:
         model = Workflows
         extra_kwargs = {'version': {'required': False},
-                        'list': {'required': False},
-                        'type': {'required': False},
-                        'tag': {'required': False},
-                        'elements': {'required': False}}
-        fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_ORDER_STATUS_MANAGED + \
+                        'workflow': {'required': False},
+                        'tag': {'required': False}}
+        fields = model.objects.GET_MODEL_ORDER + ('steps', ) + model.objects.GET_BASE_ORDER_STATUS_MANAGED + \
             model.objects.GET_BASE_CALCULATED
 
 
