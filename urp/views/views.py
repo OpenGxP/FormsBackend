@@ -147,6 +147,10 @@ def user_change_questions_view(request):
     if not hasattr(request, 'data'):
         raise serializers.ValidationError('Data is required.')
 
+    # check if provided password is correct
+    authenticate(request=request, username=request.user.username, password=request.data['password'],
+                 self_password_change=True)
+
     error_dict = dict()
     field_error = ['This filed is required.']
 
@@ -180,10 +184,6 @@ def user_change_questions_view(request):
         return Response(status=http_status.HTTP_404_NOT_FOUND)
     except ValidationError:
         return Response(status=http_status.HTTP_400_BAD_REQUEST)
-
-    # check if provided password is correct
-    authenticate(request=request, username=request.user.username, password=request.data['password'],
-                 self_password_change=True)
 
     data = dict()
     for question, answer in question_answer_fields.items():
