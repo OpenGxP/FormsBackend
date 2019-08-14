@@ -146,6 +146,24 @@ class ProfileMiscellaneous(APITestCase):
         response = self.client.patch(path, data=data, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_400_initial_timezone(self):
+        """
+        Test shall show that false timezones are not allowed at initial set.
+        """
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get API response
+        path = '/user/set_timezone'
+        data = {'value': 'test'}
+        response = self.client.patch(path, data=data, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        data = {'value': '0'}
+        response = self.client.patch(path, data=data, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
     def test_400_language(self):
         """
         Test shall show that false languages are not allowed.
@@ -174,6 +192,20 @@ class ProfileMiscellaneous(APITestCase):
         response = self.client.patch(path, data=data, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
+    def test_200_initial_timezone(self):
+        """
+        Test shall show that timezones can be changed to valid ones at initial set.
+        """
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get API response
+        path = '/user/set_timezone'
+        data = {'value': 'Europe/Berlin'}
+        response = self.client.patch(path, data=data, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
     def test_200_language(self):
         """
         Test shall show that language can be changed to valid values.
@@ -187,3 +219,32 @@ class ProfileMiscellaneous(APITestCase):
         data = {'value': 'de_DE'}
         response = self.client.patch(path, data=data, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_overall_initial_timezone(self):
+        """
+        Test shall show that after initial log in, the timezone is not yet set. after set the initial flag is false.
+        """
+        # initial login
+        data = {'username': self.prerequisites.username, 'password': self.prerequisites.password}
+        response = self.client.post('/login', data=data, content_type='application/json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['initial_timezone'], True)
+
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get API response
+        path = '/user/set_timezone'
+        data = {'value': 'Europe/Vienna'}
+        response = self.client.patch(path, data=data, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # logout
+        self.client.logout()
+
+        # login after changing timezone
+        data = {'username': self.prerequisites.username, 'password': self.prerequisites.password}
+        response = self.client.post('/login', data=data, content_type='application/json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['initial_timezone'], False)
