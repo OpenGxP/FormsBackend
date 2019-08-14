@@ -82,3 +82,108 @@ class PatchOneProfile(PatchOneNoStatus):
         self.valid_payload = {'value': 'de_DE'}
         self.invalid_payload = {'key': 'changedkey'}
         self.filter = {'username': self.prerequisites.username}
+
+
+class ProfileMiscellaneous(APITestCase):
+    def __init__(self, *args, **kwargs):
+        super(ProfileMiscellaneous, self).__init__(*args, **kwargs)
+        self.base_path = BASE_PATH
+        self.prerequisites = Prerequisites(base_path=self.base_path)
+        self.test_data_timezone = 'loc.timezone'
+        self.test_data_language = 'loc.language'
+
+    def setUp(self):
+        self.client = Client(enforce_csrf_checks=True)
+        self.prerequisites.role_superuser()
+
+    def test_405_delete(self):
+        """
+        This test shall how that is not possible to delete profile records.
+        """
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get API response
+        path = '{}/{}'.format(self.base_path, self.test_data_timezone)
+        response = self.client.delete(path, content_type='application/json',
+                                      HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def test_405_post(self):
+        """
+        Test shall show that is not possible to add new profile records.
+        """
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get API response
+        data = {
+            'key': 'test',
+            'default': 'defaultvalue',
+            'value': 'testvalue'
+        }
+        response = self.client.post(self.base_path, data=data, content_type='application/json',
+                                    HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def test_400_timezone(self):
+        """
+        Test shall show that false timezones are not allowed.
+        """
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get API response
+        path = '{}/{}'.format(self.base_path, self.test_data_timezone)
+        data = {'value': 'test'}
+        response = self.client.patch(path, data=data, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        data = {'value': '0'}
+        response = self.client.patch(path, data=data, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_400_language(self):
+        """
+        Test shall show that false languages are not allowed.
+        """
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get API response
+        path = '{}/{}'.format(self.base_path, self.test_data_language)
+        data = {'value': 'test'}
+        response = self.client.patch(path, data=data, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_200_timezone(self):
+        """
+        Test shall show that timezones can be changed to valid ones.
+        """
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get API response
+        path = '{}/{}'.format(self.base_path, self.test_data_timezone)
+        data = {'value': 'Europe/Berlin'}
+        response = self.client.patch(path, data=data, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_200_language(self):
+        """
+        Test shall show that language can be changed to valid values.
+        """
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get API response
+        path = '{}/{}'.format(self.base_path, self.test_data_language)
+        data = {'value': 'de_DE'}
+        response = self.client.patch(path, data=data, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)

@@ -515,6 +515,10 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                     if data['value'] not in settings.PROFILE_TIMEZONES:
                         raise serializers.ValidationError({'value': ['Selected timezone is not supported.']})
 
+                if self.instance.key == 'loc.language':
+                    if data['value'] not in ['en_EN', 'de_DE']:
+                        raise serializers.ValidationError({'value': ['Selected language is not supported.']})
+
             @require_NONE
             @require_SOD
             def validate_roles(self):
