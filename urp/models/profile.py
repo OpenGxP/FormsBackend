@@ -81,6 +81,8 @@ class ProfileLog(GlobalModel):
 # profile manager
 class ProfileManager(GlobalManager):
     # flags
+    HAS_VERSION = False
+    HAS_STATUS = False
     LOG_TABLE = ProfileLog
 
     # meta
@@ -132,17 +134,26 @@ class ProfileManager(GlobalManager):
                               action=settings.DEFAULT_LOG_DELETE, now=now)
 
     # profile calls
+    def initial_timezone(self, username):
+        try:
+            tz = self.filter(username=username, key='loc.timezone').get().value
+        except self.model.DoesNotExist:
+            tz = settings.PROFILE_DEFAULT_TIMEZONE
+        if tz == 'UTC':
+            return True
+        return False
+
     def timezone(self, username):
         try:
             return self.filter(username=username, key='loc.timezone').get().value
         except self.model.DoesNotExist:
-            return settings.PROFILE_TIMEZONE
+            return settings.PROFILE_DEFAULT_TIMEZONE
 
     def language(self, username):
         try:
             return self.filter(username=username, key='loc.language').get().value
         except self.model.DoesNotExist:
-            return settings.PROFILE_LANGUAGE
+            return settings.PROFILE_DEFAULT_LANGUAGE
 
 
 class Profile(GlobalModel):

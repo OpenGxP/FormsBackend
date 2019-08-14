@@ -31,6 +31,7 @@ from rest_framework import status as http_status
 from django.contrib.auth.password_validation import password_validators_help_texts
 from django.db.models.base import ModelBase
 from django.core.exceptions import ValidationError
+from django.conf import settings
 
 
 @api_view(['GET'])
@@ -42,6 +43,22 @@ def meta_list(request, dialog):
     if dialog in ['status', 'tokens']:
         return Response(status=http_status.HTTP_400_BAD_REQUEST)
     # determine the model instance from string parameter
+
+    # meta for timezone dialog
+    if dialog == 'set_timezone':
+        data = {'post': {}}
+        data['post']['value'] = {'verbose_name': 'Timezone',
+                                 # 'help_text': 'Allowed timezones: {}.'.format(', '.join(settings.PROFILE_TIMEZONES)),
+                                 # 'max_length': 255,
+                                 'data_type': 'CharField',
+                                 'required': True,
+                                 # 'unique': False,
+                                 'editable': True,
+                                 'lookup': {'data': settings.PROFILE_TIMEZONES,
+                                            'multi': False,
+                                            'method': 'select'}}
+
+        return Response(data=data, status=http_status.HTTP_200_OK)
 
     if dialog == 'profile_questions':
         ldap = request.user.ldap

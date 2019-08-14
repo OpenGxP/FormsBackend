@@ -24,6 +24,7 @@ from rest_framework import status as http_status
 
 # app imports
 from urp.models import Roles, Users
+from urp.models.profile import Profile
 
 # django imports
 from django.utils import timezone
@@ -54,6 +55,7 @@ def login_view(request):
         data = dict()
         # get initial password fag of user
         data['initial_password'] = user.initial_password
+        data['initial_timezone'] = Profile.objects.initial_timezone(user.username)
         casl = Roles.objects.casl(user.roles.split(','))
         data['casl'] = casl
         return Response(data=data, status=http_status.HTTP_200_OK)

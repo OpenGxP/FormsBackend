@@ -18,6 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # python imports
 import os
+from pytz import common_timezones
 
 # basic imports
 from basics.custom import value_to_int, value_to_bool, require_file
@@ -50,15 +51,16 @@ CRYPTO_KEY = 'CRYPTO_KEY'
 # PROFILE DEFAULTS #
 ####################
 
-PROFILE_TIMEZONE = 'UTC'
-PROFILE_LANGUAGE = 'en_EN'
+PROFILE_TIMEZONES = [zone for zone in common_timezones if zone.startswith('Europe/')]
+PROFILE_DEFAULT_TIMEZONE = 'UTC'
+PROFILE_DEFAULT_LANGUAGE = 'en_EN'
 
 
 PROFILE_DATA = [{'key': 'loc.timezone',
-                 'default': PROFILE_TIMEZONE,
+                 'default': PROFILE_DEFAULT_TIMEZONE,
                  'human_readable': _('Timezone'),
-                 'value': PROFILE_TIMEZONE},
+                 'value': PROFILE_DEFAULT_TIMEZONE},
                 {'key': 'loc.language',
-                 'default': PROFILE_LANGUAGE,
+                 'default': PROFILE_DEFAULT_LANGUAGE,
                  'human_readable': _('Language'),
-                 'value': PROFILE_LANGUAGE}]
+                 'value': PROFILE_DEFAULT_LANGUAGE}]

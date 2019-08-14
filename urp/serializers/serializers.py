@@ -27,7 +27,7 @@ from basics.custom import generate_checksum, generate_to_hash, value_to_int
 from basics.models import Status, AVAILABLE_STATUS, StatusLog, CentralLog, Settings, SettingsLog
 from urp.decorators import require_STATUS_CHANGE, require_POST, require_DELETE, require_PATCH, require_NONE, \
     require_NEW_VERSION, require_status, require_LDAP, require_USERS, require_NEW, require_SETTINGS, require_SOD, \
-    require_EMAIL, require_ROLES
+    require_EMAIL, require_ROLES, require_PROFILE
 from urp.custom import create_log_record, create_central_log_record
 from urp.backends.ldap import server_check
 from urp.backends.Email import MyEmailBackend
@@ -507,6 +507,13 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                         validate_email(data['value'])
                     except DjangoValidationError as e:
                         raise serializers.ValidationError(e.message)
+
+            @require_NONE
+            @require_PROFILE
+            def validate_profile(self):
+                if self.instance.key == 'loc.timezone':
+                    if data['value'] not in settings.PROFILE_TIMEZONES:
+                        raise serializers.ValidationError({'value': ['Selected timezone is not supported.']})
 
             @require_NONE
             @require_SOD

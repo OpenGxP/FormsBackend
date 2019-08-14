@@ -26,6 +26,7 @@ from rest_framework import status
 
 # app imports
 from .models import Roles, LDAP, Users, SoD, Email
+from urp.models.profile import Profile
 from basics.models import Settings
 
 
@@ -111,6 +112,7 @@ require_USERS = require_model(Users)
 require_SETTINGS = require_model(Settings)
 require_SOD = require_model(SoD)
 require_EMAIL = require_model(Email)
+require_PROFILE = require_model(Profile)
 
 
 def require_status(_status):

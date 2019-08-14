@@ -22,7 +22,7 @@ from django.conf import settings
 
 # app imports
 from urp.views.private.root import private_root_view
-from urp.views.private.profile import profile_detail, profile_list, profile_log_list
+from urp.views.private.profile import profile_detail, profile_list, profile_log_list, set_timezone_view
 
 # app imports
 from urp.views import permissions_list, roles_list, roles_detail, status_list, \
@@ -53,6 +53,7 @@ urls_private = [
     # general user profile
     path('{}user/profile'.format(settings.BASE_URL), profile_list, name='profile-list'),
     path('{}user/profile/<str:key>'.format(settings.BASE_URL), profile_detail, name='profile-detail'),
+    path('{}user/set_timezone'.format(settings.BASE_URL), set_timezone_view, name='set-timezone-view'),
     # status
     path('{}admin/status'.format(settings.BASE_URL), status_list, name='status-list'),
     # permissions

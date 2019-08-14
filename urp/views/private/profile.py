@@ -32,6 +32,28 @@ from django.core.exceptions import ValidationError
 from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
 
 
+# PATCH timezone
+@api_view(['PATCH'])
+@auth_required(initial_password_check=True)
+@auto_logout()
+@csrf_protect
+def set_timezone_view(request):
+    try:
+        query = Profile.objects.get(key='loc.timezone', username=request.user.username)
+    except Profile.DoesNotExist:
+        return Response(status=http_status.HTTP_404_NOT_FOUND)
+    except ValidationError:
+        return Response(status=http_status.HTTP_400_BAD_REQUEST)
+
+    _serializer = ProfileReadWriteSerializer(query, data=request.data, context={'method': 'PATCH',
+                                                                                'function': '',
+                                                                                'user': request.user.username})
+    if _serializer.is_valid():
+        _serializer.save()
+        return Response(_serializer.data)
+    return Response(_serializer.errors, status=http_status.HTTP_400_BAD_REQUEST)
+
+
 # GET list
 @api_view(['GET'])
 @auth_required()
