@@ -319,9 +319,11 @@ class GetAll(APITestCase):
         self.base_path = None
         self.model = None
         self.serializer = None
+        self.filter = {}
 
         # flag for execution
         self.execute = False
+        self.perm_required = True
 
     def setUp(self):
         if self.execute:
@@ -339,7 +341,7 @@ class GetAll(APITestCase):
             self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_403(self):
-        if self.execute:
+        if self.execute and self.perm_required:
             # authenticate
             self.prerequisites.auth_no_perms(self.client)
             # get API response
@@ -362,7 +364,7 @@ class GetAll(APITestCase):
             # get API response
             response = self.client.get(self.ok_path, content_type='application/json')
             # get data from db
-            query = self.model.objects.all()
+            query = self.model.objects.filter(**self.filter).all()
             serializer = self.serializer(query, many=True)
             self.assertEqual(response.data, serializer.data)
             self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -519,9 +521,11 @@ class GetOneNoStatus(APITestCase):
         self.data_available = False
         self.test_data = str()
         self.pre_data = None
+        self.filter = {}
 
         # flag for execution
         self.execute = False
+        self.perm_required = True
 
     def setUp(self):
         if self.execute:
@@ -551,7 +555,7 @@ class GetOneNoStatus(APITestCase):
             self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_403(self):
-        if self.execute:
+        if self.execute and self.perm_required:
             # authenticate
             self.prerequisites.auth_no_perms(self.client)
             # get API response
@@ -573,7 +577,7 @@ class GetOneNoStatus(APITestCase):
             # get API response
             response = self.client.get(self.ok_path, content_type='application/json')
             # get data from db
-            query = self.model.objects.get(**self.query)
+            query = self.model.objects.filter(**self.filter).get(**self.query)
             serializer = self.serializer(query)
             self.assertEqual(response.data, serializer.data)
             self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -1636,9 +1640,11 @@ class PatchOneNoStatus(APITestCase):
         self.test_data = str()
         self.pre_data = None
         self.sub_table = False
+        self.filter = {}
 
         # flag for execution
         self.execute = False
+        self.perm_required = True
 
     def setUp(self):
         if self.execute:
@@ -1677,7 +1683,7 @@ class PatchOneNoStatus(APITestCase):
             self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_403_permission(self):
-        if self.execute:
+        if self.execute and self.perm_required:
             # authenticate
             self.prerequisites.auth_no_write_perms(self.client)
             # get csrf
@@ -1716,7 +1722,7 @@ class PatchOneNoStatus(APITestCase):
             # get API response
             response = self.client.patch(self.ok_path, data=self.valid_payload, content_type='application/json',
                                          HTTP_X_CSRFTOKEN=csrf_token)
-            query = self.model.objects.get(**self.query)
+            query = self.model.objects.filter(**self.filter).get(**self.query)
             serializer = self.serializer(query)
             self.assertEqual(response.status_code, status.HTTP_200_OK)
             self.assertEqual(response.data, serializer.data)
