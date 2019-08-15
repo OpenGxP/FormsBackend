@@ -106,27 +106,25 @@ def meta_list(request, dialog):
         # add calculated field "valid"
         data['get']['valid'] = {'verbose_name': 'Valid',
                                 'data_type': 'CharField',
-                                'render': False,
-                                'format': None}
+                                'render': False}
         # add calculated field "unique"
         data['get']['unique'] = {'verbose_name': 'Unique',
                                  'data_type': 'CharField',
-                                 'render': False,
-                                 'format': None}
+                                 'render': False}
+        # add calculated field local timestamp if log table
+        if model.objects.IS_LOG:
+            data['get']['timestamp_local'] = {'verbose_name': 'Timestamp',
+                                              'data_type': 'DateTimeField',
+                                              'render': True}
+
         for f in fields:
             if f.name in not_render:
                 render = False
             else:
                 render = True
-            # add format for timestamp
-            if f.name in ['timtestamp', 'valid_from', 'valid_to']:
-                _format = Settings.objects.core_timestamp_format
-            else:
-                _format = None
             data['get'][f.name] = {'verbose_name': f.verbose_name,
                                    'data_type': f.get_internal_type(),
-                                   'render': render,
-                                   'format': _format}
+                                   'render': render}
 
         # add post information
         if dialog in ['users', 'roles', 'ldap', 'settings', 'sod', 'email', 'passwords', 'tags', 'spaces', 'lists',

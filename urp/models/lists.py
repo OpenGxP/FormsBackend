@@ -32,6 +32,7 @@ class ListsLogManager(GlobalManager):
     # flags
     HAS_VERSION = False
     HAS_STATUS = False
+    IS_LOG = True
 
     # meta
     GET_MODEL_ORDER = ('list',

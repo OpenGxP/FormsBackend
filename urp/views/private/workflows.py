@@ -225,5 +225,5 @@ def workflows_log_list(request):
     if tags_str:
         tags_list = tags_str[0].split(',')
     logs = WorkflowsLog.objects.filter(Q(tag__in=tags_list) | Q(tag='')).all()
-    serializer = WorkflowsLogReadSerializer(logs, many=True)
+    serializer = WorkflowsLogReadSerializer(logs, many=True, context={'user': request.user.username})
     return Response(serializer.data)

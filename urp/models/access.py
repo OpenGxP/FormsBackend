@@ -30,11 +30,13 @@ class AccessLogManager(GlobalManager):
     # flags
     HAS_VERSION = False
     HAS_STATUS = False
+    IS_LOG = True
 
     # meta
     GET_MODEL_ORDER = ('user',
                        'action',
                        'timestamp',
+                       'timestamp_local',
                        'mode',
                        'method',
                        'attempt',

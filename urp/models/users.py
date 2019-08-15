@@ -48,6 +48,7 @@ class UsersLogManager(GlobalManager):
     # flags
     HAS_VERSION = False
     HAS_STATUS = False
+    IS_LOG = True
 
     # meta
     GET_MODEL_EXCLUDE = ('is_active',)

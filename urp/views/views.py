@@ -239,7 +239,7 @@ def status_log_list(request):
     List all status log records.
     """
     logs = StatusLog.objects.all()
-    serializer = StatusLogReadSerializer(logs, many=True)
+    serializer = StatusLogReadSerializer(logs, many=True, context={'user': request.user.username})
     return Response(serializer.data)
 
 
@@ -275,7 +275,7 @@ def permissions_log_list(request):
     List all permissions log records.
     """
     logs = PermissionsLog.objects.all()
-    serializer = PermissionsLogReadSerializer(logs, many=True)
+    serializer = PermissionsLogReadSerializer(logs, many=True, context={'user': request.user.username})
     return Response(serializer.data)
 
 
@@ -293,7 +293,7 @@ def settings_log_list(request):
     List all settings log records.
     """
     logs = SettingsLog.objects.all()
-    serializer = SettingsLogReadSerializer(logs, many=True)
+    serializer = SettingsLogReadSerializer(logs, many=True, context={'user': request.user.username})
     return Response(serializer.data)
 
 
@@ -363,7 +363,7 @@ def settings_detail(request, key):
 @perm_required('{}.01'.format(TagsLog.MODEL_ID))
 def tags_log_list(request):
     logs = TagsLog.objects.all()
-    serializer = TagsLogReadSerializer(logs, many=True)
+    serializer = TagsLogReadSerializer(logs, many=True, context={'user': request.user.username})
     return Response(serializer.data)
 
 
@@ -465,7 +465,7 @@ def ldap_log_list(request):
     List all ldap log records.
     """
     logs = LDAPLog.objects.all()
-    serializer = LDAPLogReadSerializer(logs, many=True)
+    serializer = LDAPLogReadSerializer(logs, many=True, context={'user': request.user.username})
     return Response(serializer.data)
 
 
@@ -567,7 +567,7 @@ def email_log_list(request):
     List all email log records.
     """
     logs = EmailLog.objects.all()
-    serializer = EmailLogReadSerializer(logs, many=True)
+    serializer = EmailLogReadSerializer(logs, many=True, context={'user': request.user.username})
     return Response(serializer.data)
 
 
@@ -666,7 +666,7 @@ def email_detail(request, host):
 @perm_required('06.01')
 def central_log_list(request):
     logs = CentralLog.objects.all()
-    serializer = CentralLogReadWriteSerializer(logs, many=True)
+    serializer = CentralLogReadWriteSerializer(logs, many=True, context={'user': request.user.username})
     return Response(serializer.data)
 
 
@@ -681,7 +681,7 @@ def central_log_list(request):
 @perm_required('05.01')
 def access_log_list(request):
     logs = AccessLog.objects.all()
-    serializer = AccessLogReadWriteSerializer(logs, many=True)
+    serializer = AccessLogReadWriteSerializer(logs, many=True, context={'user': request.user.username})
     return Response(serializer.data)
 
 
@@ -951,7 +951,7 @@ def roles_log_list(request):
     List all roles log records.
     """
     logs = RolesLog.objects.all()
-    serializer = RolesLogReadSerializer(logs, many=True)
+    serializer = RolesLogReadSerializer(logs, many=True, context={'user': request.user.username})
     return Response(serializer.data)
 
 
@@ -1140,7 +1140,7 @@ def users_log_list(request):
     List all users log records.
     """
     logs = UsersLog.objects.all()
-    serializer = UsersLogReadSerializer(logs, many=True)
+    serializer = UsersLogReadSerializer(logs, many=True, context={'user': request.user.username})
     return Response(serializer.data)
 
 
@@ -1327,5 +1327,5 @@ def sod_status(request, lifecycle_id, version, status):
 @perm_required('{}.01'.format(SoDLog.MODEL_ID))
 def sod_log_list(request):
     logs = SoDLog.objects.all()
-    serializer = SoDLogReadSerializer(logs, many=True)
+    serializer = SoDLogReadSerializer(logs, many=True, context={'user': request.user.username})
     return Response(serializer.data)

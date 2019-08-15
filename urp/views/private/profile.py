@@ -60,7 +60,7 @@ def set_timezone_view(request):
 @auto_logout()
 def profile_log_list(request):
     logs = ProfileLog.objects.filter(username=request.user.username).all()
-    serializer = ProfileLogReadSerializer(logs, many=True)
+    serializer = ProfileLogReadSerializer(logs, many=True, context={'user': request.user.username})
     return Response(serializer.data)
 
 

@@ -231,5 +231,5 @@ def lists_log_list(request):
     if tags_str:
         tags_list = tags_str[0].split(',')
     logs = ListsLog.objects.filter(Q(tag__in=tags_list) | Q(tag='')).all()
-    serializer = ListsLogReadSerializer(logs, many=True)
+    serializer = ListsLogReadSerializer(logs, many=True, context={'user': request.user.username})
     return Response(serializer.data)

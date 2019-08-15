@@ -365,7 +365,7 @@ class GetAll(APITestCase):
             response = self.client.get(self.ok_path, content_type='application/json')
             # get data from db
             query = self.model.objects.filter(**self.filter).all()
-            serializer = self.serializer(query, many=True)
+            serializer = self.serializer(query, many=True, context={'user': self.prerequisites.username})
             self.assertEqual(response.data, serializer.data)
             self.assertEqual(response.status_code, status.HTTP_200_OK)
 

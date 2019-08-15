@@ -42,7 +42,7 @@ from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
 @perm_required('{}.01'.format(SpacesLog.MODEL_ID))
 def spaces_log_list(request):
     logs = SpacesLog.objects.all()
-    serializer = SpacesLogReadSerializer(logs, many=True)
+    serializer = SpacesLogReadSerializer(logs, many=True, context={'user': request.user.username})
     return Response(serializer.data)
 
 

@@ -53,6 +53,23 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
     # unique attribute for frontend selection
     unique = serializers.CharField(source='unique_id', read_only=True)
 
+    # timestamp for log records
+    timestamp_local = serializers.SerializerMethodField()
+
+    def get_timestamp_local(self, obj):
+        if self.model.objects.IS_LOG:
+            tz = Profile.objects.timezone(username=self.context['user'])
+            timezone.activate(tz)
+            _return = timezone.localtime(value=obj.timestamp).strftime(Settings.objects.core_timestamp_format)
+            timezone.deactivate()
+            return _return
+        return None
+
+    # model
+    @property
+    def model(self):
+        return getattr(getattr(self, 'Meta', None), 'model', None)
+
     @staticmethod
     def new_version_check(data):
         if 'lifecycle_id' in data and 'version' in data:
@@ -62,7 +79,7 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
     # function for create (POST)
     def create(self, validated_data):
         # get meta model assigned in custom serializer
-        model = getattr(getattr(self, 'Meta', None), 'model', None)
+        model = self.model
         obj = model()
         hash_sequence = obj.HASH_SEQUENCE
         # check if new version or initial create
@@ -170,7 +187,7 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
     # update
     def update(self, instance, validated_data, self_call=None, now=None):
         action = settings.DEFAULT_LOG_UPDATE
-        model = getattr(getattr(self, 'Meta', None), 'model', None)
+        model = self.model
         if 'function' in self.context.keys():
             if self.context['function'] == 'status_change':
                 action = settings.DEFAULT_LOG_STATUS
@@ -266,7 +283,7 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
 
     def delete(self):
         # get meta model assigned in custom serializer
-        model = getattr(getattr(self, 'Meta', None), 'model', None)
+        model = self.model
         hash_sequence = model.HASH_SEQUENCE
         fields = dict()
         for attr in hash_sequence:
