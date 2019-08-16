@@ -64,7 +64,7 @@ def workflows_list(request):
         if tags_str:
             tags_list = tags_str[0].split(',')
         workflows = Workflows.objects.filter(Q(tag__in=tags_list) | Q(tag='')).all()
-        serializer = WorkflowsReadWriteSerializer(workflows, many=True)
+        serializer = WorkflowsReadWriteSerializer(workflows, many=True, context={'user': request.user.username})
         return Response(serializer.data)
 
     if request.method == 'GET':
@@ -123,7 +123,7 @@ def workflows_detail(request, lifecycle_id, version):
     @perm_required('{}.01'.format(Workflows.MODEL_ID))
     @ensure_csrf_cookie
     def get(_request):
-        serializer = WorkflowsReadWriteSerializer(_workflow)
+        serializer = WorkflowsReadWriteSerializer(_workflow, context={'user': request.user.username})
         return Response(serializer.data)
 
     try:

@@ -221,7 +221,7 @@ def status_list(request):
     List all status.
     """
     stat = Status.objects.all()
-    serializer = StatusReadWriteSerializer(stat, many=True)
+    serializer = StatusReadWriteSerializer(stat, many=True, context={'user': request.user.username})
     return Response(serializer.data)
 
 
@@ -257,7 +257,7 @@ def permissions_list(request):
     List all permissions.
     """
     perm = Permissions.objects.all()
-    serializer = PermissionsReadWriteSerializer(perm, many=True)
+    serializer = PermissionsReadWriteSerializer(perm, many=True, context={'user': request.user.username})
     return Response(serializer.data)
 
 
@@ -312,7 +312,7 @@ def settings_list(request):
     List all settings records.
     """
     query = Settings.objects.all()
-    serializer = SettingsReadWriteSerializer(query, many=True)
+    serializer = SettingsReadWriteSerializer(query, many=True, context={'user': request.user.username})
     return Response(serializer.data)
 
 
@@ -335,7 +335,7 @@ def settings_detail(request, key):
     @perm_required('{}.01'.format(Settings.MODEL_ID))
     @ensure_csrf_cookie
     def get(_request):
-        serializer = SettingsReadWriteSerializer(query)
+        serializer = SettingsReadWriteSerializer(query, context={'user': request.user.username})
         return Response(serializer.data)
 
     try:
@@ -392,7 +392,7 @@ def tags_list(request):
     @ensure_csrf_cookie
     def get(_request):
         query = Tags.objects.all()
-        serializer = TagsReadWriteSerializer(query, many=True)
+        serializer = TagsReadWriteSerializer(query, many=True, context={'user': request.user.username})
         return Response(serializer.data)
 
     if request.method == 'GET':
@@ -431,7 +431,7 @@ def tags_detail(request, tag):
     @perm_required('{}.01'.format(Tags.MODEL_ID))
     @ensure_csrf_cookie
     def get(_request):
-        serializer = TagsReadWriteSerializer(query)
+        serializer = TagsReadWriteSerializer(query, context={'user': request.user.username})
         return Response(serializer.data)
 
     try:
@@ -494,7 +494,7 @@ def ldap_list(request):
     @ensure_csrf_cookie
     def get(_request):
         query = LDAP.objects.all()
-        serializer = LDAPReadWriteSerializer(query, many=True)
+        serializer = LDAPReadWriteSerializer(query, many=True, context={'user': request.user.username})
         return Response(serializer.data)
 
     if request.method == 'GET':
@@ -533,7 +533,7 @@ def ldap_detail(request, host):
     @perm_required('{}.01'.format(LDAP.MODEL_ID))
     @ensure_csrf_cookie
     def get(_request):
-        serializer = LDAPReadWriteSerializer(query)
+        serializer = LDAPReadWriteSerializer(query, context={'user': request.user.username})
         return Response(serializer.data)
 
     try:
@@ -596,7 +596,7 @@ def email_list(request):
     @ensure_csrf_cookie
     def get(_request):
         query = Email.objects.all()
-        serializer = EmailReadWriteSerializer(query, many=True)
+        serializer = EmailReadWriteSerializer(query, many=True, context={'user': request.user.username})
         return Response(serializer.data)
 
     if request.method == 'GET':
@@ -635,7 +635,7 @@ def email_detail(request, host):
     @perm_required('{}.01'.format(Email.MODEL_ID))
     @ensure_csrf_cookie
     def get(_request):
-        serializer = EmailReadWriteSerializer(query)
+        serializer = EmailReadWriteSerializer(query, context={'user': request.user.username})
         return Response(serializer.data)
 
     try:
@@ -788,7 +788,7 @@ def roles_list(request):
     @ensure_csrf_cookie
     def get(_request):
         roles = Roles.objects.all()
-        serializer = RolesReadSerializer(roles, many=True)
+        serializer = RolesReadSerializer(roles, many=True, context={'user': request.user.username})
         return Response(serializer.data)
 
     if request.method == 'GET':
@@ -849,7 +849,7 @@ def roles_detail(request, lifecycle_id, version):
     @perm_required('03.01')
     @ensure_csrf_cookie
     def get(_request):
-        serializer = RolesReadSerializer(role)
+        serializer = RolesReadSerializer(role, context={'user': request.user.username})
         return Response(serializer.data)
 
     try:
@@ -981,7 +981,7 @@ def users_list(request):
     @ensure_csrf_cookie
     def get(_request):
         users = Users.objects.all()
-        serializer = UsersReadSerializer(users, many=True)
+        serializer = UsersReadSerializer(users, many=True, context={'user': request.user.username})
         return Response(serializer.data)
 
     if request.method == 'GET':
@@ -1009,7 +1009,7 @@ def users_detail(request, lifecycle_id, version):
     @perm_required('04.01')
     @ensure_csrf_cookie
     def get(_request):
-        serializer = UsersReadSerializer(user)
+        serializer = UsersReadSerializer(user, context={'user': request.user.username})
         return Response(serializer.data)
 
     @csrf_protect
@@ -1170,7 +1170,7 @@ def sod_list(request):
     @ensure_csrf_cookie
     def get(_request):
         roles = SoD.objects.all()
-        serializer = SoDReadSerializer(roles, many=True)
+        serializer = SoDReadSerializer(roles, many=True, context={'user': request.user.username})
         return Response(serializer.data)
 
     if request.method == 'GET':
@@ -1228,7 +1228,7 @@ def sod_detail(request, lifecycle_id, version):
     @perm_required('{}.01'.format(SoD.MODEL_ID))
     @ensure_csrf_cookie
     def get(_request):
-        serializer = SoDReadSerializer(role)
+        serializer = SoDReadSerializer(role, context={'user': request.user.username})
         return Response(serializer.data)
 
     try:

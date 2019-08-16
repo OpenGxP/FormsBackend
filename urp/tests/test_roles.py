@@ -215,7 +215,7 @@ class RolesMiscellaneous(APITestCase):
         response_first_circ = self.client.patch(path, data=self.valid_payload, content_type='application/json',
                                                 HTTP_X_CSRFTOKEN=csrf_token)
         query = Roles.objects.filter(lifecycle_id=response_first.data['lifecycle_id'], version=1).get()
-        serializer = RolesReadSerializer(query)
+        serializer = RolesReadSerializer(query, context={'user': self.prerequisites.username})
         self.assertEqual(response_first_circ.status_code, status.HTTP_200_OK)
         self.assertEqual(response_first_circ.data, serializer.data)
         self.assertEqual(response_first_circ.data['status'], _status)
@@ -230,7 +230,7 @@ class RolesMiscellaneous(APITestCase):
         response_first_prod = self.client.patch(path, data=self.valid_payload, content_type='application/json',
                                                 HTTP_X_CSRFTOKEN=csrf_token)
         query = Roles.objects.filter(lifecycle_id=response_first.data['lifecycle_id'], version=1).get()
-        serializer = RolesReadSerializer(query)
+        serializer = RolesReadSerializer(query, context={'user': self.prerequisites.username})
         self.assertEqual(response_first_prod.status_code, status.HTTP_200_OK)
         self.assertEqual(response_first_prod.data, serializer.data)
         self.assertEqual(response_first_prod.data['status'], _status)
@@ -249,7 +249,7 @@ class RolesMiscellaneous(APITestCase):
         response_first_two_circ = self.client.patch(path, data=self.valid_payload, content_type='application/json',
                                                     HTTP_X_CSRFTOKEN=csrf_token)
         query = Roles.objects.filter(lifecycle_id=response_first.data['lifecycle_id'], version=2).get()
-        serializer = RolesReadSerializer(query)
+        serializer = RolesReadSerializer(query, context={'user': self.prerequisites.username})
         self.assertEqual(response_first_two_circ.status_code, status.HTTP_200_OK)
         self.assertEqual(response_first_two_circ.data, serializer.data)
         self.assertEqual(response_first_two_circ.data['status'], _status)
@@ -273,7 +273,7 @@ class RolesMiscellaneous(APITestCase):
         path = '{}/{}/{}/{}'.format(self.base_path, response.data['lifecycle_id'], 1, _status)
         response_circ = self.client.patch(path, data={}, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
         query = Roles.objects.filter(lifecycle_id=response.data['lifecycle_id'], version=1).get()
-        serializer = RolesReadSerializer(query)
+        serializer = RolesReadSerializer(query, context={'user': self.prerequisites.username})
         self.assertEqual(response_circ.status_code, status.HTTP_200_OK)
         self.assertEqual(response_circ.data, serializer.data)
         self.assertEqual(response_circ.data['status'], _status)
@@ -287,7 +287,7 @@ class RolesMiscellaneous(APITestCase):
         path = '{}/{}/{}/{}'.format(self.base_path, response.data['lifecycle_id'], 1, _status)
         response_prod = self.client.patch(path, data={}, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
         query = Roles.objects.filter(lifecycle_id=response.data['lifecycle_id'], version=1).get()
-        serializer = RolesReadSerializer(query)
+        serializer = RolesReadSerializer(query, context={'user': self.prerequisites.username})
         self.assertEqual(response_prod.status_code, status.HTTP_200_OK)
         self.assertEqual(response_prod.data, serializer.data)
         self.assertEqual(response_prod.data['status'], _status)
@@ -306,7 +306,7 @@ class RolesMiscellaneous(APITestCase):
         response = self.client.patch(path, data=self.valid_payload_overlapping, content_type='application/json',
                                      HTTP_X_CSRFTOKEN=csrf_token)
         query = Roles.objects.filter(lifecycle_id=response.data['lifecycle_id'], version=2).get()
-        serializer = RolesReadSerializer(query)
+        serializer = RolesReadSerializer(query, context={'user': self.prerequisites.username})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data, serializer.data)
 
@@ -315,7 +315,7 @@ class RolesMiscellaneous(APITestCase):
         path = '{}/{}/{}/{}'.format(self.base_path, response.data['lifecycle_id'], 2, _status)
         response_circ = self.client.patch(path, data={}, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
         query = Roles.objects.filter(lifecycle_id=response.data['lifecycle_id'], version=2).get()
-        serializer = RolesReadSerializer(query)
+        serializer = RolesReadSerializer(query, context={'user': self.prerequisites.username})
         self.assertEqual(response_circ.status_code, status.HTTP_200_OK)
         self.assertEqual(response_circ.data, serializer.data)
         self.assertEqual(response_circ.data['status'], _status)
@@ -329,13 +329,13 @@ class RolesMiscellaneous(APITestCase):
         path = '{}/{}/{}/{}'.format(self.base_path, response.data['lifecycle_id'], 2, _status)
         response_prod = self.client.patch(path, data={}, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
         query = Roles.objects.filter(lifecycle_id=response.data['lifecycle_id'], version=2).get()
-        serializer = RolesReadSerializer(query)
+        serializer = RolesReadSerializer(query, context={'user': self.prerequisites.username})
         self.assertEqual(response_prod.status_code, status.HTTP_200_OK)
         self.assertEqual(response_prod.data, serializer.data)
         self.assertEqual(response_prod.data['status'], _status)
         # new check to verify that version 1 "valid_to" is now "valid_from" of version 2
         query = Roles.objects.filter(lifecycle_id=response.data['lifecycle_id'], version=1).get()
-        serializer = RolesReadSerializer(query)
+        serializer = RolesReadSerializer(query, context={'user': self.prerequisites.username})
         self.assertEqual(response_prod.data['valid_from'], serializer.data['valid_to'])
 
     def test_version_one_updated_None(self):
@@ -358,7 +358,7 @@ class RolesMiscellaneous(APITestCase):
         response_circ = self.client.patch(path, data=self.valid_payload, content_type='application/json',
                                           HTTP_X_CSRFTOKEN=csrf_token)
         query = Roles.objects.filter(lifecycle_id=response.data['lifecycle_id'], version=1).get()
-        serializer = RolesReadSerializer(query)
+        serializer = RolesReadSerializer(query, context={'user': self.prerequisites.username})
         self.assertEqual(response_circ.status_code, status.HTTP_200_OK)
         self.assertEqual(response_circ.data, serializer.data)
         self.assertEqual(response_circ.data['status'], _status)
@@ -373,7 +373,7 @@ class RolesMiscellaneous(APITestCase):
         response_prod = self.client.patch(path, data=self.valid_payload, content_type='application/json',
                                           HTTP_X_CSRFTOKEN=csrf_token)
         query = Roles.objects.filter(lifecycle_id=response.data['lifecycle_id'], version=1).get()
-        serializer = RolesReadSerializer(query)
+        serializer = RolesReadSerializer(query, context={'user': self.prerequisites.username})
         self.assertEqual(response_prod.status_code, status.HTTP_200_OK)
         self.assertEqual(response_prod.data, serializer.data)
         self.assertEqual(response_prod.data['status'], _status)
@@ -391,7 +391,7 @@ class RolesMiscellaneous(APITestCase):
         response = self.client.patch(path, data=self.invalid_payload, content_type='application/json',
                                      HTTP_X_CSRFTOKEN=csrf_token)
         query = Roles.objects.filter(lifecycle_id=response.data['lifecycle_id'], version=2).get()
-        serializer = RolesReadSerializer(query)
+        serializer = RolesReadSerializer(query, context={'user': self.prerequisites.username})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data, serializer.data)
 
@@ -401,7 +401,7 @@ class RolesMiscellaneous(APITestCase):
         response_circ = self.client.patch(path, data=self.valid_payload, content_type='application/json',
                                           HTTP_X_CSRFTOKEN=csrf_token)
         query = Roles.objects.filter(lifecycle_id=response.data['lifecycle_id'], version=2).get()
-        serializer_before = RolesReadSerializer(query)
+        serializer_before = RolesReadSerializer(query, context={'user': self.prerequisites.username})
         # check if response if a bad request
         self.assertEqual(response_circ.status_code, status.HTTP_400_BAD_REQUEST)
         # verify that data remains un-altered
@@ -412,7 +412,7 @@ class RolesMiscellaneous(APITestCase):
         response = self.client.patch(path, data=self.valid_payload_later, content_type='application/json',
                                      HTTP_X_CSRFTOKEN=csrf_token)
         query = Roles.objects.filter(lifecycle_id=response.data['lifecycle_id'], version=2).get()
-        serializer = RolesReadSerializer(query)
+        serializer = RolesReadSerializer(query, context={'user': self.prerequisites.username})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data, serializer.data)
 
@@ -422,7 +422,7 @@ class RolesMiscellaneous(APITestCase):
         response_circ = self.client.patch(path, data=self.valid_payload, content_type='application/json',
                                           HTTP_X_CSRFTOKEN=csrf_token)
         query = Roles.objects.filter(lifecycle_id=response.data['lifecycle_id'], version=2).get()
-        serializer = RolesReadSerializer(query)
+        serializer = RolesReadSerializer(query, context={'user': self.prerequisites.username})
         self.assertEqual(response_circ.status_code, status.HTTP_200_OK)
         self.assertEqual(response_circ.data, serializer.data)
         self.assertEqual(response_circ.data['status'], _status)
@@ -437,13 +437,13 @@ class RolesMiscellaneous(APITestCase):
         response_prod = self.client.patch(path, data=self.valid_payload, content_type='application/json',
                                           HTTP_X_CSRFTOKEN=csrf_token)
         query = Roles.objects.filter(lifecycle_id=response.data['lifecycle_id'], version=2).get()
-        serializer = RolesReadSerializer(query)
+        serializer = RolesReadSerializer(query, context={'user': self.prerequisites.username})
         self.assertEqual(response_prod.status_code, status.HTTP_200_OK)
         self.assertEqual(response_prod.data, serializer.data)
         self.assertEqual(response_prod.data['status'], _status)
         # new check to verify that version 1 "valid_to" is now "valid_from" of version 2
         query = Roles.objects.filter(lifecycle_id=response.data['lifecycle_id'], version=1).get()
-        serializer = RolesReadSerializer(query)
+        serializer = RolesReadSerializer(query, context={'user': self.prerequisites.username})
         self.assertEqual(response_prod.data['valid_from'], serializer.data['valid_to'])
 
     def test_version_one_unaltered(self):
@@ -469,7 +469,7 @@ class RolesMiscellaneous(APITestCase):
         path = '{}/{}/{}/{}'.format(self.base_path, response.data['lifecycle_id'], 1, 'productive')
         self.client.patch(path, data={}, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
         query = Roles.objects.filter(lifecycle_id=response.data['lifecycle_id'], version=1).get()
-        serializer = RolesReadSerializer(query)
+        serializer = RolesReadSerializer(query, context={'user': self.prerequisites.username})
         old_valid_to = serializer.data['valid_to']
 
         # create new version 2
@@ -486,7 +486,7 @@ class RolesMiscellaneous(APITestCase):
         path = '{}/{}/{}/{}'.format(self.base_path, response.data['lifecycle_id'], 2, 'circulation')
         response_circ = self.client.patch(path, data={}, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
         query = Roles.objects.filter(lifecycle_id=response.data['lifecycle_id'], version=2).get()
-        serializer = RolesReadSerializer(query)
+        serializer = RolesReadSerializer(query, context={'user': self.prerequisites.username})
         # should be ok
         self.assertEqual(response_circ.status_code, status.HTTP_200_OK)
         self.assertEqual(response_circ.data, serializer.data)
@@ -500,14 +500,14 @@ class RolesMiscellaneous(APITestCase):
         path = '{}/{}/{}/{}'.format(self.base_path, response.data['lifecycle_id'], 2, _status)
         response_prod = self.client.patch(path, data={}, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
         query = Roles.objects.filter(lifecycle_id=response.data['lifecycle_id'], version=2).get()
-        serializer = RolesReadSerializer(query)
+        serializer = RolesReadSerializer(query, context={'user': self.prerequisites.username})
         self.assertEqual(response_prod.status_code, status.HTTP_200_OK)
         self.assertEqual(response_prod.data, serializer.data)
         self.assertEqual(response_prod.data['status'], _status)
 
         # new check to verify that version 1 "valid_to" remains unaltered
         query = Roles.objects.filter(lifecycle_id=response.data['lifecycle_id'], version=1).get()
-        serializer = RolesReadSerializer(query)
+        serializer = RolesReadSerializer(query, context={'user': self.prerequisites.username})
         self.assertEqual(old_valid_to, serializer.data['valid_to'])
 
     def test_initial_role(self):

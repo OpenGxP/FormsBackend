@@ -270,6 +270,10 @@ def log_records(model, action, data, access_log=None, _status=True, sub_table=Fa
     # remove valid field, because its read only and not in db
     del data['valid']
     del data['unique']
+    if 'valid_from_local' in data:
+        del data['valid_from_local']
+    if 'valid_to_local' in data:
+        del data['valid_to_local']
     # human readable status is a read only field and not in db, but uuid
     if _status:
         data['status_id'] = Status.objects.status_by_text(data['status'])
@@ -457,7 +461,7 @@ class GetOne(APITestCase):
             response = self.client.get(self.ok_path, content_type='application/json')
             # get data from db
             query = self.model.objects.get(**self.query)
-            serializer = self.serializer(query)
+            serializer = self.serializer(query, context={'user': self.prerequisites.username})
             self.assertEqual(response.data, serializer.data)
             self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -905,7 +909,7 @@ class PostNewVersion(APITestCase):
             self.assertEqual(response.data['status'], 'draft')
             # add check that data is the same, except status and version
             query = self.model.objects.get(**self.query)
-            serializer = self.serializer(query)
+            serializer = self.serializer(query, context={'user': self.prerequisites.username})
             if isinstance(self.model.UNIQUE, list):
                 for field in self.model.UNIQUE:
                     self.assertEqual(response.data[field], serializer.data[field])
@@ -1557,7 +1561,7 @@ class PatchOne(APITestCase):
             response = self.client.patch(self.ok_path, data=self.valid_payload, content_type='application/json',
                                          HTTP_X_CSRFTOKEN=csrf_token)
             query = self.model.objects.get(**self.query)
-            serializer = self.serializer(query)
+            serializer = self.serializer(query, context={'user': self.prerequisites.username})
             self.assertEqual(response.status_code, status.HTTP_200_OK)
             self.assertEqual(response.data, serializer.data)
             # verify log record
@@ -1778,7 +1782,7 @@ class PatchOneStatus(APITestCase):
         response = self.client.patch('{}/{}'.format(self.ok_path, _status), content_type='application/json',
                                      HTTP_X_CSRFTOKEN=csrf_token)
         query = self.model.objects.get(**self.query)
-        serializer = self.serializer(query)
+        serializer = self.serializer(query, context={'user': self.prerequisites.username})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data, serializer.data)
         self.assertEqual(response.data['status'], _status)

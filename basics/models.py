@@ -58,10 +58,12 @@ class GlobalManager(models.Manager):
     # get
     GET_BASE_EXCLUDE = ('id', 'checksum')
     GET_MODEL_EXCLUDE = tuple()
-    GET_BASE_NOT_RENDER = ('lifecycle_id', 'timestamp',)
+    GET_BASE_NOT_RENDER = ('lifecycle_id', 'timestamp', 'valid_from', 'valid_to',)
     GET_MODEL_NOT_RENDER = tuple()
     GET_BASE_ORDER_STATUS_MANAGED = ('valid_from',
+                                     'valid_from_local',
                                      'valid_to',
+                                     'valid_to_local',
                                      'status',
                                      'version',
                                      'lifecycle_id',)

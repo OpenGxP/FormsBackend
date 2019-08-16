@@ -70,7 +70,7 @@ def spaces_list(request):
     @ensure_csrf_cookie
     def get(_request):
         query = Spaces.objects.all()
-        serializer = SpacesReadWriteSerializer(query, many=True)
+        serializer = SpacesReadWriteSerializer(query, many=True, context={'user': request.user.username})
         return Response(serializer.data)
 
     if request.method == 'GET':
@@ -108,7 +108,7 @@ def spaces_detail(request, space):
     @perm_required('{}.01'.format(Spaces.MODEL_ID))
     @ensure_csrf_cookie
     def get(_request):
-        serializer = SpacesReadWriteSerializer(query)
+        serializer = SpacesReadWriteSerializer(query, context={'user': request.user.username})
         return Response(serializer.data)
 
     try:

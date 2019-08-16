@@ -79,7 +79,8 @@ class Command(BaseCommand):
             'permissions': permissions,
             'valid_from': valid_from
         }
-        serializer = RolesWriteSerializer(data=data, context={'method': 'POST', 'function': 'init'})
+        serializer = RolesWriteSerializer(data=data, context={'method': 'POST', 'function': 'init',
+                                                              'user': settings.DEFAULT_SYSTEM_USER})
         if serializer.is_valid():
             # FO-131: add check if a role with any record already exists
             _filter = {Roles.UNIQUE: role}

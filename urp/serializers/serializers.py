@@ -16,6 +16,9 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+# python imports
+from pytz import timezone as pytz_timezone, utc as pytz_utc
+
 # rest imports
 from rest_framework import serializers
 
@@ -55,15 +58,26 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
 
     # timestamp for log records
     timestamp_local = serializers.SerializerMethodField()
+    valid_from_local = serializers.SerializerMethodField()
+    valid_to_local = serializers.SerializerMethodField()
+
+    def localize_timestamp(self, obj, field):
+        if not getattr(obj, field):
+            return None
+        tz = Profile.objects.timezone(username=self.context['user'])
+        timezone.activate(tz)
+        _return = timezone.localtime(value=getattr(obj, field)).strftime(Settings.objects.core_timestamp_format)
+        timezone.deactivate()
+        return _return
 
     def get_timestamp_local(self, obj):
-        if self.model.objects.IS_LOG:
-            tz = Profile.objects.timezone(username=self.context['user'])
-            timezone.activate(tz)
-            _return = timezone.localtime(value=obj.timestamp).strftime(Settings.objects.core_timestamp_format)
-            timezone.deactivate()
-            return _return
-        return None
+        return self.localize_timestamp(obj=obj, field='timestamp')
+
+    def get_valid_from_local(self, obj):
+        return self.localize_timestamp(obj=obj, field='valid_from')
+
+    def get_valid_to_local(self, obj):
+        return self.localize_timestamp(obj=obj, field='valid_to')
 
     # model
     @property
@@ -97,6 +111,17 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 validated_data['initial_password'] = self.instance.initial_password
         else:
             validated_data['version'] = 1
+            if model.objects.HAS_STATUS:
+
+                # get local timezone of user
+                user_tz = pytz_timezone(Profile.objects.timezone(username=self.context['user']))
+                if 'valid_from' in validated_data:
+                    validated_data['valid_from'] = user_tz.localize(
+                        timezone.make_naive(validated_data['valid_from']), is_dst=None).astimezone(pytz_utc)
+                if 'valid_to' in validated_data:
+                    validated_data['valid_to'] = user_tz.localize(timezone.make_naive(validated_data['valid_to']),
+                                                                  is_dst=None).astimezone(pytz_utc)
+
             # for users
             if obj.MODEL_ID == '04':
                 # add is_active because django framework needs it
@@ -213,6 +238,17 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                         if getattr(instance, 'valid_from') < valid_to_prev_version:
                             self.update(instance=prev_instance, validated_data=data, self_call=True, now=now)
             else:
+                if model.objects.HAS_STATUS:
+                    # get local timezone of user
+                    user_tz = pytz_timezone(Profile.objects.timezone(username=self.context['user']))
+                    if 'valid_from' in validated_data:
+                        validated_data['valid_from'] = user_tz.localize(
+                            timezone.make_naive(validated_data['valid_from']),
+                            is_dst=None).astimezone(pytz_utc)
+                    if 'valid_to' in validated_data:
+                        validated_data['valid_to'] = user_tz.localize(timezone.make_naive(validated_data['valid_to']),
+                                                                      is_dst=None).astimezone(pytz_utc)
+
                 # FO-132: hash password before saving
                 if model.MODEL_ID == '04':
                     # draft updates shall be reflected in vault

@@ -68,7 +68,7 @@ def lists_list(request):
         if tags_str:
             tags_list = tags_str[0].split(',')
         lists = Lists.objects.filter(Q(tag__in=tags_list) | Q(tag='')).all()
-        serializer = ListsReadWriteSerializer(lists, many=True)
+        serializer = ListsReadWriteSerializer(lists, many=True, context={'user': request.user.username})
         return Response(serializer.data)
 
     if request.method == 'GET':
@@ -126,7 +126,7 @@ def lists_detail(request, lifecycle_id, version):
     @perm_required('{}.01'.format(Lists.MODEL_ID))
     @ensure_csrf_cookie
     def get(_request):
-        serializer = ListsReadWriteSerializer(_list)
+        serializer = ListsReadWriteSerializer(_list, context={'user': request.user.username})
         return Response(serializer.data)
 
     try:

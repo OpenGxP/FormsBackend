@@ -71,7 +71,7 @@ def profile_log_list(request):
 @ensure_csrf_cookie
 def profile_list(request):
     query = Profile.objects.filter(username=request.user.username).all()
-    serializer = ProfileReadWriteSerializer(query, many=True)
+    serializer = ProfileReadWriteSerializer(query, many=True, context={'user': request.user.username})
     return Response(serializer.data)
 
 
@@ -92,7 +92,7 @@ def profile_detail(request, key):
 
     @ensure_csrf_cookie
     def get(_request):
-        serializer = ProfileReadWriteSerializer(query)
+        serializer = ProfileReadWriteSerializer(query, context={'user': request.user.username})
         return Response(serializer.data)
 
     try:
