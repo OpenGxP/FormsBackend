@@ -81,6 +81,11 @@ class PostNewWorkflow(PostNew):
                                   'tag': 'mytag',
                                   'steps': [{'step': 'one', 'role': 'all', 'sequence': 0},
                                             {'step': 'two', 'role': 'all', 'sequence': 0}]},
+                                 # FO-191: new test to verify that self reference for steps is not possible
+                                 {'workflow': 'test',
+                                  'tag': 'mytag',
+                                  'steps': [{'step': 'one', 'role': 'all', 'sequence': 0},
+                                            {'step': 'two', 'role': 'all', 'sequence': 1, 'predecessors': ['two']}]},
                                  ]
         self.execute = True
         self.sub_table = True

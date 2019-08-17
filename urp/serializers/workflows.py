@@ -58,6 +58,15 @@ class WorkflowsReadWriteSerializer(GlobalReadWriteSerializer):
         for item in value:
             if 'step' not in item.keys():
                 raise serializers.ValidationError('Step ist required.')
+            # FO-191: moved step validation before anything else
+            try:
+                validate_only_ascii(item['step'])
+                validate_no_specials_reduced(item['step'])
+                validate_no_space(item['step'])
+                validate_no_numbers(item['step'])
+            except serializers.ValidationError as e:
+                raise serializers.ValidationError(
+                    'Not allowed to use step {}. {}'.format(item['step'], e.detail[0]))
             steps.append(item['step'])
 
             # validate that mandatory field sequence is in payload and collect for later unique check
@@ -75,6 +84,9 @@ class WorkflowsReadWriteSerializer(GlobalReadWriteSerializer):
             if item['sequence'] != 0:
                 if 'predecessors' not in item.keys():
                     raise serializers.ValidationError('Steps after initial step need predecessors.')
+                # FO-191: steps can not be self referenced anymore
+                if item['step'] in item['predecessors']:
+                    raise serializers.ValidationError('Step can not be self referenced in predecessors.')
 
             # check if item has sequence zero, if it may not have predecessors, skip if sequence 0 was already checked
             if not has_sequence_zero:
@@ -88,15 +100,6 @@ class WorkflowsReadWriteSerializer(GlobalReadWriteSerializer):
                 raise serializers.ValidationError('Role ist required.')
             if item['role'] not in allowed:
                 raise serializers.ValidationError('Not allowed to use "{}".'.format(item['role']))
-
-            # validate step
-            try:
-                validate_only_ascii(item['step'])
-                validate_no_specials_reduced(item['step'])
-                validate_no_space(item['step'])
-                validate_no_numbers(item['step'])
-            except serializers.ValidationError as e:
-                raise serializers.ValidationError('Not allowed to use step {}. {}'.format(item['step'], e.detail[0]))
 
             # validate text
             if 'text' in item:
