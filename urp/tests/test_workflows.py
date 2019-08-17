@@ -90,7 +90,8 @@ class PostNewWorkflow(PostNew):
         self.execute = True
         self.sub_table = True
         self.pre_data = [{'data': {'tag': 'mytag'},
-                          'path': reverse('tags-list')}]
+                          'path': reverse('tags-list'),
+                          'status': False}]
 
 
 ###########################################
@@ -111,7 +112,8 @@ class GetOneWorkflow(GetOne):
                                          {'step': 'two', 'role': 'all', 'sequence': 1, 'predecessors': ['one']}]}
         self.execute = True
         self.pre_data = [{'data': {'tag': 'mytag'},
-                          'path': reverse('tags-list')}]
+                          'path': reverse('tags-list'),
+                          'status': False}]
 
 
 # post
@@ -156,7 +158,8 @@ class DeleteOneWorkflow(DeleteOne):
         self.execute = True
         self.sub_table = True
         self.pre_data = [{'data': {'tag': 'mytag'},
-                          'path': reverse('tags-list')}]
+                          'path': reverse('tags-list'),
+                          'status': False}]
 
 
 # patch
@@ -207,4 +210,5 @@ class PatchOneStatusWorkflow(PatchOneStatus):
         self.execute = True
         self.sub_table = True
         self.pre_data = [{'data': {'tag': 'mytag'},
-                          'path': reverse('tags-list')}]
+                          'path': reverse('tags-list'),
+                          'status': False}]

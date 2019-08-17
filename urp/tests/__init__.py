@@ -87,6 +87,33 @@ class Prerequisites(object):
             raise AssertionError('Error Code: {}, Can not create manual prerequisite record.'
                                  .format(response.status_code))
 
+    def create_record_manual_status(self, ext_client, data, path):
+        # authenticate
+        self.auth(ext_client)
+        # get csrf
+        csrf_token = self.get_csrf(ext_client)
+        # get API response
+        response = ext_client.post(path, data=data, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        if response.status_code != status.HTTP_201_CREATED:
+            raise AssertionError('Error Code: {}, Can not create manual prerequisite record.'
+                                 .format(response.status_code))
+        # start circulation
+        status_path = '{}/{}/1/circulation'.format(path, response.data['lifecycle_id'])
+        response_circ = ext_client.patch(status_path, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        if response_circ.status_code != status.HTTP_200_OK:
+            raise AssertionError('Error Code: {}, Can not circulate manual prerequisite record.'
+                                 .format(response.status_code))
+        # auth other user and set productive
+        self.auth_two(ext_client)
+        # get csrf
+        csrf_token = self.get_csrf(ext_client)
+        status_path = '{}/{}/1/productive'.format(path, response.data['lifecycle_id'])
+        response_prod = ext_client.patch(status_path, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        if response_prod.status_code != status.HTTP_200_OK:
+            raise AssertionError('Error Code: {}, Can not approve manual prerequisite record.'
+                                 .format(response.status_code))
+        return response_prod.data
+
     def role_superuser(self):
         call_command('initialize-settings')
         call_command('initialize-status')
@@ -414,11 +441,15 @@ class GetOne(APITestCase):
         if self.execute:
             self.client = Client()
             self.prerequisites.role_superuser()
+            self.prerequisites.role_superuser_two()
             self.prerequisites.role_no_permissions()
             # create ok object
             if self.pre_data:
                 for record in self.pre_data:
-                    self.prerequisites.create_record_manual(self.client, record['data'], record['path'])
+                    if record['status']:
+                        self.prerequisites.create_record_manual_status(self.client, record['data'], record['path'])
+                    else:
+                        self.prerequisites.create_record_manual(self.client, record['data'], record['path'])
             self.ok_object = self.prerequisites.create_record(self.client, self.ok_object_data)
             # create ok path
             self.ok_path = '{}/{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], self.ok_object['version'])
@@ -640,11 +671,15 @@ class PostNew(APITestCase):
         if self.execute:
             self.client = Client(enforce_csrf_checks=True)
             self.prerequisites.role_superuser()
+            self.prerequisites.role_superuser_two()
             self.prerequisites.role_no_write_permissions()
             self.ok_path = self.base_path
             if self.pre_data:
                 for record in self.pre_data:
-                    self.prerequisites.create_record_manual(self.client, record['data'], record['path'])
+                    if record['status']:
+                        self.prerequisites.create_record_manual_status(self.client, record['data'], record['path'])
+                    else:
+                        self.prerequisites.create_record_manual(self.client, record['data'], record['path'])
 
     def test_401(self):
         if self.execute:
@@ -770,7 +805,10 @@ class PostNewVersion(APITestCase):
             # create ok object in status draft
             if self.pre_data:
                 for record in self.pre_data:
-                    self.prerequisites.create_record_manual(self.client, record['data'], record['path'])
+                    if record['status']:
+                        self.prerequisites.create_record_manual_status(self.client, record['data'], record['path'])
+                    else:
+                        self.prerequisites.create_record_manual(self.client, record['data'], record['path'])
             self.ok_object = self.prerequisites.create_record(self.client, self.ok_object_data)
             # push ok object to ok status
             # authenticate
@@ -1005,7 +1043,10 @@ class DeleteOne(APITestCase):
             # create ok object in status draft
             if self.pre_data:
                 for record in self.pre_data:
-                    self.prerequisites.create_record_manual(self.client, record['data'], record['path'])
+                    if record['status']:
+                        self.prerequisites.create_record_manual_status(self.client, record['data'], record['path'])
+                    else:
+                        self.prerequisites.create_record_manual(self.client, record['data'], record['path'])
             self.ok_object = self.prerequisites.create_record(self.client, self.ok_object_data)
             # create ok path
             self.ok_path = '{}/{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], self.ok_object['version'])
@@ -1364,7 +1405,10 @@ class PatchOne(APITestCase):
             # create ok object in status draft
             if self.pre_data:
                 for record in self.pre_data:
-                    self.prerequisites.create_record_manual(self.client, record['data'], record['path'])
+                    if record['status']:
+                        self.prerequisites.create_record_manual_status(self.client, record['data'], record['path'])
+                    else:
+                        self.prerequisites.create_record_manual(self.client, record['data'], record['path'])
             self.ok_object = self.prerequisites.create_record(self.client, self.ok_object_data)
             # create ok path
             self.ok_path = '{}/{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], self.ok_object['version'])
@@ -1799,7 +1843,10 @@ class PatchOneStatus(APITestCase):
             # create ok object in status draft
             if self.pre_data:
                 for record in self.pre_data:
-                    self.prerequisites.create_record_manual(self.client, record['data'], record['path'])
+                    if record['status']:
+                        self.prerequisites.create_record_manual_status(self.client, record['data'], record['path'])
+                    else:
+                        self.prerequisites.create_record_manual(self.client, record['data'], record['path'])
             self.ok_object = self.prerequisites.create_record(self.client, self.ok_object_data)
             # create ok path
             self.ok_path = '{}/{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], self.ok_object['version'])

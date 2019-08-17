@@ -160,7 +160,16 @@ def private_root_view(request):
                                                                  'post': True,
                                                                  'patch': True,
                                                                  'delete': True,
-                                                                 'version': True}}},
+                                                                 'version': True},
+                                                   'forms': {'title': 'Forms',
+                                                             'url': {'abs': reverse('forms-list', request=request),
+                                                                     'rel': 'md/forms'},
+                                                             'log': {'abs': reverse('forms-log-list', request=request),
+                                                                     'rel': 'forms/lists'},
+                                                             'post': True,
+                                                             'patch': True,
+                                                             'delete': True,
+                                                             'version': True}}},
                            'logs': {'title': 'Logs',
                                     'subjects': {'central': {'title': 'Central',
                                                              'url': {'abs': reverse('central-log-list',
@@ -200,6 +209,15 @@ def private_root_view(request):
                                                                       'rel': 'logs/profile'}},
                                                  'lists': {'title': 'Lists',
                                                            'url': {'abs': reverse('lists-log-list', request=request),
-                                                                   'rel': 'logs/lists'}}}}}}
+                                                                   'rel': 'logs/lists'}},
+                                                 'workflows': {'title': 'Workflows',
+                                                               'url': {'abs': reverse('workflows-log-list',
+                                                                                      request=request),
+                                                                       'rel': 'logs/lists'}},
+                                                 'forms': {'title': 'Formws',
+                                                           'url': {'abs': reverse('forms-log-list',
+                                                                                  request=request),
+                                                                   'rel': 'logs/forms'}}
+                                                 }}}}
 
     return Response(root)

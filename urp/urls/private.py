@@ -23,6 +23,7 @@ from django.conf import settings
 # app imports
 from urp.views.private.root import private_root_view
 from urp.views.private.profile import profile_detail, profile_list, profile_log_list, set_timezone_view
+from urp.views.private.forms import forms_list, forms_detail, forms_status, forms_log_list
 
 # app imports
 from urp.views import permissions_list, roles_list, roles_detail, status_list, \
@@ -73,6 +74,7 @@ urls_private = [
     path('{}logs/spaces'.format(settings.BASE_URL), spaces_log_list, name='spaces-log-list'),
     path('{}logs/lists'.format(settings.BASE_URL), lists_log_list, name='lists-log-list'),
     path('{}logs/workflows'.format(settings.BASE_URL), workflows_log_list, name='workflows-log-list'),
+    path('{}logs/forms'.format(settings.BASE_URL), forms_log_list, name='forms-log-list'),
     path('{}logs/profile'.format(settings.BASE_URL), profile_log_list, name='profile-log-list'),
     # ldap
     path('{}admin/ldap'.format(settings.BASE_URL), ldap_list, name='ldap-list'),
@@ -117,6 +119,11 @@ urls_private = [
     path('{}md/workflows/<str:lifecycle_id>/<int:version>'.format(settings.BASE_URL), workflows_detail),
     path('{}md/workflows/<str:lifecycle_id>/<int:version>/<str:status>'.format(settings.BASE_URL), workflows_status,
          name='workflows-status'),
+    # forms
+    path('{}md/forms'.format(settings.BASE_URL), forms_list, name='forms-list'),
+    path('{}md/forms/<str:lifecycle_id>/<int:version>'.format(settings.BASE_URL), forms_detail),
+    path('{}md/forms/<str:lifecycle_id>/<int:version>/<str:status>'.format(settings.BASE_URL), forms_status,
+         name='forms-status'),
     # audit trails
     path('{}at/<str:dialog>/<str:lifecycle_id>'.format(settings.BASE_URL), audit_trail_list, name='audit-trail-list'),
     # meta views

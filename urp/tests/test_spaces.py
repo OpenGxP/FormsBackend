@@ -58,9 +58,11 @@ class GetOneNoStatusSpaces(GetOneNoStatus):
                                'users': ['superuser']}
         self.ok_object_data_unique = 'space'
         self.pre_data = [{'data': {'tag': 'all'},
-                          'path': reverse('tags-list')},
+                          'path': reverse('tags-list'),
+                          'status': False},
                          {'data': {'tag': 'two'},
-                          'path': reverse('tags-list')}]
+                          'path': reverse('tags-list'),
+                          'status': False}]
 
 
 # post
@@ -82,9 +84,11 @@ class PostNewSpaces(PostNew):
                                   'tags': [],
                                   'users': ['userone,usertwo']}]
         self.pre_data = [{'data': {'tag': 'all'},
-                          'path': reverse('tags-list')},
+                          'path': reverse('tags-list'),
+                          'status': False},
                          {'data': {'tag': 'two'},
-                          'path': reverse('tags-list')}]
+                          'path': reverse('tags-list'),
+                          'status': False}]
         self.execute = True
         self.status = False
 
@@ -101,9 +105,11 @@ class DeleteOneSpaces(DeleteOneNoStatus):
                                'tags': ['all,two'],
                                'users': ['superuser']}
         self.pre_data = [{'data': {'tag': 'all'},
-                          'path': reverse('tags-list')},
+                          'path': reverse('tags-list'),
+                          'status': False},
                          {'data': {'tag': 'two'},
-                          'path': reverse('tags-list')}]
+                          'path': reverse('tags-list'),
+                          'status': False}]
         self.ok_object_data_unique = 'space'
         self.execute = True
 
@@ -124,8 +130,10 @@ class PatchOneSpaces(PatchOneNoStatus):
                               'tags': ['all'],
                               'users': ['superuser']}
         self.pre_data = [{'data': {'tag': 'all'},
-                          'path': reverse('tags-list')},
+                          'path': reverse('tags-list'),
+                          'status': False},
                          {'data': {'tag': 'two'},
-                          'path': reverse('tags-list')}]
+                          'path': reverse('tags-list'),
+                          'status': False}]
         self.invalid_payload = {'space': ''}
         self.execute = True

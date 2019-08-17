@@ -71,7 +71,8 @@ class PostNewLists(PostNew):
                                   'elements': 'test1'}]
         self.execute = True
         self.pre_data = [{'data': {'tag': 'mytag'},
-                          'path': reverse('tags-list')}]
+                          'path': reverse('tags-list'),
+                          'status': False}]
 
 
 #######################################
@@ -91,7 +92,8 @@ class GetOneList(GetOne):
                                'elements': ['test1', 'test2', 'test3']}
         self.execute = True
         self.pre_data = [{'data': {'tag': 'mytag'},
-                          'path': reverse('tags-list')}]
+                          'path': reverse('tags-list'),
+                          'status': False}]
 
 
 # post
@@ -116,7 +118,8 @@ class PostNewVersionList(PostNewVersion):
                                              'elements': ['test1', 'test2', 'test3']}
         self.execute = True
         self.pre_data = [{'data': {'tag': 'mytag'},
-                          'path': reverse('tags-list')}]
+                          'path': reverse('tags-list'),
+                          'status': False}]
 
 
 # delete
@@ -133,7 +136,8 @@ class DeleteOneList(DeleteOne):
                                'elements': ['test1', 'test2', 'test3']}
         self.execute = True
         self.pre_data = [{'data': {'tag': 'mytag'},
-                          'path': reverse('tags-list')}]
+                          'path': reverse('tags-list'),
+                          'status': False}]
 
 
 # patch
@@ -162,7 +166,8 @@ class PatchOneList(PatchOne):
                                        'elements': ['test1', 'test2', 'test3']}
         self.execute = True
         self.pre_data = [{'data': {'tag': 'mytag'},
-                          'path': reverse('tags-list')}]
+                          'path': reverse('tags-list'),
+                          'status': False}]
 
 
 ###############################################
@@ -183,4 +188,5 @@ class PatchOneStatusList(PatchOneStatus):
                                'elements': ['test1', 'test2', 'test3']}
         self.execute = True
         self.pre_data = [{'data': {'tag': 'mytag'},
-                          'path': reverse('tags-list')}]
+                          'path': reverse('tags-list'),
+                          'status': False}]
