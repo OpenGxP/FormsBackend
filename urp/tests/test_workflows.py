@@ -117,7 +117,7 @@ class GetOneWorkflow(GetOne):
 
 
 # post
-"""class PostNewVersionWorkflow(PostNewVersion):
+class PostNewVersionWorkflow(PostNewVersion):
     def __init__(self, *args, **kwargs):
         super(PostNewVersionWorkflow, self).__init__(*args, **kwargs)
         self.base_path = BASE_PATH
@@ -131,7 +131,8 @@ class GetOneWorkflow(GetOne):
         self.fail_object_draft_data = {'workflow': 'test_draft',
                                        'tag': 'mytag',
                                        'steps': [{'step': 'one', 'role': 'all', 'sequence': 0},
-                                                 {'step': 'two', 'role': 'all', 'sequence': 1, 'predecessors': ['one']}]}
+                                                 {'step': 'two', 'role': 'all', 'sequence': 1,
+                                                  'predecessors': ['one']}]}
         self.fail_object_circulation_data = {'workflow': 'test_circ',
                                              'tag': 'mytag',
                                              'steps': [{'step': 'one', 'role': 'all', 'sequence': 0},
@@ -140,7 +141,8 @@ class GetOneWorkflow(GetOne):
         self.execute = True
         self.sub_table = True
         self.pre_data = [{'data': {'tag': 'mytag'},
-                          'path': reverse('tags-list')}]"""
+                          'path': reverse('tags-list'),
+                          'status': False}]
 
 
 # delete
@@ -163,32 +165,35 @@ class DeleteOneWorkflow(DeleteOne):
 
 
 # patch
-"""class PatchOneList(PatchOne):
+class PatchOneWorkflow(PatchOne):
     def __init__(self, *args, **kwargs):
-        super(PatchOneList, self).__init__(*args, **kwargs)
+        super(PatchOneWorkflow, self).__init__(*args, **kwargs)
         self.base_path = BASE_PATH
-        self.model = Lists
+        self.model = Workflows
         self.prerequisites = Prerequisites(base_path=self.base_path)
-        self.serializer = ListsReadWriteSerializer
-        self.ok_object_data = {'list': 'test',
-                               'type': 'copy',
+        self.serializer = WorkflowsReadWriteSerializer
+        self.ok_object_data = {'workflow': 'test',
                                'tag': 'mytag',
-                               'elements': ['test1', 'test2', 'test3']}
-        self.valid_payload = {'list': 'test',
-                              'type': 'reference',
+                               'steps': [{'step': 'one', 'role': 'all', 'sequence': 0},
+                                         {'step': 'two', 'role': 'all', 'sequence': 1, 'predecessors': ['one']}]}
+        self.valid_payload = {'workflow': 'test',
                               'tag': 'mytag',
-                              'elements': ['neu']}
-        self.invalid_payload = {'list': '',
-                                'type': 'copy',
+                              'steps': [{'step': 'one', 'role': 'all', 'text': 'test', 'sequence': 0},
+                                        {'step': 'two', 'role': 'all', 'sequence': 1, 'predecessors': ['one']}]}
+        self.invalid_payload = {'workflow': '',
                                 'tag': 'mytag',
-                                'elements': ['test1', 'test2', 'test3']}
-        self.unique_invalid_payload = {'list': 'testneu',
-                                       'type': 'copy',
+                                'steps': [{'step': 'one', 'role': 'all', 'sequence': 0},
+                                          {'step': 'two', 'role': 'all', 'sequence': 1, 'predecessors': ['one']}]}
+        self.unique_invalid_payload = {'workflow': 'testneu',
                                        'tag': 'mytag',
-                                       'elements': ['test1', 'test2', 'test3']}
+                                       'steps': [{'step': 'one', 'role': 'all', 'sequence': 0},
+                                                 {'step': 'two', 'role': 'all', 'sequence': 1,
+                                                  'predecessors': ['one']}]}
         self.execute = True
+        self.sub_table = True
         self.pre_data = [{'data': {'tag': 'mytag'},
-                          'path': reverse('tags-list')}]"""
+                          'path': reverse('tags-list'),
+                          'status': False}]
 
 
 ###################################################

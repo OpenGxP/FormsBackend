@@ -136,6 +136,10 @@ class Workflows(GlobalModel):
     def linked_steps(self):
         return WorkflowsSteps.objects.filter(lifecycle_id=self.lifecycle_id, version=self.version).all()
 
+    @property
+    def linked_steps_values(self):
+        return WorkflowsSteps.objects.filter(lifecycle_id=self.lifecycle_id, version=self.version).values()
+
     # manager
     objects = WorkflowsManager()
 
