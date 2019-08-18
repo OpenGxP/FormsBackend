@@ -178,12 +178,17 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
 
                 # get local timezone of user
                 user_tz = pytz_timezone(Profile.objects.timezone(username=self.context['user']))
+                # FO-197: validate if timestamp values are not Null / None
                 if 'valid_from' in validated_data:
-                    validated_data['valid_from'] = user_tz.localize(
-                        timezone.make_naive(validated_data['valid_from']), is_dst=None).astimezone(pytz_utc)
+                    if validated_data['valid_from']:
+                        validated_data['valid_from'] = user_tz.localize(
+                            timezone.make_naive(validated_data['valid_from']),
+                            is_dst=None).astimezone(pytz_utc)
                 if 'valid_to' in validated_data:
-                    validated_data['valid_to'] = user_tz.localize(timezone.make_naive(validated_data['valid_to']),
-                                                                  is_dst=None).astimezone(pytz_utc)
+                    if validated_data['valid_to']:
+                        validated_data['valid_to'] = user_tz.localize(
+                            timezone.make_naive(validated_data['valid_to']),
+                            is_dst=None).astimezone(pytz_utc)
 
             # for users
             if obj.MODEL_ID == '04':
@@ -311,13 +316,17 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 if model.objects.HAS_STATUS:
                     # get local timezone of user
                     user_tz = pytz_timezone(Profile.objects.timezone(username=self.context['user']))
+                    # FO-197: validate if timestamp values are not Null / None
                     if 'valid_from' in validated_data:
-                        validated_data['valid_from'] = user_tz.localize(
-                            timezone.make_naive(validated_data['valid_from']),
-                            is_dst=None).astimezone(pytz_utc)
+                        if validated_data['valid_from']:
+                            validated_data['valid_from'] = user_tz.localize(
+                                timezone.make_naive(validated_data['valid_from']),
+                                is_dst=None).astimezone(pytz_utc)
                     if 'valid_to' in validated_data:
-                        validated_data['valid_to'] = user_tz.localize(timezone.make_naive(validated_data['valid_to']),
-                                                                      is_dst=None).astimezone(pytz_utc)
+                        if validated_data['valid_to']:
+                            validated_data['valid_to'] = user_tz.localize(
+                                timezone.make_naive(validated_data['valid_to']),
+                                is_dst=None).astimezone(pytz_utc)
 
                 # FO-132: hash password before saving
                 if model.MODEL_ID == '04':
