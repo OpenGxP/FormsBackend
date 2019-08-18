@@ -213,7 +213,7 @@ def private_root_view(request):
                                                  'workflows': {'title': 'Workflows',
                                                                'url': {'abs': reverse('workflows-log-list',
                                                                                       request=request),
-                                                                       'rel': 'logs/lists'}},
+                                                                       'rel': 'logs/workflows'}},
                                                  'forms': {'title': 'Formws',
                                                            'url': {'abs': reverse('forms-log-list',
                                                                                   request=request),
