@@ -92,7 +92,8 @@ class WorkflowsReadWriteSerializer(GlobalReadWriteSerializer):
             if not has_sequence_zero:
                 if item['sequence'] == 0:
                     has_sequence_zero = True
-                    if 'predecessors' in item.keys() and item['predecessors']:
+                    # FO-196: treat [""] array as no predecessor step
+                    if 'predecessors' in item.keys() and (item['predecessors'] and item['predecessors'][0] != ''):
                         raise serializers.ValidationError('First step can not have predecessors.')
 
             # validate role field
@@ -130,6 +131,9 @@ class WorkflowsReadWriteSerializer(GlobalReadWriteSerializer):
         # validate predecessors
         for item in predecessors:
             for each in item:
+                # FO-196: treat [""] array as no predecessor step
+                if each == '':
+                    continue
                 if each not in steps:
                     raise serializers.ValidationError('Predecessors must only contain valid steps.')
 
