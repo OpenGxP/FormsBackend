@@ -93,6 +93,8 @@ class RolesManager(GlobalManager):
     # meta
     GET_MODEL_ORDER = RolesLogManager.GET_MODEL_ORDER
 
+    GET_MODEL_NOT_RENDER = ('permissions',)
+
     def find_permission_in_roles(self, roles, permission):
         for role in roles.split(','):
             # query all versions of each role that is in status "productive" or "inactive"

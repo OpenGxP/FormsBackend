@@ -44,6 +44,8 @@ class WorkflowsLogManager(GlobalManager):
                        'text',
                        'sequence')
 
+    GET_MODEL_NOT_RENDER = ('sequence',)
+
 
 # log table
 class WorkflowsLog(GlobalModel):
