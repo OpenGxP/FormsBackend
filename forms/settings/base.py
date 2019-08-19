@@ -54,6 +54,8 @@ CRYPTO_KEY = 'CRYPTO_KEY'
 PROFILE_TIMEZONES = [zone for zone in common_timezones if zone.startswith('Europe/')]
 PROFILE_DEFAULT_TIMEZONE = 'UTC'
 PROFILE_DEFAULT_LANGUAGE = 'en_EN'
+PROFILE_DEFAULT_DARKMODE = 'Yes'
+PROFILE_DEFAULT_DENSE = 'No'
 
 
 PROFILE_DATA = [{'key': 'loc.timezone',
@@ -63,4 +65,12 @@ PROFILE_DATA = [{'key': 'loc.timezone',
                 {'key': 'loc.language',
                  'default': PROFILE_DEFAULT_LANGUAGE,
                  'human_readable': _('Language'),
-                 'value': PROFILE_DEFAULT_LANGUAGE}]
+                 'value': PROFILE_DEFAULT_LANGUAGE},
+                {'key': 'gui.darkmode',
+                 'default': PROFILE_DEFAULT_DARKMODE,
+                 'human_readable': _('Language'),
+                 'value': PROFILE_DEFAULT_DARKMODE},
+                {'key': 'gui.dense',
+                 'default': PROFILE_DEFAULT_DENSE,
+                 'human_readable': _('Language'),
+                 'value': PROFILE_DEFAULT_DENSE}]

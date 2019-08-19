@@ -156,6 +156,18 @@ class ProfileManager(GlobalManager):
         except self.model.DoesNotExist:
             return settings.PROFILE_DEFAULT_LANGUAGE
 
+    def darkmode(self, username):
+        try:
+            return self.filter(username=username, key='gui.darkmode').get().value
+        except self.model.DoesNotExist:
+            return settings.PROFILE_DEFAULT_DARKMODE
+
+    def dense(self, username):
+        try:
+            return self.filter(username=username, key='gui.dense').get().value
+        except self.model.DoesNotExist:
+            return settings.PROFILE_DEFAULT_DENSE
+
 
 class Profile(GlobalModel):
     # custom fields
