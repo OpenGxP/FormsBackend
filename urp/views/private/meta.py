@@ -135,7 +135,7 @@ def meta_list(request, dialog):
 
         # add post information
         if dialog in ['users', 'roles', 'ldap', 'settings', 'sod', 'email', 'passwords', 'tags', 'spaces', 'lists',
-                      'workflows', 'profile']:
+                      'workflows', 'profile', 'forms']:
             exclude = model.objects.POST_BASE_EXCLUDE + model.objects.POST_MODEL_EXCLUDE
             fields = [i for i in model._meta.get_fields() if i.name not in exclude]
             for f in fields:
