@@ -61,8 +61,8 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
 
         self._workflows_changed_steps = []
         self._workflows_delete_steps = []
-        self.workflows_linked_steps = None
         self.workflow_step_logs = {}
+        self.workflow_step_log_decision = {}
 
     valid = serializers.BooleanField(source='verify_checksum', read_only=True)
     # unique attribute for frontend selection
@@ -351,8 +351,8 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
 
                 # for workflows
                 if model.MODEL_ID == '26':
-                    self.workflows_linked_steps = WorkflowsSteps.objects.filter(lifecycle_id=instance.lifecycle_id,
-                                                                                version=instance.version).all()
+                    workflows_linked_steps = WorkflowsSteps.objects.filter(lifecycle_id=instance.lifecycle_id,
+                                                                           version=instance.version).all()
                     for record in validated_data['linked_steps']:
                         # make predecessors an array
                         if 'predecessors' in record.keys():
@@ -376,8 +376,12 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                         keys = record.keys()
                         # set attributes of validated data
                         fields = {}
+                        self.workflow_step_log_decision[record['step']] = False
                         for attr in steps_hash_sequence:
                             if attr in keys:
+                                # only attributes of record / keys may be a change
+                                if record[attr] != getattr(step, attr):
+                                    self.workflow_step_log_decision[record['step']] = True
                                 fields[attr] = record[attr]
                                 setattr(step, attr, record[attr])
                             else:
@@ -390,7 +394,7 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                         step.save()
 
                     # delete steps that have not been updated (all steps are send)
-                    for step in self.workflows_linked_steps:
+                    for step in workflows_linked_steps:
                         if step.step not in self.workflows_changed_steps:
                             del_step = WorkflowsSteps.objects.filter(step=step.step,
                                                                      lifecycle_id=instance.lifecycle_id,
@@ -429,6 +433,8 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                                 workflow_log_data[field] = getattr(record, field)
                     if not self.status_change:
                         action = self.workflow_step_logs[record.step]
+                        if not self.workflow_step_log_decision[record.step]:
+                            continue
                     create_log_record(model=model, context=self.context, obj=instance, validated_data=workflow_log_data,
                                       action=action, now=now)
 
