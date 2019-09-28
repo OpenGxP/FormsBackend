@@ -19,34 +19,32 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # rest imports
 from rest_framework.decorators import api_view
 
-# app imports
-from urp.views.views import auto_logout
+# custom imports
+from urp.serializers.settings import SettingsLogReadSerializer, SettingsReadWriteSerializer
 from urp.decorators import auth_required
-from urp.models import Spaces
-from urp.serializers.spaces import SpacesReadWriteSerializer, SpacesLogReadSerializer, SpacesDeleteSerializer
-from urp.views.base import StandardView
+from basics.models import Settings
+from urp.views.base import auto_logout, UpdateView
 
 
-view = StandardView(model=Spaces, ser_rw=SpacesReadWriteSerializer, ser_del=SpacesDeleteSerializer,
-                    ser_log=SpacesLogReadSerializer)
-
-
-@api_view(['GET', 'POST'])
-@auth_required()
-@auto_logout()
-def spaces_list(request):
-    return view.list(request)
-
-
-@api_view(['GET', 'PATCH', 'DELETE'])
-@auth_required()
-@auto_logout()
-def spaces_detail(request, space):
-    return view.detail(request, space)
+view = UpdateView(model=Settings, ser_rw=SettingsReadWriteSerializer, ser_log=SettingsLogReadSerializer)
 
 
 @api_view(['GET'])
 @auth_required()
 @auto_logout()
-def spaces_log_list(request):
+def settings_list(request):
+    return view.list(request)
+
+
+@api_view(['GET', 'PATCH'])
+@auth_required()
+@auto_logout()
+def settings_detail(request, key):
+    return view.detail(request, key)
+
+
+@api_view(['GET'])
+@auth_required()
+@auto_logout()
+def settings_log_list(request):
     return view.list_log(request)

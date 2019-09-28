@@ -113,6 +113,12 @@ class GetOneWorkflow(GetOne):
         self.execute = True
         self.pre_data = [{'data': {'tag': 'mytag'},
                           'path': reverse('tags-list'),
+                          'status': False},
+                         {'data': {'space': 'test',
+                                   'tags': ['mytag'],
+                                   'users': [self.prerequisites.username],
+                                   'status': False},
+                          'path': reverse('spaces-list'),
                           'status': False}]
 
 

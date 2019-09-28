@@ -21,7 +21,7 @@ from django.urls import reverse
 
 # app imports
 from urp.models.lists import Lists
-from urp.serializers import ListsReadWriteSerializer
+from urp.serializers.lists import ListsReadWriteSerializer
 
 # test imports
 from urp.tests import Prerequisites, GetAll, PostNew, GetOne, PostNewVersion, DeleteOne, PatchOne, PatchOneStatus
@@ -89,10 +89,16 @@ class GetOneList(GetOne):
         self.serializer = ListsReadWriteSerializer
         self.ok_object_data = {'list': 'test',
                                'type': 'copy',
-                               'elements': ['test1', 'test2', 'test3']}
+                               'elements': ['test1', 'test2', 'test3'],
+                               'tag': 'mytag'}
         self.execute = True
         self.pre_data = [{'data': {'tag': 'mytag'},
                           'path': reverse('tags-list'),
+                          'status': False},
+                         {'data': {'space': 'test',
+                                   'users': [self.prerequisites.username],
+                                   'tags': ['mytag']},
+                          'path': reverse('spaces-list'),
                           'status': False}]
 
 

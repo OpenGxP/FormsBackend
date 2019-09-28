@@ -16,15 +16,16 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-
-from .serializers import *
-from .users import Users, UsersLogReadSerializer
-from .roles import Roles, RolesLogReadSerializer
-from .sod import SoD, SoDLogReadSerializer
+# app imports
+from urp.models.vault import Vault
+from urp.serializers import GlobalReadWriteSerializer
 
 
-AUDIT_TRAIL_SERIALIZERS = {
-    Users.MODEL_CONTEXT.lower(): UsersLogReadSerializer,
-    Roles.MODEL_CONTEXT.lower(): RolesLogReadSerializer,
-    SoD.MODEL_CONTEXT.lower(): SoDLogReadSerializer
-}
+# read
+class UsersPassword(GlobalReadWriteSerializer):
+
+    class Meta:
+        model = Vault
+        fields = ('valid', 'unique', 'username', 'initial_password', )
+        extra_kwargs = {'username': {'read_only': True},
+                        'initial_password': {'read_only': True}}

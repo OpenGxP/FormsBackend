@@ -21,7 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import sys
 
 # app imports
-from urp.serializers import RolesWriteSerializer, RolesDeleteStatusSerializer
+from urp.serializers.roles import RolesReadWriteSerializer, RolesDeleteSerializer
 from urp.models import Roles
 
 # django imports
@@ -79,8 +79,8 @@ class Command(BaseCommand):
             'permissions': permissions,
             'valid_from': valid_from
         }
-        serializer = RolesWriteSerializer(data=data, context={'method': 'POST', 'function': 'init',
-                                                              'user': settings.DEFAULT_SYSTEM_USER})
+        serializer = RolesReadWriteSerializer(data=data, context={'method': 'POST', 'function': 'init',
+                                              'user': settings.DEFAULT_SYSTEM_USER})
         if serializer.is_valid():
             # FO-131: add check if a role with any record already exists
             _filter = {Roles.UNIQUE: role}
@@ -92,24 +92,24 @@ class Command(BaseCommand):
 
                 # change status to in circulation
                 role = Roles.objects.get(lifecycle_id=serializer.data['lifecycle_id'], version=version)
-                serializer_circulation = RolesDeleteStatusSerializer(role, data={},
-                                                                     context={'method': 'PATCH',
-                                                                              'function': 'status_change',
-                                                                              'status': 'circulation',
-                                                                              'user': settings.DEFAULT_SYSTEM_USER,
-                                                                              'disable-sod': True})
+                serializer_circulation = RolesDeleteSerializer(role, data={},
+                                                               context={'method': 'PATCH',
+                                                                        'function': 'status_change',
+                                                                        'status': 'circulation',
+                                                                        'user': settings.DEFAULT_SYSTEM_USER,
+                                                                        'disable-sod': True})
                 if serializer_circulation.is_valid():
                     serializer_circulation.save()
                     self.stdout.write(self.style.SUCCESS('Role "{}" successfully changed to status "circulation".'
                                                          .format(role.role)))
 
                     # change status to in productive
-                    serializer_productive = RolesDeleteStatusSerializer(role, data={},
-                                                                        context={'method': 'PATCH',
-                                                                                 'function': 'status_change',
-                                                                                 'status': 'productive',
-                                                                                 'user': settings.DEFAULT_SYSTEM_USER,
-                                                                                 'disable-sod': True})
+                    serializer_productive = RolesDeleteSerializer(role, data={},
+                                                                  context={'method': 'PATCH',
+                                                                           'function': 'status_change',
+                                                                           'status': 'productive',
+                                                                           'user': settings.DEFAULT_SYSTEM_USER,
+                                                                           'disable-sod': True})
                     if serializer_productive.is_valid():
                         serializer_productive.save()
                         self.stdout.write(self.style.SUCCESS('Role "{}" successfully changed to status "productive".'

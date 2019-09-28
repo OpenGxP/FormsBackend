@@ -21,32 +21,40 @@ from rest_framework.decorators import api_view
 
 # app imports
 from urp.views.views import auto_logout
+from urp.models.users import Users
+from urp.serializers.users import UsersReadWriteSerializer, UsersLogReadSerializer, UsersDeleteSerializer, \
+    UsersNewVersionStatusSerializer
 from urp.decorators import auth_required
-from urp.models import Spaces
-from urp.serializers.spaces import SpacesReadWriteSerializer, SpacesLogReadSerializer, SpacesDeleteSerializer
-from urp.views.base import StandardView
+from urp.views.base import StatusView
 
 
-view = StandardView(model=Spaces, ser_rw=SpacesReadWriteSerializer, ser_del=SpacesDeleteSerializer,
-                    ser_log=SpacesLogReadSerializer)
+view = StatusView(model=Users, ser_rw=UsersReadWriteSerializer, ser_del=UsersDeleteSerializer,
+                  ser_log=UsersLogReadSerializer, ser_st=UsersNewVersionStatusSerializer)
 
 
 @api_view(['GET', 'POST'])
 @auth_required()
 @auto_logout()
-def spaces_list(request):
-    return view.list(request)
+def users_list(request):
+    return view.list(request, tags=False)
 
 
-@api_view(['GET', 'PATCH', 'DELETE'])
+@api_view(['GET', 'PATCH', 'POST', 'DELETE'])
 @auth_required()
 @auto_logout()
-def spaces_detail(request, space):
-    return view.detail(request, space)
+def users_detail(request, lifecycle_id, version):
+    return view.detail(request, lifecycle_id, version, tags=False)
+
+
+@api_view(['PATCH'])
+@auth_required()
+@auto_logout()
+def users_status(request, lifecycle_id, version, status):
+    return view.status(request, lifecycle_id, version, status)
 
 
 @api_view(['GET'])
 @auth_required()
 @auto_logout()
-def spaces_log_list(request):
-    return view.list_log(request)
+def users_log_list(request):
+    return view.list_log(request, tags=False)

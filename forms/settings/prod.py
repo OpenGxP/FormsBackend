@@ -67,6 +67,7 @@ DEFAULT_AUTO_LOGOUT = 5  # in minutes
 DEFAULT_PASSWORD_RESET_TIME = 5  # in minutes
 DEFAULT_EMAIL_SENDER = 'noreply@opengxp.com'
 DEFAULT_INITIAL_ROLE = 'all'
+DEFAULT_PAGINATION_MAX = 100
 
 #########
 # PATHS #

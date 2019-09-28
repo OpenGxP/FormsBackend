@@ -18,7 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
 # app imports
-from urp.serializers import SettingsInitialWriteSerializer
+from urp.serializers.settings import SettingsInitialWriteSerializer
 
 # django imports
 from django.conf import settings

@@ -20,8 +20,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from django.urls import reverse
 
 # app imports
-from ..models import Tags
-from ..serializers import TagsReadWriteSerializer
+from urp.models import Tags
+from urp.serializers.tags import TagsReadWriteSerializer
 
 # test imports
 from . import Prerequisites, GetAll, PostNew, DeleteOneNoStatus, PatchOneNoStatus, GetOneNoStatus

@@ -56,6 +56,7 @@ PROFILE_DEFAULT_TIMEZONE = 'UTC'
 PROFILE_DEFAULT_LANGUAGE = 'en_EN'
 PROFILE_DEFAULT_DARKMODE = 'Yes'
 PROFILE_DEFAULT_DENSE = 'No'
+PROFILE_DEFAULT_PAGINATION_LIMIT = 25
 
 
 PROFILE_DATA = [{'key': 'loc.timezone',
@@ -68,9 +69,13 @@ PROFILE_DATA = [{'key': 'loc.timezone',
                  'value': PROFILE_DEFAULT_LANGUAGE},
                 {'key': 'gui.darkmode',
                  'default': PROFILE_DEFAULT_DARKMODE,
-                 'human_readable': _('Language'),
+                 'human_readable': _('Darkmode'),
                  'value': PROFILE_DEFAULT_DARKMODE},
                 {'key': 'gui.dense',
                  'default': PROFILE_DEFAULT_DENSE,
-                 'human_readable': _('Language'),
-                 'value': PROFILE_DEFAULT_DENSE}]
+                 'human_readable': _('Dense'),
+                 'value': PROFILE_DEFAULT_DENSE},
+                {'key': 'gui.pagination',
+                 'default': PROFILE_DEFAULT_PAGINATION_LIMIT,
+                 'human_readable': _('Pagination limit'),
+                 'value': PROFILE_DEFAULT_PAGINATION_LIMIT}]

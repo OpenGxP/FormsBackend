@@ -92,7 +92,12 @@ class GetOneForm(GetOne):
                                    'steps': [{'step': 'one', 'role': 'all', 'sequence': 0},
                                              {'step': 'two', 'role': 'all', 'sequence': 1, 'predecessors': ['one']}]},
                           'path': reverse('workflows-list'),
-                          'status': True}]
+                          'status': True},
+                         {'data': {'space': 'test',
+                                   'users': [self.prerequisites.username],
+                                   'tags': ['mytag']},
+                          'path': reverse('spaces-list'),
+                          'status': False}]
 
 
 # post

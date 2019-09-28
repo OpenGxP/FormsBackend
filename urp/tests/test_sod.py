@@ -20,8 +20,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from django.urls import reverse
 
 # app imports
-from ..models import SoD
-from ..serializers import SoDReadSerializer
+from urp.models import SoD
+from urp.serializers.sod import SoDReadWriteSerializer
 
 # test imports
 from . import Prerequisites, GetAll, PostNew, GetOne, PostNewVersion, DeleteOne, PatchOne, PatchOneStatus
@@ -40,7 +40,7 @@ class GetAllSoD(GetAll):
         super(GetAllSoD, self).__init__(*args, **kwargs)
         self.base_path = BASE_PATH
         self.model = SoD
-        self.serializer = SoDReadSerializer
+        self.serializer = SoDReadWriteSerializer
         self.execute = True
 
 
@@ -73,7 +73,7 @@ class GetOneSoD(GetOne):
         self.base_path = BASE_PATH
         self.model = SoD
         self.prerequisites = Prerequisites(base_path=self.base_path)
-        self.serializer = SoDReadSerializer
+        self.serializer = SoDReadWriteSerializer
         self.ok_object_data = {'base': 'all',
                                'conflict': 'no_perms'}
         self.execute = True
@@ -86,7 +86,7 @@ class PostNewVersionSoD(PostNewVersion):
         self.base_path = BASE_PATH
         self.model = SoD
         self.prerequisites = Prerequisites(base_path=self.base_path)
-        self.serializer = SoDReadSerializer
+        self.serializer = SoDReadWriteSerializer
         self.ok_object_data = {'base': 'all',
                                'conflict': 'all_two'}
         self.fail_object_draft_data = {'base': 'no_version_archived',
@@ -103,7 +103,7 @@ class DeleteOneSoD(DeleteOne):
         self.base_path = BASE_PATH
         self.model = SoD
         self.prerequisites = Prerequisites(base_path=self.base_path)
-        self.serializer = SoDReadSerializer
+        self.serializer = SoDReadWriteSerializer
         self.ok_object_data = {'base': 'all',
                                'conflict': 'all_two'}
         self.execute = True
@@ -116,7 +116,7 @@ class PatchOneSoD(PatchOne):
         self.base_path = BASE_PATH
         self.model = SoD
         self.prerequisites = Prerequisites(base_path=self.base_path)
-        self.serializer = SoDReadSerializer
+        self.serializer = SoDReadWriteSerializer
         self.ok_object_data = {'base': 'all',
                                'conflict': 'all_two'}
         self.valid_payload = {
@@ -142,7 +142,7 @@ class PatchOneStatusSoD(PatchOneStatus):
         self.base_path = BASE_PATH
         self.model = SoD
         self.prerequisites = Prerequisites(base_path=self.base_path)
-        self.serializer = SoDReadSerializer
+        self.serializer = SoDReadWriteSerializer
         self.ok_object_data = {'base': 'all',
                                'conflict': 'all_two'}
         self.execute = True

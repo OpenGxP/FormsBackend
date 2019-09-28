@@ -20,8 +20,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from django.urls import reverse
 
 # app imports
-from ..models import Spaces
-from ..serializers import SpacesReadWriteSerializer
+from urp.models import Spaces
+from urp.serializers.spaces import SpacesReadWriteSerializer
 
 # test imports
 from . import Prerequisites, GetAll, PostNew, DeleteOneNoStatus, PatchOneNoStatus, GetOneNoStatus

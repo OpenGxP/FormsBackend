@@ -21,8 +21,8 @@ from django.urls import reverse
 from django.conf import settings
 
 # app imports
-from ..models import Email
-from ..serializers import EmailReadWriteSerializer
+from urp.models import Email
+from urp.serializers.email import EmailReadWriteSerializer
 
 # test imports
 from . import Prerequisites, GetAll, PostNew, DeleteOneNoStatus, PatchOneNoStatus, GetOneNoStatus

@@ -26,7 +26,7 @@ from rest_framework.test import APITestCase
 
 # app imports
 from urp.models import Users
-from ..serializers import UsersReadSerializer
+from urp.serializers.users import UsersReadWriteSerializer
 
 # test imports
 from . import Prerequisites, GetAll, GetOne, PostNew, PostNewVersion, PatchOneStatus, DeleteOne, PatchOne
@@ -45,7 +45,7 @@ class GetAllUsers(GetAll):
         super(GetAllUsers, self).__init__(*args, **kwargs)
         self.base_path = BASE_PATH
         self.model = Users
-        self.serializer = UsersReadSerializer
+        self.serializer = UsersReadWriteSerializer
         self.execute = True
 
 
@@ -90,7 +90,7 @@ class GetOneUser(GetOne):
         self.base_path = BASE_PATH
         self.model = Users
         self.prerequisites = Prerequisites(base_path=self.base_path)
-        self.serializer = UsersReadSerializer
+        self.serializer = UsersReadWriteSerializer
         self.ok_object_data = {'username': 'testtest',
                                'password': 'test12345test',
                                'password_verification': 'test12345test',
@@ -107,7 +107,7 @@ class PostNewVersionUser(PostNewVersion):
         self.base_path = BASE_PATH
         self.model = Users
         self.prerequisites = Prerequisites(base_path=self.base_path)
-        self.serializer = UsersReadSerializer
+        self.serializer = UsersReadWriteSerializer
         self.ok_object_data = {'username': 'testtest',
                                'password': 'test12345test',
                                'password_verification': 'test12345test',
@@ -136,7 +136,7 @@ class DeleteOneUser(DeleteOne):
         self.base_path = BASE_PATH
         self.model = Users
         self.prerequisites = Prerequisites(base_path=self.base_path)
-        self.serializer = UsersReadSerializer
+        self.serializer = UsersReadWriteSerializer
         self.ok_object_data = {'username': 'testtest',
                                'password': 'test12345test',
                                'password_verification': 'test12345test',
@@ -153,7 +153,7 @@ class PatchOneUser(PatchOne):
         self.base_path = BASE_PATH
         self.model = Users
         self.prerequisites = Prerequisites(base_path=self.base_path)
-        self.serializer = UsersReadSerializer
+        self.serializer = UsersReadWriteSerializer
         self.ok_object_data = {'username': 'testtest',
                                'password': 'test12345test',
                                'password_verification': 'test12345test',
@@ -187,7 +187,7 @@ class PatchOneStatusUser(PatchOneStatus):
         self.base_path = BASE_PATH
         self.model = Users
         self.prerequisites = Prerequisites(base_path=self.base_path)
-        self.serializer = UsersReadSerializer
+        self.serializer = UsersReadWriteSerializer
         self.ok_object_data = {'username': 'testtest',
                                'password': 'test12345test',
                                'password_verification': 'test12345test',

@@ -23,11 +23,10 @@ from pytz import timezone as pytz_timezone, utc as pytz_utc
 from rest_framework import serializers
 
 # custom imports
-from urp.models import Permissions, Users, Roles, AccessLog, PermissionsLog, RolesLog, UsersLog, LDAP, LDAPLog, \
-    SoD, SoDLog, Vault, Email, EmailLog, Tags, TagsLog, Spaces, SpacesLog, Lists, ListsLog
+from urp.models import Permissions, Users, Roles, AccessLog, PermissionsLog, LDAP, Vault
 from urp.models.workflows import WorkflowsSteps
 from basics.custom import generate_checksum, generate_to_hash, value_to_int
-from basics.models import Status, AVAILABLE_STATUS, StatusLog, CentralLog, Settings, SettingsLog
+from basics.models import Status, AVAILABLE_STATUS, StatusLog, CentralLog, Settings
 from urp.decorators import require_STATUS_CHANGE, require_POST, require_DELETE, require_PATCH, require_NONE, \
     require_NEW_VERSION, require_status, require_LDAP, require_USERS, require_NEW, require_SETTINGS, require_SOD, \
     require_EMAIL, require_ROLES, require_PROFILE
@@ -723,6 +722,17 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                     if data['value'] not in ['en_EN', 'de_DE']:
                         raise serializers.ValidationError({'value': ['Selected language is not supported.']})
 
+                if self.instance.key == 'gui.pagination':
+                    try:
+                        # try to convert to integer
+                        data['value'] = value_to_int(data['value'])
+                        # verify that integer is positive
+                        if data['value'] < 5 or data['value'] > settings.DEFAULT_PAGINATION_MAX:
+                            raise ValueError
+                    except ValueError:
+                        raise serializers.ValidationError('Value "{}" must be a positive integer between 5 and {}.'
+                                                          .format(self.instance.key, settings.DEFAULT_PAGINATION_MAX))
+
             @require_NONE
             @require_SOD
             def validate_roles(self):
@@ -836,8 +846,6 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
 class StatusReadWriteSerializer(GlobalReadWriteSerializer):
     class Meta:
         model = Status
-        # exclude = ('id', 'checksum', )
-        # to control field order in response
         fields = Status.objects.GET_MODEL_ORDER + Status.objects.GET_BASE_CALCULATED
 
 
@@ -845,135 +853,7 @@ class StatusReadWriteSerializer(GlobalReadWriteSerializer):
 class StatusLogReadSerializer(GlobalReadWriteSerializer):
     class Meta:
         model = StatusLog
-        # exclude = ('id', 'checksum', )
-        # to control field order in response
         fields = Status.objects.GET_MODEL_ORDER + Status.objects.GET_BASE_ORDER_LOG + Status.objects.GET_BASE_CALCULATED
-
-
-########
-# TAGS #
-########
-
-# read / add / edit
-class TagsReadWriteSerializer(GlobalReadWriteSerializer):
-    class Meta:
-        model = Tags
-        fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_CALCULATED
-
-
-# delete
-class TagsDeleteSerializer(GlobalReadWriteSerializer):
-    class Meta:
-        model = Tags
-        fields = ()
-
-
-# read logs
-class TagsLogReadSerializer(GlobalReadWriteSerializer):
-    class Meta:
-        model = TagsLog
-        fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_ORDER_LOG + model.objects.GET_BASE_CALCULATED
-
-
-##########
-# SPACES #
-##########
-
-# read / add / edit
-class SpacesReadWriteSerializer(GlobalReadWriteSerializer):
-    class Meta:
-        model = Spaces
-        fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_CALCULATED
-
-    def validate_users(self, value):
-        allowed = Users.objects.get_by_natural_key_productive_list('username')
-        value_list = value.split(',')
-        for item in value_list:
-            if item not in allowed:
-                raise serializers.ValidationError('Not allowed to use "{}".'.format(item))
-        return value
-
-    def validate_tags(self, value):
-        allowed = Tags.objects.get_by_natural_key_productive_list('tag')
-        value_list = value.split(',')
-        for item in value_list:
-            if item not in allowed:
-                raise serializers.ValidationError('Not allowed to use "{}".'.format(item))
-        return value
-
-
-# delete
-class SpacesDeleteSerializer(GlobalReadWriteSerializer):
-    class Meta:
-        model = Spaces
-        fields = ()
-
-
-# read logs
-class SpacesLogReadSerializer(GlobalReadWriteSerializer):
-    class Meta:
-        model = SpacesLog
-        fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_ORDER_LOG + model.objects.GET_BASE_CALCULATED
-
-
-#########
-# LISTS #
-#########
-
-# read / add / edit
-class ListsReadWriteSerializer(GlobalReadWriteSerializer):
-    status = serializers.CharField(source='get_status', read_only=True)
-
-    class Meta:
-        model = Lists
-        extra_kwargs = {'version': {'required': False}}
-        fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_ORDER_STATUS_MANAGED + \
-            model.objects.GET_BASE_CALCULATED
-
-    def validate_type(self, value):
-        allowed = Lists.LOOKUP['type']['model']
-        if value not in allowed:
-            raise serializers.ValidationError('Not allowed to use "{}".'.format(value))
-        return value
-
-    def validate_tag(self, value):
-        if value:
-            allowed = Tags.objects.get_by_natural_key_productive_list('tag')
-            if value not in allowed:
-                raise serializers.ValidationError('Not allowed to use "{}".'.format(value))
-        return value
-
-
-# new version / status
-class ListsNewVersionStatusSerializer(GlobalReadWriteSerializer):
-    status = serializers.CharField(source='get_status', read_only=True)
-
-    class Meta:
-        model = Lists
-        extra_kwargs = {'version': {'required': False},
-                        'list': {'required': False},
-                        'type': {'required': False},
-                        'tag': {'required': False},
-                        'elements': {'required': False}}
-        fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_ORDER_STATUS_MANAGED + \
-            model.objects.GET_BASE_CALCULATED
-
-
-# delete
-class ListsDeleteSerializer(GlobalReadWriteSerializer):
-    class Meta:
-        model = Lists
-        fields = ()
-
-
-# read logs
-class ListsLogReadSerializer(GlobalReadWriteSerializer):
-    status = serializers.CharField(source='get_status', read_only=True)
-
-    class Meta:
-        model = ListsLog
-        fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_ORDER_STATUS_MANAGED + \
-            model.objects.GET_BASE_ORDER_LOG + model.objects.GET_BASE_CALCULATED
 
 
 ###############
@@ -984,8 +864,6 @@ class ListsLogReadSerializer(GlobalReadWriteSerializer):
 class PermissionsReadWriteSerializer(GlobalReadWriteSerializer):
     class Meta:
         model = Permissions
-        # exclude = ('id', 'checksum',)
-        # to control field order in response
         fields = Permissions.objects.GET_MODEL_ORDER + Permissions.objects.GET_BASE_CALCULATED
 
 
@@ -993,101 +871,8 @@ class PermissionsReadWriteSerializer(GlobalReadWriteSerializer):
 class PermissionsLogReadSerializer(GlobalReadWriteSerializer):
     class Meta:
         model = PermissionsLog
-        # exclude = ('id', 'checksum', )
-        # to control field order in response
         fields = PermissionsLog.objects.GET_MODEL_ORDER + PermissionsLog.objects.GET_BASE_ORDER_LOG + \
             PermissionsLog.objects.GET_BASE_CALCULATED
-
-
-########
-# LDAP #
-########
-
-# read
-class LDAPReadWriteSerializer(GlobalReadWriteSerializer):
-    class Meta:
-        model = LDAP
-        # exclude = ('id', 'checksum',)
-        extra_kwargs = {'password': {'write_only': True}}
-        # to control field order in response
-        fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_CALCULATED
-
-
-# read
-class LDAPLogReadSerializer(GlobalReadWriteSerializer):
-    class Meta:
-        model = LDAPLog
-        # exclude = ('id', 'checksum', )
-        # to control field order in response
-        fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_ORDER_LOG + model.objects.GET_BASE_CALCULATED
-
-
-# delete
-class LDAPDeleteSerializer(GlobalReadWriteSerializer):
-    class Meta:
-        model = LDAP
-        fields = ()
-
-
-#########
-# EMAIL #
-#########
-
-# read/write
-class EmailReadWriteSerializer(GlobalReadWriteSerializer):
-    class Meta:
-        model = Email
-        extra_kwargs = {'password': {'write_only': True}}
-        # to control field order in response
-        fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_CALCULATED
-
-
-# read
-class EmailLogReadSerializer(GlobalReadWriteSerializer):
-    class Meta:
-        model = EmailLog
-        # exclude = ('id', 'checksum', )
-        # to control field order in response
-        fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_ORDER_LOG + model.objects.GET_BASE_CALCULATED
-
-
-# delete
-class EmailDeleteSerializer(GlobalReadWriteSerializer):
-    class Meta:
-        model = Email
-        fields = ()
-
-
-############
-# SETTINGS #
-############
-
-# read/edit
-class SettingsReadWriteSerializer(GlobalReadWriteSerializer):
-    class Meta:
-        model = Settings
-        # exclude = ('id', 'checksum',)
-        extra_kwargs = {'default': {'read_only': True},
-                        'key': {'read_only': True}}
-        # to control field order in response
-        fields = Settings.objects.GET_MODEL_ORDER + Settings.objects.GET_BASE_CALCULATED
-
-
-# initial write
-class SettingsInitialWriteSerializer(GlobalReadWriteSerializer):
-    class Meta:
-        model = Settings
-        exclude = ('id', 'checksum',)
-
-
-# read
-class SettingsLogReadSerializer(GlobalReadWriteSerializer):
-    class Meta:
-        model = SettingsLog
-        # exclude = ('id', 'checksum', )
-        # to control field order in response
-        fields = Settings.objects.GET_MODEL_ORDER + Settings.objects.GET_BASE_ORDER_LOG + \
-            Settings.objects.GET_BASE_CALCULATED
 
 
 ##############
@@ -1098,8 +883,6 @@ class SettingsLogReadSerializer(GlobalReadWriteSerializer):
 class CentralLogReadWriteSerializer(GlobalReadWriteSerializer):
     class Meta:
         model = CentralLog
-        # exclude = ('id', 'checksum',)
-        # to control field order in response
         fields = CentralLog.objects.GET_MODEL_ORDER + CentralLog.objects.GET_BASE_ORDER_LOG + \
             CentralLog.objects.GET_BASE_CALCULATED
 
@@ -1112,92 +895,7 @@ class CentralLogReadWriteSerializer(GlobalReadWriteSerializer):
 class AccessLogReadWriteSerializer(GlobalReadWriteSerializer):
     class Meta:
         model = AccessLog
-        # exclude = ('id', 'checksum',)
-        # to control field order in response
         fields = AccessLog.objects.GET_MODEL_ORDER + AccessLog.objects.GET_BASE_CALCULATED
-
-
-#########
-# ROLES #
-#########
-
-# read
-class RolesReadSerializer(GlobalReadWriteSerializer):
-    status = serializers.CharField(source='get_status')
-
-    class Meta:
-        model = Roles
-        # exclude = ('id', 'checksum',)
-        # to control field order in response
-        fields = Roles.objects.GET_MODEL_ORDER + Roles.objects.GET_BASE_ORDER_STATUS_MANAGED + \
-            Roles.objects.GET_BASE_CALCULATED
-
-
-# write
-class RolesWriteSerializer(GlobalReadWriteSerializer):
-    status = serializers.CharField(source='get_status', read_only=True)
-
-    class Meta:
-        model = Roles
-        # exclude = ('id', 'checksum', )
-        extra_kwargs = {'version': {'required': False}}
-        # to control field order in response
-        fields = Roles.objects.GET_MODEL_ORDER + Roles.objects.GET_BASE_ORDER_STATUS_MANAGED + \
-            Roles.objects.GET_BASE_CALCULATED
-
-
-class RolesDeleteStatusSerializer(GlobalReadWriteSerializer):
-    status = serializers.CharField(source='get_status', read_only=True)
-
-    class Meta:
-        model = Roles
-        # exclude = ('id', 'checksum', )
-        extra_kwargs = {'version': {'required': False},
-                        'role': {'required': False},
-                        'valid_from': {'required': False}}
-        # to control field order in response
-        fields = Roles.objects.GET_MODEL_ORDER + Roles.objects.GET_BASE_ORDER_STATUS_MANAGED + \
-            Roles.objects.GET_BASE_CALCULATED
-
-
-class RolesNewVersionSerializer(GlobalReadWriteSerializer):
-    status = serializers.CharField(source='get_status', read_only=True)
-
-    class Meta:
-        model = Roles
-        # exclude = ('id', 'checksum', )
-        extra_kwargs = {'version': {'required': False},
-                        'role': {'required': False},
-                        'valid_from': {'required': False}}
-        # to control field order in response
-        fields = Roles.objects.GET_MODEL_ORDER + Roles.objects.GET_BASE_ORDER_STATUS_MANAGED + \
-            Roles.objects.GET_BASE_CALCULATED
-
-
-# log
-class RolesLogReadSerializer(GlobalReadWriteSerializer):
-    status = serializers.CharField(source='get_status')
-
-    class Meta:
-        model = RolesLog
-        # exclude = ('id', 'checksum', )
-        # to control field order in response
-        fields = Roles.objects.GET_MODEL_ORDER + Roles.objects.GET_BASE_ORDER_STATUS_MANAGED + \
-            Roles.objects.GET_BASE_ORDER_LOG + Roles.objects.GET_BASE_CALCULATED
-
-
-#################
-# USER_PASSWORD #
-#################
-
-# read
-class UsersPassword(GlobalReadWriteSerializer):
-
-    class Meta:
-        model = Vault
-        fields = ('valid', 'unique', 'username', 'initial_password', )
-        extra_kwargs = {'username': {'read_only': True},
-                        'initial_password': {'read_only': True}}
 
 
 ################
@@ -1209,151 +907,3 @@ class UserProfile(GlobalReadWriteSerializer):
     class Meta:
         model = Vault
         fields = ('valid', 'unique', 'question_one', 'question_two', 'question_three')
-
-
-#########
-# USERS #
-#########
-
-# read
-class UsersReadSerializer(GlobalReadWriteSerializer):
-    status = serializers.CharField(source='get_status')
-
-    class Meta:
-        model = Users
-        # exclude = ('id', 'checksum', 'password', 'is_active')
-        # to control field order in response
-        fields = Users.objects.GET_MODEL_ORDER_NO_PW + Users.objects.GET_BASE_ORDER_STATUS_MANAGED + \
-            Users.objects.GET_BASE_CALCULATED
-
-
-# write
-class UsersWriteSerializer(GlobalReadWriteSerializer):
-    status = serializers.CharField(source='get_status', read_only=True)
-    password_verification = serializers.CharField(write_only=True, required=False)
-
-    class Meta:
-        model = Users
-        # exclude = ('id', 'checksum', 'is_active')
-        extra_kwargs = {'version': {'required': False},
-                        'initial_password': {'read_only': True},
-                        'password': {'write_only': True,
-                                     'required': False}}
-        # to control field order in response
-        fields = Users.objects.GET_MODEL_ORDER + Users.objects.GET_BASE_ORDER_STATUS_MANAGED + \
-            Users.objects.GET_BASE_CALCULATED + ('password_verification',)
-
-    def validate_roles(self, value):
-        allowed = Roles.objects.get_by_natural_key_productive_list('role')
-        value_list = value.split(',')
-        for item in value_list:
-            if item not in allowed:
-                raise serializers.ValidationError('Not allowed to use "{}".'.format(item))
-        return value
-
-
-class UsersNewVersionSerializer(GlobalReadWriteSerializer):
-    status = serializers.CharField(source='get_status', read_only=True)
-
-    class Meta:
-        model = Users
-        # exclude = ('id', 'checksum', 'is_active', 'password')
-        extra_kwargs = {'version': {'required': False},
-                        'username': {'required': False},
-                        'first_name': {'required': False},
-                        'last_name': {'required': False},
-                        'email': {'required': False},
-                        'initial_password': {'required': False},
-                        'roles': {'required': False},
-                        'valid_from': {'required': False},
-                        'ldap': {'required': False}}
-        # to control field order in response
-        fields = Users.objects.GET_MODEL_ORDER_NO_PW + Users.objects.GET_BASE_ORDER_STATUS_MANAGED + \
-            Users.objects.GET_BASE_CALCULATED
-
-
-class UsersDeleteStatusSerializer(GlobalReadWriteSerializer):
-    status = serializers.CharField(source='get_status', read_only=True)
-
-    class Meta:
-        model = Users
-        # exclude = ('id', 'checksum', 'is_active', 'password')
-        extra_kwargs = {'version': {'required': False},
-                        'username': {'required': False},
-                        'first_name': {'required': False},
-                        'last_name': {'required': False},
-                        'email': {'required': False},
-                        'initial_password': {'required': False},
-                        'roles': {'required': False},
-                        'valid_from': {'required': False},
-                        'ldap': {'required': False}}
-        # to control field order in response
-        fields = Users.objects.GET_MODEL_ORDER_NO_PW + Users.objects.GET_BASE_ORDER_STATUS_MANAGED + \
-            Users.objects.GET_BASE_CALCULATED
-
-
-# log
-class UsersLogReadSerializer(GlobalReadWriteSerializer):
-    status = serializers.CharField(source='get_status')
-
-    class Meta:
-        model = UsersLog
-        # exclude = ('id', 'checksum', 'is_active')
-        # to control field order in response
-        fields = UsersLog.objects.GET_MODEL_ORDER_NO_PW + ('initial_password',) + \
-            Users.objects.GET_BASE_ORDER_STATUS_MANAGED + UsersLog.objects.GET_BASE_ORDER_LOG + \
-            UsersLog.objects.GET_BASE_CALCULATED
-
-
-#######
-# SOD #
-#######
-
-# read
-class SoDReadSerializer(GlobalReadWriteSerializer):
-    status = serializers.CharField(source='get_status')
-
-    class Meta:
-        model = SoD
-        fields = SoD.objects.GET_MODEL_ORDER + SoD.objects.GET_BASE_ORDER_STATUS_MANAGED + \
-            SoD.objects.GET_BASE_CALCULATED
-
-
-# write
-class SoDWriteSerializer(GlobalReadWriteSerializer):
-    status = serializers.CharField(source='get_status', read_only=True)
-
-    class Meta:
-        model = SoD
-        extra_kwargs = {'version': {'required': False}}
-        fields = SoD.objects.GET_MODEL_ORDER + SoD.objects.GET_BASE_ORDER_STATUS_MANAGED + \
-            SoD.objects.GET_BASE_CALCULATED
-
-
-class SoDDeleteStatusNewVersionSerializer(GlobalReadWriteSerializer):
-    status = serializers.CharField(source='get_status', read_only=True)
-
-    class Meta:
-        model = SoD
-        extra_kwargs = {'version': {'required': False},
-                        'base': {'required': False},
-                        'conflict': {'required': False}}
-        fields = SoD.objects.GET_MODEL_ORDER + SoD.objects.GET_BASE_ORDER_STATUS_MANAGED + \
-            SoD.objects.GET_BASE_CALCULATED
-
-
-# log
-class SoDLogReadSerializer(GlobalReadWriteSerializer):
-    status = serializers.CharField(source='get_status')
-
-    class Meta:
-        model = SoDLog
-        fields = SoD.objects.GET_MODEL_ORDER + SoD.objects.GET_BASE_ORDER_STATUS_MANAGED + \
-            SoD.objects.GET_BASE_ORDER_LOG + SoD.objects.GET_BASE_CALCULATED
-
-
-AUDIT_TRAIL_SERIALIZERS = {
-    Users.MODEL_CONTEXT.lower(): UsersLogReadSerializer,
-    Roles.MODEL_CONTEXT.lower(): RolesLogReadSerializer,
-    SoD.MODEL_CONTEXT.lower(): SoDLogReadSerializer
-}

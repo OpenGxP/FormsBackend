@@ -26,8 +26,8 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 # app imports
-from ..models import Vault
-from ..serializers import UsersPassword
+from urp.models import Vault
+from urp.serializers.passwords import UsersPassword
 
 # test imports
 from . import GetAll, Prerequisites

@@ -16,15 +16,27 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-
-from .serializers import *
-from .users import Users, UsersLogReadSerializer
-from .roles import Roles, RolesLogReadSerializer
-from .sod import SoD, SoDLogReadSerializer
+# app imports
+from urp.models.tags import Tags, TagsLog
+from urp.serializers import GlobalReadWriteSerializer
 
 
-AUDIT_TRAIL_SERIALIZERS = {
-    Users.MODEL_CONTEXT.lower(): UsersLogReadSerializer,
-    Roles.MODEL_CONTEXT.lower(): RolesLogReadSerializer,
-    SoD.MODEL_CONTEXT.lower(): SoDLogReadSerializer
-}
+# read / add / edit
+class TagsReadWriteSerializer(GlobalReadWriteSerializer):
+    class Meta:
+        model = Tags
+        fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_CALCULATED
+
+
+# delete
+class TagsDeleteSerializer(GlobalReadWriteSerializer):
+    class Meta:
+        model = Tags
+        fields = ()
+
+
+# read logs
+class TagsLogReadSerializer(GlobalReadWriteSerializer):
+    class Meta:
+        model = TagsLog
+        fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_ORDER_LOG + model.objects.GET_BASE_CALCULATED

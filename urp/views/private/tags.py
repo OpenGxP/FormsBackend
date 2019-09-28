@@ -19,34 +19,34 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # rest imports
 from rest_framework.decorators import api_view
 
-# app imports
-from urp.views.views import auto_logout
+# custom imports
+from urp.models import Tags
+from urp.serializers.tags import TagsReadWriteSerializer, TagsDeleteSerializer, TagsLogReadSerializer
 from urp.decorators import auth_required
-from urp.models import Spaces
-from urp.serializers.spaces import SpacesReadWriteSerializer, SpacesLogReadSerializer, SpacesDeleteSerializer
-from urp.views.base import StandardView
+
+from urp.views.base import auto_logout, StandardView
 
 
-view = StandardView(model=Spaces, ser_rw=SpacesReadWriteSerializer, ser_del=SpacesDeleteSerializer,
-                    ser_log=SpacesLogReadSerializer)
+view = StandardView(model=Tags, ser_rw=TagsReadWriteSerializer, ser_del=TagsDeleteSerializer,
+                    ser_log=TagsLogReadSerializer)
 
 
 @api_view(['GET', 'POST'])
 @auth_required()
 @auto_logout()
-def spaces_list(request):
+def tags_list(request):
     return view.list(request)
 
 
 @api_view(['GET', 'PATCH', 'DELETE'])
 @auth_required()
 @auto_logout()
-def spaces_detail(request, space):
-    return view.detail(request, space)
+def tags_detail(request, tag):
+    return view.detail(request, tag)
 
 
 @api_view(['GET'])
 @auth_required()
 @auto_logout()
-def spaces_log_list(request):
+def tags_log_list(request):
     return view.list_log(request)

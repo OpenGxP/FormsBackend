@@ -26,7 +26,7 @@ from rest_framework.test import APITestCase
 
 # app imports
 from basics.models import Settings
-from ..serializers import SettingsReadWriteSerializer
+from urp.serializers.settings import SettingsReadWriteSerializer
 
 # test imports
 from . import Prerequisites, GetAll, PatchOneNoStatus, GetOneNoStatus

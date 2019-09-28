@@ -21,8 +21,8 @@ from django.urls import reverse
 from django.conf import settings
 
 # app imports
-from ..models import LDAP
-from ..serializers import LDAPReadWriteSerializer
+from urp.models import LDAP
+from urp.serializers.ldap import LDAPReadWriteSerializer
 
 # test imports
 from . import Prerequisites, GetAll, PostNew, DeleteOneNoStatus, PatchOneNoStatus, GetOneNoStatus

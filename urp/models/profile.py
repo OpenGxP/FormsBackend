@@ -168,6 +168,12 @@ class ProfileManager(GlobalManager):
         except self.model.DoesNotExist:
             return settings.PROFILE_DEFAULT_DENSE
 
+    def pagination_limit(self, username):
+        try:
+            return int(self.filter(username=username, key='gui.pagination').get().value)
+        except self.model.DoesNotExist:
+            return settings.PROFILE_DEFAULT_PAGINATION_LIMIT
+
 
 class Profile(GlobalModel):
     # custom fields
@@ -193,7 +199,7 @@ class Profile(GlobalModel):
     perms = None
 
     # unique field
-    UNIQUE = 'username'
+    UNIQUE = 'key'
 
     def unique_id(self):
         return self.username + '_' + self.key

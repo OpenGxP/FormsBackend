@@ -18,7 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # app imports
 from urp.decorators import auth_required
-from basics.models import Settings, CHAR_MAX
+from basics.models import CHAR_MAX
 from basics.custom import get_model_by_string
 from urp.models.workflows import WorkflowsSteps
 
