@@ -116,24 +116,20 @@ class GET(object):
             if param == self.paginator.offset_query_param or param == self.paginator.limit_query_param:
                 continue
 
-            # get "OR" flag
-            if param == 'or_filter' and not self.or_filter:
-                self.or_filter = True
-                continue
-
-            sorted_list = param.split('_')
-            try:
-                param_key = sorted_list[0]
-                param_value = sorted_list[1]
-            except IndexError:
-                pass
-            else:
-                if param_key in self.model_fields:
-                    if param_value == 'desc' and not self.sort_field:
-                        self.sort_field = '-{}'.format(param_key)
-                    if param_value == 'asc' and not self.sort_field:
-                        self.sort_field = param_key
-                    continue
+            if param == 'order_by':
+                kv = self.request.query_params[param].split('.')
+                try:
+                    field = kv[0]
+                    direction = kv[1]
+                except IndexError:
+                    pass
+                else:
+                    if field in self.model_fields:
+                        if direction == 'desc' and not self.sort_field:
+                            self.sort_field = '-{}'.format(field)
+                        if direction == 'asc' and not self.sort_field:
+                            self.sort_field = field
+                        continue
 
             if param in self.model_fields:
                 filter_set['{}__contains'.format(param)] = self.request.query_params[param]
@@ -142,16 +138,9 @@ class GET(object):
 
     @property
     def model_object_base(self):
-        # set or_and for further Q object handling
-        or_and = Q.OR if self.or_filter else Q.AND
-
-        q_base = Q()
-        for key, value in self.filter_set_query.items():
-            q_base.add(Q(**{key: value}), or_and)
-
         if self.sort_field:
-            return self.filter_base.filter(q_base).order_by(self.sort_field)
-        return self.filter_base.filter(q_base)
+            return self.filter_base.filter(**self.filter_set_query).order_by(self.sort_field)
+        return self.filter_base.filter(**self.filter_set_query)
 
     @property
     def serialized(self):
