@@ -493,7 +493,7 @@ class GetOne(APITestCase):
             # get data from db
             query = self.model.objects.get(**self.query)
             serializer = self.serializer(query, context={'user': self.prerequisites.username})
-            self.assertEqual(response.data['results'], serializer.data)
+            self.assertEqual(response.data['results'], [serializer.data])
             self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     # FO-121: new test to verify user cannot proceed when blocked
@@ -614,7 +614,7 @@ class GetOneNoStatus(APITestCase):
             # get data from db
             query = self.model.objects.filter(**self.filter).get(**self.query)
             serializer = self.serializer(query)
-            self.assertEqual(response.data['results'], serializer.data)
+            self.assertEqual(response.data['results'], [serializer.data])
             self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     # FO-121: new test to verify user cannot proceed when blocked
