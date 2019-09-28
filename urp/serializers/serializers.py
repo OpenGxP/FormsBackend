@@ -727,11 +727,11 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                         # try to convert to integer
                         data['value'] = value_to_int(data['value'])
                         # verify that integer is positive
-                        if data['value'] < 5 or data['value'] > settings.DEFAULT_PAGINATION_MAX:
+                        if data['value'] not in settings.PROFILE_PAGINATION_SELECTIONS:
                             raise ValueError
                     except ValueError:
-                        raise serializers.ValidationError('Value "{}" must be a positive integer between 5 and {}.'
-                                                          .format(self.instance.key, settings.DEFAULT_PAGINATION_MAX))
+                        raise serializers.ValidationError('Value must be one integer of {}.'
+                                                          .format(settings.PROFILE_PAGINATION_SELECTIONS))
 
             @require_NONE
             @require_SOD
