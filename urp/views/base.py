@@ -110,7 +110,17 @@ class GET(object):
         return self.model.objects.filter(**self.filter_set_strict)
 
     def parse_query_param(self):
-        filter_set = {}
+        # global Q
+        g_q = Q()
+
+        # default global and/or is AND
+        g_and_or = Q.AND
+
+        # catch global and/or
+        if 'and_or' in self.request.query_params:
+            if self.request.query_params['and_or'] == 'or':
+                g_and_or = Q.OR
+
         for param in self.request.query_params:
             # ignore pagination parameter
             if param == self.paginator.offset_query_param or param == self.paginator.limit_query_param:
@@ -129,18 +139,39 @@ class GET(object):
                             self.sort_field = '-{}'.format(field)
                         if direction == 'asc' and not self.sort_field:
                             self.sort_field = field
-                        continue
+                continue
 
             if param in self.model_fields:
-                filter_set['{}__contains'.format(param)] = self.request.query_params[param]
+                # split between filter conditions and and/or
+                major_split = self.request.query_params[param].split('_')
+                and_or = Q.AND
+                if len(major_split) == 2:
+                    if major_split[1] == 'or':
+                        and_or = Q.OR
+                chain = major_split[0].split(',')
+                q = Q()
+                for i in chain:
+                    kv = i.split('.')
+                    try:
+                        cond = kv[0]
+                        value = kv[1]
+                    except IndexError:
+                        pass
+                    else:
+                        if cond == 'contains' or cond == 'exact':
+                            q.add(Q(**{'{}__{}'.format(param, cond): value}), and_or)
+                        if cond == 'notexact':
+                            q.add(~Q(**{'{}__exact'.format(param): value}), and_or)
 
-        self.filter_set_query = filter_set
+                g_q.add(q, g_and_or)
+                continue
+        self.filter_set_query = g_q
 
     @property
     def model_object_base(self):
         if self.sort_field:
-            return self.filter_base.filter(**self.filter_set_query).order_by(self.sort_field)
-        return self.filter_base.filter(**self.filter_set_query)
+            return self.filter_base.filter(self.filter_set_query).order_by(self.sort_field)
+        return self.filter_base.filter(self.filter_set_query)
 
     @property
     def serialized(self):
