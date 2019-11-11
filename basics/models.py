@@ -44,7 +44,7 @@ CHAR_BIG = 1000
 FIELD_VERSION = models.IntegerField(_('Version'))
 
 AVAILABLE_STATUS = ['draft', 'circulation', 'productive', 'blocked', 'inactive', 'archived']
-LOG_HASH_SEQUENCE = ['user', 'timestamp', 'action']
+LOG_HASH_SEQUENCE = ['user', 'timestamp', 'action', 'comment']
 
 
 class GlobalManager(models.Manager):
@@ -53,6 +53,7 @@ class GlobalManager(models.Manager):
     HAS_STATUS = True
     LOG_TABLE = None
     IS_LOG = False
+    WF_MGMT = False
 
     # meta information for get and post
     # get
@@ -69,6 +70,7 @@ class GlobalManager(models.Manager):
                                      'lifecycle_id',)
     GET_BASE_ORDER_LOG = ('user',
                           'action',
+                          'comment',
                           'timestamp',
                           'timestamp_local', )
     GET_BASE_CALCULATED = ('valid',
@@ -77,6 +79,9 @@ class GlobalManager(models.Manager):
     # post
     POST_BASE_EXCLUDE = ('id', 'lifecycle_id', 'checksum', 'status', 'version')
     POST_MODEL_EXCLUDE = tuple()
+
+    # comments an electronic signatures
+    COMMENT_SIGNATURE = ('com', 'sig_user', 'sig_pw',)
 
     def get_previous_version(self, instance):
         try:
@@ -137,7 +142,7 @@ class GlobalManager(models.Manager):
             return
         for record in query:
             if record.verify_validity_range:
-                return True
+                return record
 
     def last_record(self, filter_dict=None, order_str=None):
         if not filter_dict and not order_str:
@@ -172,6 +177,8 @@ class GlobalModel(models.Model):
     UNIQUE = None
 
     def unique_id(self):
+        if self.MODEL_ID == '30':
+            return
         if self.lifecycle_id:
             return '{}_{}'.format(self.lifecycle_id, self.version)
         else:
@@ -221,6 +228,37 @@ class GlobalModel(models.Model):
     LOOKUP = {}
 
 
+class GlobalModelLog(GlobalModel):
+    # id field
+    lifecycle_id = models.UUIDField()
+    # log specific fields
+    user = models.CharField(_('User'), max_length=CHAR_DEFAULT)
+    timestamp = models.DateTimeField(_('Timestamp'))
+    action = models.CharField(_('Action'), max_length=CHAR_DEFAULT)
+    comment = models.CharField(_('Comment'), max_length=CHAR_DEFAULT, blank=True)
+
+    def _verify_checksum(self, to_hash_payload):
+        if not self.lifecycle_id:
+            to_hash = 'id:{};user:{};timestamp:{};action:{};comment:{};'.format(self.id, self.user, self.timestamp,
+                                                                                self.action, self.comment)
+        else:
+            to_hash = 'id:{};lifecycle_id:{};user:{};timestamp:{};action:{};comment:{};'\
+                .format(self.id, self.lifecycle_id, self.user, self.timestamp, self.action, self.comment)
+        to_hash += '{}{}'.format(to_hash_payload, settings.SECRET_HASH_KEY)
+        try:
+            return HASH_ALGORITHM.verify(to_hash, self.checksum)
+        except ValueError:
+            return False
+
+    # permissions
+    perms = {
+        '01': 'read',
+    }
+
+    class Meta:
+        abstract = True
+
+
 ##########
 # STATUS #
 ##########
@@ -237,21 +275,16 @@ class StatusLogManager(GlobalManager):
 
 
 # log table
-class StatusLog(GlobalModel):
+class StatusLog(GlobalModelLog):
     # custom fields
     status = models.CharField(_('Status'), max_length=CHAR_DEFAULT)
-    # log specific fields
-    user = models.CharField(_('User'), max_length=CHAR_DEFAULT)
-    timestamp = models.DateTimeField(_('Timestamp'))
-    action = models.CharField(_('Action'), max_length=CHAR_DEFAULT)
 
     # manager
     objects = StatusLogManager()
 
     # integrity check
     def verify_checksum(self):
-        to_hash_payload = 'status:{};user:{};timestamp:{};action:{};' \
-            .format(self.status, self.user, self.timestamp, self.action)
+        to_hash_payload = 'status:{};'.format(self.status)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
 
     valid_from = None
@@ -259,13 +292,10 @@ class StatusLog(GlobalModel):
     lifecycle_id = None
 
     # hashing
-    HASH_SEQUENCE = ['status'] + LOG_HASH_SEQUENCE
+    HASH_SEQUENCE = LOG_HASH_SEQUENCE+ ['status']
 
     # permissions
     MODEL_ID = '07'
-    perms = {
-            '01': 'read',
-        }
 
 
 # manager
@@ -408,23 +438,18 @@ class SettingsLogManager(GlobalManager):
 
 
 # log table
-class SettingsLog(GlobalModel):
+class SettingsLog(GlobalModelLog):
     # custom fields
     key = models.CharField(_('Key'), max_length=CHAR_DEFAULT)
     default = models.CharField(_('Default'), max_length=CHAR_DEFAULT)
     value = models.CharField(_('Value'), max_length=CHAR_DEFAULT)
-    # log specific fields
-    user = models.CharField(_('User'), max_length=CHAR_DEFAULT)
-    timestamp = models.DateTimeField(_('Timestamp'))
-    action = models.CharField(_('Action'), max_length=CHAR_DEFAULT)
 
     # manager
     objects = SettingsLogManager()
 
     # integrity check
     def verify_checksum(self):
-        to_hash_payload = 'key:{};default:{};value:{};user:{};timestamp:{};action:{};' \
-            .format(self.key, self.default, self.value, self.user, self.timestamp, self.action)
+        to_hash_payload = 'key:{};default:{};value:{};'.format(self.key, self.default, self.value)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
 
     valid_from = None
@@ -432,14 +457,11 @@ class SettingsLog(GlobalModel):
     lifecycle_id = None
 
     # hashing
-    HASH_SEQUENCE = ['key', 'default', 'value'] + LOG_HASH_SEQUENCE
+    HASH_SEQUENCE = LOG_HASH_SEQUENCE + ['key', 'default', 'value']
 
     # permissions
     MODEL_ID = '14'
     MODEL_CONTEXT = 'SettingsLog'
-    perms = {
-            '01': 'read',
-        }
 
 
 # manager
@@ -507,6 +529,29 @@ class SettingsManager(GlobalManager):
             return self.filter(key='core.initial_role').get().value
         except self.model.DoesNotExist:
             return settings.DEFAULT_INITIAL_ROLE
+
+    def dialog_signature(self, dialog, perm):
+        if self.filter(key='dialog.{}.signature.{}'.format(dialog, perm)).get().value == 'signature':
+            return True
+        return
+
+    def dialog_signature_dict(self, dialog):
+        query = self.filter(key__contains='dialog.{}.signature.'.format(dialog)).values('key', 'value').all()
+        for x in query:
+            x['key'] = x['key'].split('.')[3]
+        return query
+
+    def dialog_comment(self, dialog, perm):
+        try:
+            return self.filter(key='dialog.{}.comment.{}'.format(dialog, perm)).get().value
+        except self.model.DoesNotExist:
+            return settings.DEFAULT_DIALOG_COMMENT
+
+    def dialog_comment_dict(self, dialog):
+        query = self.filter(key__contains='dialog.{}.comment.'.format(dialog)).values('key', 'value').all()
+        for x in query:
+            x['key'] = x['key'].split('.')[3]
+        return query
 
 
 # table

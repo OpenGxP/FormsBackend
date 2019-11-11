@@ -88,6 +88,8 @@ class SettingsMiscellaneous(APITestCase):
         self.test_data_attempts = 'auth.max_login_attempts'
         self.test_data_logout = 'core.auto_logout'
         self.test_data_email = 'email.sender'
+        self.test_data_dialog_signature = 'dialog.users.signature.add'
+        self.test_data_dialog_comment = 'dialog.users.comment.add'
 
     def setUp(self):
         self.client = Client(enforce_csrf_checks=True)
@@ -172,10 +174,38 @@ class SettingsMiscellaneous(APITestCase):
         response = self.client.patch(path, data=data, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_400_dialog_signature(self):
+        """
+        Test shall show that is not possible to change dialog signature settings to invalid option.
+        """
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get API response
+        path = '{}/{}'.format(self.base_path, self.test_data_dialog_signature)
+        data = {'value': 'notallowed'}
+        response = self.client.patch(path, data=data, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_400_dialog_comment(self):
+        """
+        Test shall show that is not possible to change dialog comment settings to invalid option.
+        """
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get API response
+        path = '{}/{}'.format(self.base_path, self.test_data_dialog_comment)
+        data = {'value': 'notallowed'}
+        response = self.client.patch(path, data=data, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
     def test_200_max_attempts(self):
         """
-                Test shall show that is not possible to edit max login attempts to anything other than positive integers.
-                """
+        Test shall show that it is possible to edit max login attempts to a positive integer.
+        """
         # authenticate
         self.prerequisites.auth(self.client)
         # get csrf
@@ -188,8 +218,8 @@ class SettingsMiscellaneous(APITestCase):
 
     def test_200_auto_logout(self):
         """
-                Test shall show that is not possible to edit max login attempts to anything other than positive integers.
-                """
+        Test shall show that it is possible to edit auto logout time to a positive integer.
+        """
         # authenticate
         self.prerequisites.auth(self.client)
         # get csrf
@@ -197,5 +227,47 @@ class SettingsMiscellaneous(APITestCase):
         # get API response
         path = '{}/{}'.format(self.base_path, self.test_data_logout)
         data = {'value': '300'}
+        response = self.client.patch(path, data=data, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_200_dialog_signature(self):
+        """
+        Test shall show that it is possible to change dialog signature settings to valid option.
+        """
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get API response
+        path = '{}/{}'.format(self.base_path, self.test_data_dialog_signature)
+        # signature
+        data = {'value': 'signature'}
+        response = self.client.patch(path, data=data, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # logging
+        data = {'value': 'logging'}
+        response = self.client.patch(path, data=data, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_200_dialog_comment(self):
+        """
+        Test shall show that it is possible to change dialog comment settings to valid option.
+        """
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get API response
+        path = '{}/{}'.format(self.base_path, self.test_data_dialog_comment)
+        # mandatory
+        data = {'value': 'mandatory'}
+        response = self.client.patch(path, data=data, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # optional
+        data = {'value': 'optional'}
+        response = self.client.patch(path, data=data, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # none
+        data = {'value': 'none'}
         response = self.client.patch(path, data=data, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
         self.assertEqual(response.status_code, status.HTTP_200_OK)

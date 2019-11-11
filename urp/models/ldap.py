@@ -22,7 +22,7 @@ from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 
 # app imports
-from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, LOG_HASH_SEQUENCE, CHAR_MAX
+from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, LOG_HASH_SEQUENCE, CHAR_MAX, GlobalModelLog
 from urp.backends.ldap import init_server, connect, search
 from urp.crypto import decrypt
 from urp.validators import validate_only_positive_numbers
@@ -51,7 +51,7 @@ class LDAPLogManager(GlobalManager):
 
 
 # log table
-class LDAPLog(GlobalModel):
+class LDAPLog(GlobalModelLog):
     # custom fields
     host = models.CharField(_('Host'), max_length=CHAR_DEFAULT)
     port = models.IntegerField(_('Port'))
@@ -64,10 +64,6 @@ class LDAPLog(GlobalModel):
     attr_surname = models.CharField(_('Attr Surname'), max_length=CHAR_DEFAULT, blank=True)
     attr_forename = models.CharField(_('Attr Forename'), max_length=CHAR_DEFAULT, blank=True)
     priority = models.IntegerField(_('Priority'), validators=[validate_only_positive_numbers])
-    # log specific fields
-    user = models.CharField(_('User'), max_length=CHAR_DEFAULT)
-    timestamp = models.DateTimeField(_('Timestamp'))
-    action = models.CharField(_('Action'), max_length=CHAR_DEFAULT)
 
     # manager
     objects = LDAPLogManager()
@@ -75,11 +71,9 @@ class LDAPLog(GlobalModel):
     # integrity check
     def verify_checksum(self):
         to_hash_payload = 'host:{};port:{};ssl_tls:{};bindDN:{};base:{};filter:{};attr_username:{};' \
-                          'attr_email:{};attr_surname:{};attr_forename:{};priority:{};' \
-                          'user:{};timestamp:{};action:{};'. \
+                          'attr_email:{};attr_surname:{};attr_forename:{};priority:{};'. \
             format(self.host, self.port, self.ssl_tls, self.bindDN, self.base, self.filter,
-                   self.attr_username, self.attr_email, self.attr_surname, self.attr_forename, self.priority,
-                   self.user, self.timestamp, self.action)
+                   self.attr_username, self.attr_email, self.attr_surname, self.attr_forename, self.priority)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
 
     valid_from = None
@@ -87,15 +81,12 @@ class LDAPLog(GlobalModel):
     lifecycle_id = None
 
     # hashing
-    HASH_SEQUENCE = ['host', 'port', 'ssl_tls', 'bindDN', 'base', 'filter', 'attr_username',
-                     'attr_email', 'attr_surname', 'attr_forename', 'priority'] + LOG_HASH_SEQUENCE
+    HASH_SEQUENCE = LOG_HASH_SEQUENCE + ['host', 'port', 'ssl_tls', 'bindDN', 'base', 'filter', 'attr_username',
+                                         'attr_email', 'attr_surname', 'attr_forename', 'priority']
 
     # permissions
     MODEL_ID = '12'
     MODEL_CONTEXT = 'LDAPLog'
-    perms = {
-        '01': 'read',
-    }
 
 
 class LDAPManager(GlobalManager):

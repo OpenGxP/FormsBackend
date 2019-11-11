@@ -21,7 +21,8 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 # app imports
-from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, Status, LOG_HASH_SEQUENCE, FIELD_VERSION, CHAR_BIG
+from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, Status, LOG_HASH_SEQUENCE, FIELD_VERSION, \
+    GlobalModelLog
 from urp.models.tags import Tags
 from urp.models.workflows import Workflows
 from urp.validators import validate_no_space, validate_no_specials_reduced, validate_no_numbers, validate_only_ascii
@@ -41,9 +42,7 @@ class FormsLogManager(GlobalManager):
 
 
 # log table
-class FormsLog(GlobalModel):
-    # id field
-    lifecycle_id = models.UUIDField()
+class FormsLog(GlobalModelLog):
     # custom fields
     form = models.CharField(_('Form'), max_length=CHAR_DEFAULT)
     workflow = models.CharField(_('Workflow'), max_length=CHAR_DEFAULT)
@@ -51,20 +50,14 @@ class FormsLog(GlobalModel):
     # defaults
     status = models.ForeignKey(Status, on_delete=models.PROTECT)
     version = FIELD_VERSION
-    # log specific fields
-    user = models.CharField(_('User'), max_length=CHAR_DEFAULT)
-    timestamp = models.DateTimeField(_('Timestamp'))
-    action = models.CharField(_('Action'), max_length=CHAR_DEFAULT)
 
     # manager
     objects = FormsLogManager()
 
     # integrity check
     def verify_checksum(self):
-        to_hash_payload = 'form:{};workflow:{};tag:{};status_id:{};version:{};valid_from:{};valid_to:{};' \
-                          'user:{};timestamp:{};action:{};'. \
-            format(self.form, self.workflow, self.tag, self.status_id, self.version, self.valid_from, self.valid_to,
-                   self.user, self.timestamp, self.action)
+        to_hash_payload = 'form:{};workflow:{};tag:{};status_id:{};version:{};valid_from:{};valid_to:{};'. \
+            format(self.form, self.workflow, self.tag, self.status_id, self.version, self.valid_from, self.valid_to)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
 
     @property
@@ -72,14 +65,11 @@ class FormsLog(GlobalModel):
         return self.status.status
 
     # hashing
-    HASH_SEQUENCE = ['form', 'workflow', 'tag', 'status_id', 'version', 'valid_from', 'valid_to'] + LOG_HASH_SEQUENCE
+    HASH_SEQUENCE = LOG_HASH_SEQUENCE + ['form', 'workflow', 'tag', 'status_id', 'version', 'valid_from', 'valid_to']
 
     # permissions
     MODEL_ID = '29'
     MODEL_CONTEXT = 'FormsLog'
-    perms = {
-            '01': 'read',
-        }
 
     class Meta:
         unique_together = None
@@ -89,6 +79,7 @@ class FormsLog(GlobalModel):
 class FormsManager(GlobalManager):
     # flags
     LOG_TABLE = FormsLog
+    WF_MGMT = True
 
     # meta
     GET_MODEL_ORDER = ('form',

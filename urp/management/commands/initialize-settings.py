@@ -21,23 +21,57 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from urp.serializers.settings import SettingsInitialWriteSerializer
 
 # django imports
+from django.apps import apps
 from django.conf import settings
 from django.core.management.base import BaseCommand
+
+
+def add_setting(self, data):
+    serializer = SettingsInitialWriteSerializer(data=data, context={'method': 'POST', 'function': 'init'})
+    if serializer.is_valid():
+        serializer.save()
+        self.stdout.write(self.style.SUCCESS('Successfully added setting key: "{}", value: "{}".'
+                                             .format(data['key'], data['value'])))
+    else:
+        for error in serializer.errors:
+            self.stderr.write('Error: {}'.format(serializer.errors[error][0]))
 
 
 class Command(BaseCommand):
     help = 'Initialize required settings.'
 
     def handle(self, *args, **options):
+        # add initial settings from forms settings
         for key, value in settings.INITIALIZE_SETTINGS.items():
             data = {'key': key,
                     'default': value,
                     'value': value}
-            serializer = SettingsInitialWriteSerializer(data=data, context={'method': 'POST', 'function': 'init'})
-            if serializer.is_valid():
-                serializer.save()
-                self.stdout.write(self.style.SUCCESS('Successfully added setting key: "{}", value: "{}".'
-                                                     .format(key, value)))
-            else:
-                for error in serializer.errors:
-                    self.stderr.write('Error: {}'.format(serializer.errors[error][0]))
+            add_setting(self, data)
+
+        # add settings for signature and comment definition
+        models = apps.all_models['urp']
+        models.update(apps.all_models['basics'])
+        for model in models:
+            if model == 'tokens' or model == 'status' or model == 'permissions' \
+                    or model == 'permissionslog' or model == 'statuslog' or model == 'workflowssteps' \
+                    or model == 'profile' or model == 'profilelog':
+                continue
+            for key, value in models[model].perms.items():
+                if key == '01':
+                    continue
+
+                # rename vault to passwords
+                if model == 'vault':
+                    model = 'passwords'
+
+                # add signature setting
+                data = {'key': 'dialog.{}.signature.{}'.format(model, value),
+                        'default': settings.DEFAULT_DIALOG_SIGNATURE,
+                        'value': settings.DEFAULT_DIALOG_SIGNATURE}
+                add_setting(self, data)
+
+                # add comment setting
+                data = {'key': 'dialog.{}.comment.{}'.format(model, value),
+                        'default': settings.DEFAULT_DIALOG_COMMENT,
+                        'value': settings.DEFAULT_DIALOG_COMMENT}
+                add_setting(self, data)

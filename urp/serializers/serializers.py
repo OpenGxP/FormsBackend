@@ -30,12 +30,15 @@ from basics.models import Status, AVAILABLE_STATUS, StatusLog, CentralLog, Setti
 from urp.decorators import require_STATUS_CHANGE, require_POST, require_DELETE, require_PATCH, require_NONE, \
     require_NEW_VERSION, require_status, require_LDAP, require_USERS, require_NEW, require_SETTINGS, require_SOD, \
     require_EMAIL, require_ROLES, require_PROFILE
-from urp.custom import create_log_record, create_central_log_record
+from urp.custom import create_log_record, create_central_log_record, create_signatures_record, validate_comment, \
+    validate_signature
 from urp.backends.ldap import server_check
 from urp.backends.Email import MyEmailBackend
 from urp.vault import create_update_vault, validate_password_input
 from urp.crypto import encrypt
 from urp.models.profile import Profile
+from urp.models.workflows import Workflows
+from urp.models.logs.signatures import SignaturesLog
 
 # django imports
 from django.utils import timezone
@@ -63,6 +66,10 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         self.workflow_step_logs = {}
         self.workflow_step_log_decision = {}
 
+        # set workflow flag
+        self.context['workflow'] = {}
+        self.context['workflow']['productive'] = False
+
     valid = serializers.BooleanField(source='verify_checksum', read_only=True)
     # unique attribute for frontend selection
     unique = serializers.CharField(source='unique_id', read_only=True)
@@ -71,6 +78,11 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
     timestamp_local = serializers.SerializerMethodField()
     valid_from_local = serializers.SerializerMethodField()
     valid_to_local = serializers.SerializerMethodField()
+
+    # comment and signatures
+    com = serializers.CharField(write_only=True, required=False)
+    sig_user = serializers.CharField(write_only=True, required=False)
+    sig_pw = serializers.CharField(write_only=True, required=False)
 
     @staticmethod
     def make_list_to_string(value):
@@ -291,6 +303,23 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 self.status_change = True
                 action = settings.DEFAULT_LOG_STATUS
                 validated_data['status_id'] = Status.objects.status_by_text(self.context['status'])
+
+                # check if workflow is used
+                """
+                if self.context['workflow'] and self.model.objects.WF_MGMT:
+                    # write log record for electronic signature
+                    if not now:
+                        now = timezone.now()
+                    create_signatures_record(workflow=self.context['workflow']['workflow'],
+                                             user=self.context['user'],
+                                             timestamp=now, context=self.model.MODEL_CONTEXT, obj=self.instance,
+                                             step=self.context['workflow']['step'],
+                                             sequence=self.context['workflow']['sequence'])
+
+                    if self.context['status'] == 'productive' and not self.context['workflow']['productive']:
+                        self.context['status'] = 'circulation'
+                        validated_data['status_id'] = Status.objects.status_by_text(self.context['status'])
+                """
 
                 # if "valid_from" is empty, set "valid_from" to timestamp of set productive
                 if self.context['status'] == 'productive' and not self.instance.valid_from and not self_call:
@@ -557,6 +586,34 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                         raise serializers.ValidationError('Valid from can not be before valid from '
                                                           'of previous version')
 
+                # check if object is workflow managed
+                """
+                if self.model.objects.WF_MGMT:
+                    # check if workflow is productive and valid
+                    workflow = self.instance.workflow
+                    valid_record = Workflows.objects.verify_prod_valid(workflow)
+                    if valid_record:
+                        # check if user is in the role of the first step of the valid workflow
+                        for step in valid_record.linked_steps_roles:
+                            if step['sequence'] == 0:
+                                if not self.context['request'].user.has_role(step['role']):
+                                    raise serializers.ValidationError('User is not a member of the workflow step role: '
+                                                                      '{}.'.format(step['role']))
+                                # set used step for further use
+                                self.context['workflow']['step'] = step['step']
+                                self.context['workflow']['sequence'] = step['sequence']
+                                break
+                    else:
+                        raise serializers.ValidationError('Workflow not productive and/or valid.')
+
+                    # set validated workflow record for further use
+                    self.context['workflow']['workflow'] = valid_record
+
+                # validate comment
+                validate_comment(self=self, data=data, perm='circulation')
+                validate_signature(self=self, data=data, perm='circulation')
+                """
+
             @require_STATUS_CHANGE
             @require_circulation
             def validate_circulation(self):
@@ -573,6 +630,65 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                         if previous_user == self.context['user']:
                             raise serializers.ValidationError('SoD conflict - set productive can not be performed by '
                                                               'the same user as set in circulation.')
+
+                    # check if object is workflow managed
+                    """
+                    if self.model.objects.WF_MGMT:
+                        # check if workflow is productive and valid
+                        workflow = self.instance.workflow
+                        valid_record = Workflows.objects.verify_prod_valid(workflow)
+                        if valid_record:
+                            # check next workflow step
+                            last_step = SignaturesLog.objects.filter(object_lifecycle_id=self.instance.lifecycle_id,
+                                                                     object_version=self.instance.version).order_by(
+                                                                     '-sequence')[0]
+
+                            # verify if last step was performed with same workflow version
+                            if last_step.workflow != workflow or last_step.workflow_version != valid_record.version:
+                                raise serializers.ValidationError('Workflow was updated since last step, '
+                                                                  'please set record back to status draft and '
+                                                                  'restart circulation.')
+
+                            # SoD for all circulation steps
+                            if 'disable-sod' not in self.context.keys():
+                                signatures = SignaturesLog.objects.filter(
+                                    object_lifecycle_id=self.instance.lifecycle_id,
+                                    object_version=self.instance.version).all()
+                                for record in signatures:
+                                    if self.context['user'] == record.user:
+                                        raise serializers.ValidationError(
+                                            'SoD conflict - The workflow step {} was already signed by this user.'
+                                            .format(record.step))
+
+                            # check if user is in the role of the step of the valid workflow
+                            steps_count = len(valid_record.linked_steps_roles)
+                            if steps_count == last_step.sequence + 2:
+                                self.context['workflow']['productive'] = True
+                            for step in valid_record.linked_steps_roles:
+                                if step['sequence'] == last_step.sequence + 1:
+                                    if not self.context['request'].user.has_role(step['role']):
+                                        raise serializers.ValidationError(
+                                            'User is not a member of the workflow step role: '
+                                            '{}.'.format(step['role']))
+                                    # set used step for further use
+                                    self.context['workflow']['step'] = step['step']
+                                    self.context['workflow']['sequence'] = step['sequence']
+                                    break
+                        else:
+                            raise serializers.ValidationError('Workflow not productive and/or valid.')
+
+                        # set validated workflow record for further use
+                        self.context['workflow']['workflow'] = valid_record
+                        """
+
+                    # validate comment
+                    validate_comment(self=self, data=data, perm='productive')
+                    validate_signature(self=self, data=data, perm='productive')
+
+                if self.context['status'] == 'draft':
+                    # validate comment
+                    validate_comment(self=self, data=data, perm='reject')
+                    validate_signature(self=self, data=data, perm='reject')
 
             @require_STATUS_CHANGE
             @require_USERS
@@ -595,6 +711,19 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError('From productive only block, archive and inactivate are '
                                                       'allowed.')
 
+                if self.context['status'] == 'blocked':
+                    # validate comment
+                    validate_comment(self=self, data=data, perm='block')
+                    validate_signature(self=self, data=data, perm='block')
+                if self.context['status'] == 'inactive':
+                    # validate comment
+                    validate_comment(self=self, data=data, perm='inactivate')
+                    validate_signature(self=self, data=data, perm='inactivate')
+                if self.context['status'] == 'archived':
+                    # validate comment
+                    validate_comment(self=self, data=data, perm='archive')
+                    validate_signature(self=self, data=data, perm='archive')
+
             @require_STATUS_CHANGE
             @require_ROLES
             @require_productive
@@ -610,11 +739,19 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 if self.context['status'] != 'productive':
                     raise serializers.ValidationError('From blocked only back to productive is allowed')
 
+                # validate comment
+                validate_comment(self=self, data=data, perm='productive')
+                validate_signature(self=self, data=data, perm='productive')
+
             @require_STATUS_CHANGE
             @require_inactive
             def validate_inactive(self):
                 if self.context['status'] != 'blocked':
                     raise serializers.ValidationError('From inactive only blocked is allowed')
+
+                # validate comment
+                validate_comment(self=self, data=data, perm='block')
+                validate_signature(self=self, data=data, perm='block')
 
             @require_STATUS_CHANGE
             @require_archived
@@ -653,6 +790,11 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                                 if self.instance.lifecycle_id != item.lifecycle_id:
                                     raise serializers.ValidationError('Record(s) with data "{}" already exists'
                                                                       .format(_filter))
+
+            @require_NONE
+            def validate_comment_signature_edit(self):
+                validate_comment(self=self, data=data, perm='edit')
+                validate_signature(self=self, data=data, perm='edit')
 
             @require_NONE
             @require_LDAP
@@ -711,6 +853,17 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                     except DjangoValidationError as e:
                         raise serializers.ValidationError(e.message)
 
+                # validate allowed settings for signatures
+                if 'dialog' in self.instance.key and 'signature' in self.instance.key:
+                    if data['value'] not in ['logging', 'signature']:
+                        raise serializers.ValidationError('For signature settings, only "logging" and "signature" '
+                                                          'are allowed.')
+                        # validate allowed settings for signatures
+                if 'dialog' in self.instance.key and 'comment' in self.instance.key:
+                    if data['value'] not in ['none', 'optional', 'mandatory']:
+                        raise serializers.ValidationError('For signature settings, only "none", "optional" and '
+                                                          '"mandatory" are allowed.')
+
             @require_NONE
             @require_PROFILE
             def validate_profile(self):
@@ -758,6 +911,11 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                     if query:
                         raise serializers.ValidationError('Record(s) with data "{}" already exists'.format(_filter))
 
+            @require_NEW
+            def validate_comment_signature_add(self):
+                validate_comment(self=self, data=data, perm='add')
+                validate_signature(self=self, data=data, perm='add')
+
             @require_NEW_VERSION
             def validate_only_draft_or_circulation(self):
                 if self.instance.status.id == Status.objects.draft or \
@@ -770,6 +928,15 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 new_version = self.instance.version + 1
                 if self.model.objects.filter(lifecycle_id=self.instance.lifecycle_id, version=new_version).exists():
                     raise serializers.ValidationError('New version already exists.')
+
+            @require_NEW_VERSION
+            def validate_comment_signature_nv(self):
+                if self.context['nv'] == 'regular':
+                    validate_comment(self=self, data=data, perm='version')
+                    validate_signature(self=self, data=data, perm='version')
+                if self.context['nv'] == 'archived':
+                    validate_comment(self=self, data=data, perm='version_archived')
+                    validate_signature(self=self, data=data, perm='version_archived')
 
             @require_NEW_VERSION
             @require_ROLES
@@ -831,6 +998,10 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                     if self.instance.status.id != Status.objects.draft:
                         raise serializers.ValidationError('Delete is only permitted in status draft.')
 
+            def validate_comment_signature_delete(self):
+                validate_comment(self=self, data=data, perm='delete')
+                validate_signature(self=self, data=data, perm='delete')
+
         Patch(self)
         Post(self)
         Delete(self)
@@ -879,11 +1050,14 @@ class PermissionsLogReadSerializer(GlobalReadWriteSerializer):
 # CENTRALLOG #
 ##############
 
+central_log_fields_no_comment = tuple(x for x in CentralLog.objects.GET_BASE_ORDER_LOG if not 'comment')
+
+
 # read
 class CentralLogReadWriteSerializer(GlobalReadWriteSerializer):
     class Meta:
         model = CentralLog
-        fields = CentralLog.objects.GET_MODEL_ORDER + CentralLog.objects.GET_BASE_ORDER_LOG + \
+        fields = CentralLog.objects.GET_MODEL_ORDER + central_log_fields_no_comment + \
             CentralLog.objects.GET_BASE_CALCULATED
 
 

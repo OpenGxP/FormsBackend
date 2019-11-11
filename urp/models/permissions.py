@@ -21,7 +21,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 # app imports
-from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, LOG_HASH_SEQUENCE
+from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, LOG_HASH_SEQUENCE, GlobalModelLog
 
 
 # log manager
@@ -38,23 +38,18 @@ class PermissionsLogManager(GlobalManager):
 
 
 # log table
-class PermissionsLog(GlobalModel):
+class PermissionsLog(GlobalModelLog):
     # custom fields
     key = models.CharField(_('Key'), max_length=CHAR_DEFAULT)
     model = models.CharField(_('Model'), max_length=CHAR_DEFAULT)
     permission = models.CharField(_('Permission'), max_length=CHAR_DEFAULT)
-    # log specific fields
-    user = models.CharField(_('User'), max_length=CHAR_DEFAULT)
-    timestamp = models.DateTimeField()
-    action = models.CharField(_('Action'), max_length=CHAR_DEFAULT)
 
     # manager
     objects = PermissionsLogManager()
 
     # integrity check
     def verify_checksum(self):
-        to_hash_payload = 'key:{};model:{};permission:{};user:{};timestamp:{};action:{};' \
-            .format(self.key, self.model, self.permission, self.user, self.timestamp, self.action)
+        to_hash_payload = 'key:{};model:{};permission:{};'.format(self.key, self.model, self.permission)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
 
     valid_from = None
@@ -62,14 +57,11 @@ class PermissionsLog(GlobalModel):
     lifecycle_id = None
 
     # hashing
-    HASH_SEQUENCE = ['key', 'model', 'permission'] + LOG_HASH_SEQUENCE
+    HASH_SEQUENCE = LOG_HASH_SEQUENCE + ['key', 'model', 'permission']
 
     # permissions
     MODEL_ID = '08'
     MODEL_CONTEXT = 'PermissionsLog'
-    perms = {
-            '01': 'read',
-        }
 
 
 # manager

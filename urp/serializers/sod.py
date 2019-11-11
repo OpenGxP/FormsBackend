@@ -32,7 +32,7 @@ class SoDReadWriteSerializer(GlobalReadWriteSerializer):
         model = SoD
         extra_kwargs = {'version': {'required': False}}
         fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_ORDER_STATUS_MANAGED + \
-            model.objects.GET_BASE_CALCULATED
+            model.objects.GET_BASE_CALCULATED + model.objects.COMMENT_SIGNATURE
 
 
 # new version / status
@@ -45,14 +45,14 @@ class SoDNewVersionStatusSerializer(GlobalReadWriteSerializer):
                         'base': {'required': False},
                         'conflict': {'required': False}}
         fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_ORDER_STATUS_MANAGED + \
-            model.objects.GET_BASE_CALCULATED
+            model.objects.GET_BASE_CALCULATED + model.objects.COMMENT_SIGNATURE
 
 
 # delete
 class SoDDeleteSerializer(GlobalReadWriteSerializer):
     class Meta:
         model = SoD
-        fields = ()
+        fields = model.objects.COMMENT_SIGNATURE
 
 
 # read logs

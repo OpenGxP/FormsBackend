@@ -27,7 +27,8 @@ class SettingsReadWriteSerializer(GlobalReadWriteSerializer):
         model = Settings
         extra_kwargs = {'default': {'read_only': True},
                         'key': {'read_only': True}}
-        fields = Settings.objects.GET_MODEL_ORDER + Settings.objects.GET_BASE_CALCULATED
+        fields = Settings.objects.GET_MODEL_ORDER + Settings.objects.GET_BASE_CALCULATED + \
+            model.objects.COMMENT_SIGNATURE
 
 
 # initial write

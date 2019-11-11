@@ -24,6 +24,7 @@ from django.conf import settings
 from urp.views.private.root import private_root_view
 from urp.views.private.profile import profile_detail, profile_list, profile_log_list, set_timezone_view
 from urp.views.private.forms import forms_list, forms_detail, forms_status, forms_log_list
+from urp.views.private.logs.signatures import signatures_log_list
 
 # app imports
 from urp.views import permissions_list, roles_list, roles_detail, status_list, \
@@ -62,6 +63,7 @@ urls_private = [
     # logs
     path('{}logs/central'.format(settings.BASE_URL), central_log_list, name='central-log-list'),
     path('{}logs/access'.format(settings.BASE_URL), access_log_list, name='access-log-list'),
+    path('{}logs/signatures'.format(settings.BASE_URL), signatures_log_list, name='signatures-log-list'),
     path('{}logs/status'.format(settings.BASE_URL), status_log_list, name='status-log-list'),
     path('{}logs/permissions'.format(settings.BASE_URL), permissions_log_list, name='permissions-log-list'),
     path('{}logs/roles'.format(settings.BASE_URL), roles_log_list, name='roles-log-list'),

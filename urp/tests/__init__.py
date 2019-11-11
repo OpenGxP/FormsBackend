@@ -291,6 +291,20 @@ class Prerequisites(object):
         assert response.status_code == status.HTTP_200_OK
         return csrf_token
 
+    def change_dialog_com_sig(self, ext_client, mode, model, perm, value):
+        # authenticate
+        self.auth(ext_client)
+        # get csrf
+        csrf_token = self.get_csrf(ext_client)
+        # prepare url
+        path = '{}/dialog.{}.{}.{}'.format(reverse('settings-list'), model, mode, perm)
+        # get API response
+        response = ext_client.patch(path, data={'value': value}, content_type='application/json',
+                                    HTTP_X_CSRFTOKEN=csrf_token)
+        if response.status_code != status.HTTP_200_OK:
+            raise AssertionError('Error Code: {}, Can not change dialog settings.'
+                                 .format(response.status_code))
+
 
 def log_records(model, action, data, access_log=None, _status=True, sub_table=False):
     data['action'] = action
@@ -736,6 +750,55 @@ class PostNew(APITestCase):
             # verify log record
             self.assertEqual(log_records(model=self.model, data=response.data, action=settings.DEFAULT_LOG_CREATE,
                                          _status=self.status, sub_table=self.sub_table), True)
+
+    def test_comment(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+
+            # change settings for mandatory comment
+            self.prerequisites.change_dialog_com_sig(ext_client=self.client, mode='comment', value='mandatory',
+                                                     model=self.model.MODEL_CONTEXT.lower(), perm='add')
+
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+
+            # fail when no comment is provided
+            response = self.client.post(self.ok_path, data=self.valid_payload, content_type='application/json',
+                                        HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+            # positive response if comment is provided
+            data = self.valid_payload.copy()
+            data['com'] = 'test'
+            response = self.client.post(self.ok_path, data=data, content_type='application/json',
+                                        HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_signature(self):
+        if self.execute:
+            # authenticate
+            self.prerequisites.auth(self.client)
+
+            # change settings for mandatory comment
+            self.prerequisites.change_dialog_com_sig(ext_client=self.client, mode='signature', value='signature',
+                                                     model=self.model.MODEL_CONTEXT.lower(), perm='add')
+
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+
+            # fail when no signature is provided
+            response = self.client.post(self.ok_path, data=self.valid_payload, content_type='application/json',
+                                        HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+            # positive response if signature is provided
+            data = self.valid_payload.copy()
+            data['sig_user'] = 'test'
+            data['sig_pw'] = 'test'
+            response = self.client.post(self.ok_path, data=data, content_type='application/json',
+                                        HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     # FO-121: new test to verify user cannot proceed when blocked
     def test_401_blocked(self):

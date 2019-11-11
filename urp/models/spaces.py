@@ -21,7 +21,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 # app imports
-from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, LOG_HASH_SEQUENCE, CHAR_BIG
+from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, LOG_HASH_SEQUENCE, CHAR_BIG, GlobalModelLog
 from urp.models.tags import Tags
 from urp.models.users import Users
 from urp.fields import LookupField
@@ -41,23 +41,18 @@ class SpacesLogManager(GlobalManager):
 
 
 # log table
-class SpacesLog(GlobalModel):
+class SpacesLog(GlobalModelLog):
     # custom fields
     space = models.CharField(_('Space'), max_length=CHAR_DEFAULT)
     users = models.CharField(_('Users'), max_length=CHAR_BIG)
     tags = models.CharField(_('Tags'), max_length=CHAR_BIG)
-    # log specific fields
-    user = models.CharField(_('User'), max_length=CHAR_DEFAULT)
-    timestamp = models.DateTimeField()
-    action = models.CharField(_('Action'), max_length=CHAR_DEFAULT)
 
     # manager
     objects = SpacesLogManager()
 
     # integrity check
     def verify_checksum(self):
-        to_hash_payload = 'space:{};users:{};tags:{};user:{};timestamp:{};action:{};' \
-            .format(self.space, self.users, self.tags, self.user, self.timestamp, self.action)
+        to_hash_payload = 'space:{};users:{};tags:{};'.format(self.space, self.users, self.tags)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
 
     valid_from = None
@@ -65,14 +60,11 @@ class SpacesLog(GlobalModel):
     lifecycle_id = None
 
     # hashing
-    HASH_SEQUENCE = ['space', 'users', 'tags'] + LOG_HASH_SEQUENCE
+    HASH_SEQUENCE = LOG_HASH_SEQUENCE + ['space', 'users', 'tags']
 
     # permissions
     MODEL_ID = '23'
     MODEL_CONTEXT = 'SpacesLog'
-    perms = {
-            '01': 'read',
-        }
 
 
 # manager

@@ -160,7 +160,7 @@ class PatchOneUser(PatchOne):
                                'roles': ['all'],
                                'email': 'example@example.com',
                                'ldap': False}
-        self.valid_payload = {'username': 'testtestanders',
+        self.valid_payload = {'username': 'testtest',
                               'roles': ['all_two'],
                               'email': 'example@example.com',
                               'ldap': False}

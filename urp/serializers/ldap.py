@@ -26,14 +26,14 @@ class LDAPReadWriteSerializer(GlobalReadWriteSerializer):
     class Meta:
         model = LDAP
         extra_kwargs = {'password': {'write_only': True}}
-        fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_CALCULATED
+        fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_CALCULATED + model.objects.COMMENT_SIGNATURE
 
 
 # delete
 class LDAPDeleteSerializer(GlobalReadWriteSerializer):
     class Meta:
         model = LDAP
-        fields = ()
+        fields = model.objects.COMMENT_SIGNATURE
 
 
 # read logs

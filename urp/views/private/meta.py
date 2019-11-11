@@ -18,7 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # app imports
 from urp.decorators import auth_required
-from basics.models import CHAR_MAX
+from basics.models import CHAR_MAX, Settings
 from basics.custom import get_model_by_string
 from urp.models.workflows import WorkflowsSteps
 
@@ -98,7 +98,8 @@ def meta_list(request, dialog):
 
     def get(_request):
         data = {'get': dict(),
-                'post': dict()}
+                'post': dict(),
+                'misc': dict()}
         # add get information
         exclude = model.objects.GET_BASE_EXCLUDE + model.objects.GET_MODEL_EXCLUDE
         fields = [i for i in model._meta.get_fields() if i.name not in exclude]
@@ -233,6 +234,18 @@ def meta_list(request, dialog):
                                                              'unique': False,
                                                              'lookup': None,
                                                              'editable': True}
+
+            # data regarding comment and signature settings
+            if dialog not in ['profile']:
+                comments = Settings.objects.dialog_comment_dict(dialog)
+                signatures = Settings.objects.dialog_signature_dict(dialog)
+
+                for func in comments:
+                    data['misc'][func['key']] = {'com': func['value']}
+
+                for func in signatures:
+                    data['misc'][func['key']]['sig'] = func['value']
+
         return Response(data=data, status=http_status.HTTP_200_OK)
 
     if request.method == 'GET':

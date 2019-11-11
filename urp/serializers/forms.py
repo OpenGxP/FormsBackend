@@ -34,7 +34,7 @@ class FormsReadWriteSerializer(GlobalReadWriteSerializer):
         model = Forms
         extra_kwargs = {'version': {'required': False}}
         fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_ORDER_STATUS_MANAGED + \
-            model.objects.GET_BASE_CALCULATED
+            model.objects.GET_BASE_CALCULATED + model.objects.COMMENT_SIGNATURE
 
     def validate_tag(self, value):
         if value:
@@ -62,14 +62,14 @@ class FormsNewVersionStatusSerializer(GlobalReadWriteSerializer):
                         'workflow': {'required': False},
                         'tag': {'required': False}}
         fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_ORDER_STATUS_MANAGED + \
-            model.objects.GET_BASE_CALCULATED
+            model.objects.GET_BASE_CALCULATED + model.objects.COMMENT_SIGNATURE
 
 
 # delete
 class FormsDeleteSerializer(GlobalReadWriteSerializer):
     class Meta:
         model = Forms
-        fields = ()
+        fields = model.objects.COMMENT_SIGNATURE
 
 
 # read logs

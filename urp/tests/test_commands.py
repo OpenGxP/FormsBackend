@@ -57,6 +57,7 @@ class CollectPermissionsTest(TestCase):
 class CreateRole(TestCase):
     def setUp(self):
         call_command('initialize-status')
+        call_command('initialize-settings')
 
     def test_OK(self):
         out = StringIO()
@@ -80,6 +81,7 @@ class CreateRole(TestCase):
 class CreateSuperuser(TestCase):
     def setUp(self):
         call_command('initialize-status')
+        call_command('initialize-settings')
 
     def test_OK(self):
         out = StringIO()

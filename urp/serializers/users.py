@@ -37,7 +37,7 @@ class UsersReadWriteSerializer(GlobalReadWriteSerializer):
                         'password': {'write_only': True,
                                      'required': False}}
         fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_ORDER_STATUS_MANAGED + \
-            model.objects.GET_BASE_CALCULATED + ('password_verification',)
+            model.objects.GET_BASE_CALCULATED + ('password_verification',) + model.objects.COMMENT_SIGNATURE
 
     def validate_roles(self, value):
         allowed = Roles.objects.get_by_natural_key_productive_list('role')
@@ -64,14 +64,14 @@ class UsersNewVersionStatusSerializer(GlobalReadWriteSerializer):
                         'valid_from': {'required': False},
                         'ldap': {'required': False}}
         fields = Users.objects.GET_MODEL_ORDER_NO_PW + Users.objects.GET_BASE_ORDER_STATUS_MANAGED + \
-            Users.objects.GET_BASE_CALCULATED
+            Users.objects.GET_BASE_CALCULATED + model.objects.COMMENT_SIGNATURE
 
 
 # delete
 class UsersDeleteSerializer(GlobalReadWriteSerializer):
     class Meta:
         model = Users
-        fields = ()
+        fields = model.objects.COMMENT_SIGNATURE
 
 
 # read logs

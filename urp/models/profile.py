@@ -24,7 +24,7 @@ from django.utils import timezone
 from django.core.exceptions import ValidationError
 
 # app imports
-from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, LOG_HASH_SEQUENCE
+from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, LOG_HASH_SEQUENCE, GlobalModelLog
 from basics.custom import generate_checksum, generate_to_hash
 from urp.custom import create_log_record
 
@@ -44,26 +44,20 @@ class ProfileLogManager(GlobalManager):
 
 
 # log table
-class ProfileLog(GlobalModel):
+class ProfileLog(GlobalModelLog):
     # custom fields
     username = models.CharField(_('Username'), max_length=CHAR_DEFAULT)
     key = models.CharField(_('Key'), max_length=CHAR_DEFAULT)
     default = models.CharField(_('Default'), max_length=CHAR_DEFAULT)
     value = models.CharField(_('Value'), max_length=CHAR_DEFAULT)
-    # log specific fields
-    user = models.CharField(_('User'), max_length=CHAR_DEFAULT)
-    timestamp = models.DateTimeField(_('Timestamp'))
-    action = models.CharField(_('Action'), max_length=CHAR_DEFAULT)
 
     # manager
     objects = ProfileLogManager()
 
     # integrity check
     def verify_checksum(self):
-        to_hash_payload = 'username:{};key:{};default:{};value:{};' \
-                          'user:{};timestamp:{};action:{};' \
-            .format(self.username, self.key, self.default, self.value,
-                    self.user, self.timestamp, self.action)
+        to_hash_payload = 'username:{};key:{};default:{};value:{};'.format(self.username, self.key, self.default,
+                                                                           self.value)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
 
     valid_from = None
@@ -71,7 +65,7 @@ class ProfileLog(GlobalModel):
     lifecycle_id = None
 
     # hashing
-    HASH_SEQUENCE = ['username', 'key', 'default', 'value'] + LOG_HASH_SEQUENCE
+    HASH_SEQUENCE = LOG_HASH_SEQUENCE + ['username', 'key', 'default', 'value']
 
     # permissions
     MODEL_ID = '29'

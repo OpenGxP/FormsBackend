@@ -39,7 +39,7 @@ class WorkflowsReadWriteSerializer(GlobalReadWriteSerializer):
         model = Workflows
         extra_kwargs = {'version': {'required': False}}
         fields = model.objects.GET_MODEL_ORDER + ('steps', ) + model.objects.GET_BASE_ORDER_STATUS_MANAGED + \
-            model.objects.GET_BASE_CALCULATED
+            model.objects.GET_BASE_CALCULATED + model.objects.COMMENT_SIGNATURE
 
     def validate_tag(self, value):
         if value:
@@ -151,14 +151,14 @@ class WorkflowsNewVersionStatusSerializer(GlobalReadWriteSerializer):
                         'workflow': {'required': False},
                         'tag': {'required': False}}
         fields = model.objects.GET_MODEL_ORDER + ('steps', ) + model.objects.GET_BASE_ORDER_STATUS_MANAGED + \
-            model.objects.GET_BASE_CALCULATED
+            model.objects.GET_BASE_CALCULATED + model.objects.COMMENT_SIGNATURE
 
 
 # delete
 class WorkflowsDeleteSerializer(GlobalReadWriteSerializer):
     class Meta:
         model = Workflows
-        fields = ()
+        fields = model.objects.COMMENT_SIGNATURE
 
 
 # read logs

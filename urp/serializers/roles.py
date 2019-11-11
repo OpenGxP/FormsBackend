@@ -32,7 +32,7 @@ class RolesReadWriteSerializer(GlobalReadWriteSerializer):
         model = Roles
         extra_kwargs = {'version': {'required': False}}
         fields = Roles.objects.GET_MODEL_ORDER + Roles.objects.GET_BASE_ORDER_STATUS_MANAGED + \
-            Roles.objects.GET_BASE_CALCULATED
+            Roles.objects.GET_BASE_CALCULATED + model.objects.COMMENT_SIGNATURE
 
 
 # new version / status
@@ -44,14 +44,14 @@ class RolesNewVersionStatusSerializer(GlobalReadWriteSerializer):
         extra_kwargs = {'version': {'required': False},
                         'role': {'required': False}}
         fields = Roles.objects.GET_MODEL_ORDER + Roles.objects.GET_BASE_ORDER_STATUS_MANAGED + \
-            Roles.objects.GET_BASE_CALCULATED
+            Roles.objects.GET_BASE_CALCULATED + model.objects.COMMENT_SIGNATURE
 
 
 # delete
 class RolesDeleteSerializer(GlobalReadWriteSerializer):
     class Meta:
         model = Roles
-        fields = ()
+        fields = model.objects.COMMENT_SIGNATURE
 
 
 # read logs

@@ -33,7 +33,7 @@ class ListsReadWriteSerializer(GlobalReadWriteSerializer):
         model = Lists
         extra_kwargs = {'version': {'required': False}}
         fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_ORDER_STATUS_MANAGED + \
-            model.objects.GET_BASE_CALCULATED
+            model.objects.GET_BASE_CALCULATED + model.objects.COMMENT_SIGNATURE
 
     def validate_type(self, value):
         allowed = Lists.LOOKUP['type']['model']
@@ -61,14 +61,14 @@ class ListsNewVersionStatusSerializer(GlobalReadWriteSerializer):
                         'tag': {'required': False},
                         'elements': {'required': False}}
         fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_ORDER_STATUS_MANAGED + \
-            model.objects.GET_BASE_CALCULATED
+            model.objects.GET_BASE_CALCULATED + model.objects.COMMENT_SIGNATURE
 
 
 # delete
 class ListsDeleteSerializer(GlobalReadWriteSerializer):
     class Meta:
         model = Lists
-        fields = ()
+        fields = model.objects.COMMENT_SIGNATURE
 
 
 # read logs

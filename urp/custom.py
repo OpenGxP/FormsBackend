@@ -16,6 +16,9 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+# rest imports
+from rest_framework import serializers
+
 # django imports
 from django.utils import timezone
 from django.core.exceptions import ValidationError
@@ -23,6 +26,7 @@ from django.core.exceptions import ValidationError
 # app imports
 from basics.models import CentralLog, Settings
 from basics.custom import generate_checksum, generate_to_hash
+from urp.models.logs.signatures import SignaturesLog
 
 
 def create_central_log_record(log_id, now, action, context, user):
@@ -65,6 +69,11 @@ def create_log_record(model, context, action, validated_data, obj=None, now=None
         validated_data['user'] = context['user']
     validated_data['timestamp'] = now
     validated_data['action'] = action
+
+    # comment checking
+    if 'comment' not in validated_data.keys():
+        validated_data['comment'] = ''
+
     # generate hash
     for attr in log_hash_sequence:
         if attr in validated_data.keys():
@@ -86,3 +95,69 @@ def create_log_record(model, context, action, validated_data, obj=None, now=None
         create_central_log_record(log_id=log_obj.id, now=now, action=action, context=model.MODEL_CONTEXT,
                                   user=validated_data['user'])
         log_obj.save()
+
+
+def create_signatures_record(user, timestamp, context, obj, workflow, step, sequence):
+    log_obj = SignaturesLog()
+    log_hash_sequence = log_obj.HASH_SEQUENCE
+    validated_data = dict()
+
+    validated_data['user'] = user
+    validated_data['timestamp'] = timestamp
+    validated_data['workflow'] = workflow.workflow
+    validated_data['workflow_lifecycle_id'] = workflow.lifecycle_id
+    validated_data['workflow_version'] = workflow.version
+    validated_data['context'] = context
+    validated_data['object'] = getattr(obj, obj.UNIQUE)
+    validated_data['object_version'] = obj.version
+    validated_data['object_lifecycle_id'] = obj.lifecycle_id
+    validated_data['step'] = step
+    validated_data['sequence'] = sequence
+
+    # generate hash
+    for attr in log_hash_sequence:
+        setattr(log_obj, attr, validated_data[attr])
+    to_hash = generate_to_hash(fields=validated_data, hash_sequence=log_hash_sequence, unique_id=log_obj.id,
+                               lifecycle_id=log_obj.lifecycle_id)
+    log_obj.checksum = generate_checksum(to_hash)
+
+    try:
+        log_obj.full_clean()
+    except ValidationError as e:
+        raise e
+    else:
+        log_obj.save()
+
+
+def validate_comment(self, data, perm):
+    dialog = self.model.MODEL_CONTEXT.lower()
+    if dialog not in ['accesslog', 'profile']:
+        if Settings.objects.dialog_comment(dialog=dialog, perm=perm) == 'mandatory':
+            # validate if comment field in payload
+            if 'com' not in data:
+                raise serializers.ValidationError('Comment field is mandatory.')
+            # validate if comment not empty
+            if data['com'] == '':
+                raise serializers.ValidationError('Comment is mandatory.')
+
+            # change "com" to "comment" for natural log record
+            data['comment'] = data['com']
+            del data['com']
+
+        if Settings.objects.dialog_comment(dialog=dialog, perm=perm) == 'optional':
+            # validate if comment field in payload
+            if 'com' in data:
+                # change "com" to "comment" for natural log record
+                data['comment'] = data['com']
+                del data['com']
+
+
+def validate_signature(self, data, perm):
+    dialog = self.model.MODEL_CONTEXT.lower()
+    if dialog not in ['accesslog', 'profile']:
+        if Settings.objects.dialog_signature(dialog=dialog, perm=perm):
+            # validate for signature username and password field
+            if 'sig_user' not in data or 'sig_pw' not in data:
+                raise serializers.ValidationError('Signature username and password fields are required.')
+
+            # auth CHECK !

@@ -25,14 +25,14 @@ from urp.serializers import GlobalReadWriteSerializer
 class TagsReadWriteSerializer(GlobalReadWriteSerializer):
     class Meta:
         model = Tags
-        fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_CALCULATED
+        fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_CALCULATED + model.objects.COMMENT_SIGNATURE
 
 
 # delete
 class TagsDeleteSerializer(GlobalReadWriteSerializer):
     class Meta:
         model = Tags
-        fields = ()
+        fields = model.objects.COMMENT_SIGNATURE
 
 
 # read logs

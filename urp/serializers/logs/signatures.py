@@ -16,28 +16,13 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-# app imports
-from urp.models.email import Email, EmailLog
+# custom imports
+from urp.models.logs.signatures import SignaturesLog
 from urp.serializers import GlobalReadWriteSerializer
 
 
-# read / add / edit
-class EmailReadWriteSerializer(GlobalReadWriteSerializer):
+# read
+class SignaturesLogReadWriteSerializer(GlobalReadWriteSerializer):
     class Meta:
-        model = Email
-        extra_kwargs = {'password': {'write_only': True}}
-        fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_CALCULATED + model.objects.COMMENT_SIGNATURE
-
-
-# delete
-class EmailDeleteSerializer(GlobalReadWriteSerializer):
-    class Meta:
-        model = Email
-        fields = model.objects.COMMENT_SIGNATURE
-
-
-# read logs
-class EmailLogReadSerializer(GlobalReadWriteSerializer):
-    class Meta:
-        model = EmailLog
-        fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_ORDER_LOG + model.objects.GET_BASE_CALCULATED
+        model = SignaturesLog
+        fields = SignaturesLog.objects.GET_MODEL_ORDER + SignaturesLog.objects.GET_BASE_CALCULATED

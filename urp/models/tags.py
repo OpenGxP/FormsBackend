@@ -21,7 +21,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 # app imports
-from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, LOG_HASH_SEQUENCE
+from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, LOG_HASH_SEQUENCE, GlobalModelLog
 
 
 # log manager
@@ -36,21 +36,16 @@ class TagsLogManager(GlobalManager):
 
 
 # log table
-class TagsLog(GlobalModel):
+class TagsLog(GlobalModelLog):
     # custom fields
     tag = models.CharField(_('Tag'), max_length=CHAR_DEFAULT)
-    # log specific fields
-    user = models.CharField(_('User'), max_length=CHAR_DEFAULT)
-    timestamp = models.DateTimeField()
-    action = models.CharField(_('Action'), max_length=CHAR_DEFAULT)
 
     # manager
     objects = TagsLogManager()
 
     # integrity check
     def verify_checksum(self):
-        to_hash_payload = 'tag:{};user:{};timestamp:{};action:{};' \
-            .format(self.tag, self.user, self.timestamp, self.action)
+        to_hash_payload = 'tag:{};'.format(self.tag)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
 
     valid_from = None
@@ -58,14 +53,11 @@ class TagsLog(GlobalModel):
     lifecycle_id = None
 
     # hashing
-    HASH_SEQUENCE = ['tag'] + LOG_HASH_SEQUENCE
+    HASH_SEQUENCE = LOG_HASH_SEQUENCE + ['tag']
 
     # permissions
     MODEL_ID = '21'
     MODEL_CONTEXT = 'TagsLog'
-    perms = {
-            '01': 'read',
-        }
 
 
 # manager

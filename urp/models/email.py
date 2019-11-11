@@ -21,7 +21,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 # app imports
-from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, LOG_HASH_SEQUENCE, CHAR_MAX
+from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, LOG_HASH_SEQUENCE, CHAR_MAX, GlobalModelLog
 from urp.validators import validate_only_positive_numbers
 
 
@@ -41,27 +41,22 @@ class EmailLogManager(GlobalManager):
 
 
 # log table
-class EmailLog(GlobalModel):
+class EmailLog(GlobalModelLog):
     # custom fields
     host = models.CharField(_('Host'), max_length=CHAR_DEFAULT)
     port = models.IntegerField(_('Port'))
     username = models.CharField(_('Username'), max_length=CHAR_DEFAULT)
     use_ssl = models.BooleanField(_('SSL'))
     priority = models.IntegerField(_('Priority'))
-    # log specific fields
-    user = models.CharField(_('User'), max_length=CHAR_DEFAULT)
-    timestamp = models.DateTimeField(_('Timestamp'))
-    action = models.CharField(_('Action'), max_length=CHAR_DEFAULT)
 
     # manager
     objects = EmailLogManager()
 
     # integrity check
     def verify_checksum(self):
-        to_hash_payload = 'host:{};port:{};username:{};use_ssl:{};priority:{};' \
-                          'user:{};timestamp:{};action:{};'. \
-            format(self.host, self.port, self.username, self.use_ssl, self.priority,
-                   self.user, self.timestamp, self.action)
+        to_hash_payload = 'host:{};port:{};username:{};use_ssl:{};priority:{};'.format(self.host, self.port,
+                                                                                       self.username, self.use_ssl,
+                                                                                       self.priority)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
 
     valid_from = None
@@ -69,15 +64,11 @@ class EmailLog(GlobalModel):
     lifecycle_id = None
 
     # hashing
-    HASH_SEQUENCE = ['host', 'port', 'username', 'use_ssl', 'priority'] \
-        + LOG_HASH_SEQUENCE
+    HASH_SEQUENCE = LOG_HASH_SEQUENCE + ['host', 'port', 'username', 'use_ssl', 'priority']
 
     # permissions
     MODEL_ID = '19'
     MODEL_CONTEXT = 'EmailLog'
-    perms = {
-        '01': 'read',
-    }
 
 
 class EmailManager(GlobalManager):

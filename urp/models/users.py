@@ -32,7 +32,7 @@ from django.contrib.auth.password_validation import password_validators_help_tex
 
 # app imports
 from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, LOG_HASH_SEQUENCE, CHAR_MAX, FIELD_VERSION, \
-    Status, CHAR_BIG
+    Status, CHAR_BIG, GlobalModelLog
 from urp.validators import validate_no_space, validate_no_specials, validate_no_numbers, validate_only_ascii
 from urp.custom import create_log_record
 from basics.custom import generate_checksum, generate_to_hash
@@ -68,9 +68,7 @@ class UsersLogManager(GlobalManager):
 
 
 # log table
-class UsersLog(GlobalModel):
-    # id field
-    lifecycle_id = models.UUIDField()
+class UsersLog(GlobalModelLog):
     # custom fields
     username = models.CharField(_('Username'), max_length=CHAR_DEFAULT)
     email = models.EmailField(_('Email'), max_length=CHAR_MAX, blank=True)
@@ -83,10 +81,6 @@ class UsersLog(GlobalModel):
     # defaults
     status = models.ForeignKey(Status, on_delete=models.PROTECT)
     version = FIELD_VERSION
-    # log specific fields
-    user = models.CharField(_('User'), max_length=CHAR_DEFAULT)
-    timestamp = models.DateTimeField(_('Timestamp'))
-    action = models.CharField(_('Action'), max_length=CHAR_DEFAULT)
 
     # manager
     objects = UsersLogManager()
@@ -95,10 +89,8 @@ class UsersLog(GlobalModel):
     def verify_checksum(self):
         to_hash_payload = 'username:{};email:{};first_name:{};last_name:{};is_active:{};initial_password:{};' \
                           'status_id:{};version:{};valid_from:{};valid_to:{};ldap:{};roles:{};' \
-                          'user:{};timestamp:{};action:{};' \
             .format(self.username, self.email, self.first_name, self.last_name, self.is_active, self.initial_password,
-                    self.status_id, self.version, self.valid_from, self.valid_to, self.ldap, self.roles,
-                    self.user, self.timestamp, self.action)
+                    self.status_id, self.version, self.valid_from, self.valid_to, self.ldap, self.roles)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
 
     @property
@@ -106,15 +98,13 @@ class UsersLog(GlobalModel):
         return self.status.status
 
     # hashing
-    HASH_SEQUENCE = ['username', 'email', 'first_name', 'last_name', 'is_active', 'initial_password',
-                     'status_id', 'version', 'valid_from', 'valid_to', 'ldap', 'roles'] + LOG_HASH_SEQUENCE
+    HASH_SEQUENCE = LOG_HASH_SEQUENCE + ['username', 'email', 'first_name', 'last_name', 'is_active',
+                                         'initial_password', 'status_id', 'version', 'valid_from', 'valid_to', 'ldap',
+                                         'roles']
 
     # permissions
     MODEL_ID = '10'
     MODEL_CONTEXT = 'UsersLog'
-    perms = {
-            '01': 'read',
-        }
 
     class Meta:
         unique_together = None
@@ -298,6 +288,10 @@ class Users(AbstractBaseUser, GlobalModel):
                     if role.verify_validity_range:
                         return True
         # if no assigned roles is prod and valid, return none
+
+    def has_role(self, role):
+        if role in self.roles.split(','):
+            return True
 
     @property
     def verify_sod(self):

@@ -411,9 +411,9 @@ class StatusView(BaseView):
             return update(request, ser_rw, query)
 
         @csrf_protect
-        def new_version_base(_request):
+        def new_version_base(_request, nv):
             serializer = ser_st(query, data=request.data, context={'method': 'POST', 'function': 'new_version',
-                                                                   'user': request.user.username})
+                                                                   'user': request.user.username, 'nv': nv})
             if serializer.is_valid():
                 serializer.create(validated_data=serializer.validated_data)
                 return Response(serializer.data, status=http_status.HTTP_201_CREATED)
@@ -421,11 +421,11 @@ class StatusView(BaseView):
 
         @perm_required(perm_nv)
         def new_version(_request):
-            return new_version_base(_request)
+            return new_version_base(_request, nv='regular')
 
         @perm_required(perm_nva)
         def new_version_archived(_request):
-            return new_version_base(_request)
+            return new_version_base(_request, nv='archived')
 
         @perm_required(perm_del)
         @csrf_protect
@@ -475,8 +475,9 @@ class StatusView(BaseView):
 
         @csrf_protect
         def patch_base(_request):
-            serializer = ser_st(query, data={}, context={'method': 'PATCH', 'function': 'status_change',
-                                                         'status': status, 'user': request.user.username})
+            serializer = ser_st(query, data=request.data, context={'method': 'PATCH', 'function': 'status_change',
+                                                                   'status': status, 'user': request.user.username,
+                                                                   'request': request})
             if serializer.is_valid():
                 serializer.save()
                 return Response(serializer.data)

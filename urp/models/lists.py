@@ -21,7 +21,8 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 # app imports
-from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, LOG_HASH_SEQUENCE, FIELD_VERSION, CHAR_BIG
+from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, LOG_HASH_SEQUENCE, FIELD_VERSION, CHAR_BIG, \
+    GlobalModelLog
 from urp.models.tags import Tags
 from urp.fields import LookupField
 from basics.models import Status
@@ -42,7 +43,7 @@ class ListsLogManager(GlobalManager):
 
 
 # log table
-class ListsLog(GlobalModel):
+class ListsLog(GlobalModelLog):
     # custom fields
     list = models.CharField(_('List'), max_length=CHAR_DEFAULT)
     type = models.CharField(_('Type'), max_length=CHAR_DEFAULT)
@@ -51,20 +52,15 @@ class ListsLog(GlobalModel):
     # defaults
     status = models.ForeignKey(Status, on_delete=models.PROTECT)
     version = FIELD_VERSION
-    # log specific fields
-    user = models.CharField(_('User'), max_length=CHAR_DEFAULT)
-    timestamp = models.DateTimeField()
-    action = models.CharField(_('Action'), max_length=CHAR_DEFAULT)
 
     # manager
     objects = ListsLogManager()
 
     # integrity check
     def verify_checksum(self):
-        to_hash_payload = 'list:{};type:{};tag:{};elements:{};status_id:{};version:{};valid_from:{};valid_to:{};' \
-                          'user:{};timestamp:{};action:{};'. \
+        to_hash_payload = 'list:{};type:{};tag:{};elements:{};status_id:{};version:{};valid_from:{};valid_to:{};'. \
             format(self.list, self.type, self.tag, self.elements, self.status_id, self.version, self.valid_from,
-                   self.valid_to, self.user, self.timestamp, self.action)
+                   self.valid_to)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
 
     @property
@@ -72,15 +68,12 @@ class ListsLog(GlobalModel):
         return self.status.status
 
     # hashing
-    HASH_SEQUENCE = ['list', 'type', 'tag', 'elements', 'status_id', 'version', 'valid_from',
-                     'valid_to'] + LOG_HASH_SEQUENCE
+    HASH_SEQUENCE = LOG_HASH_SEQUENCE + ['list', 'type', 'tag', 'elements', 'status_id', 'version', 'valid_from',
+                                         'valid_to']
 
     # permissions
     MODEL_ID = '25'
     MODEL_CONTEXT = 'ListsLog'
-    perms = {
-            '01': 'read',
-        }
 
     class Meta:
         unique_together = None

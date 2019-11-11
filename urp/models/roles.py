@@ -23,7 +23,8 @@ from django.conf import settings
 from django.utils.translation import gettext_lazy as _
 
 # app imports
-from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, Status, LOG_HASH_SEQUENCE, FIELD_VERSION, CHAR_BIG
+from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, Status, LOG_HASH_SEQUENCE, FIELD_VERSION, \
+    CHAR_BIG, GlobalModelLog
 from urp.validators import validate_no_space, validate_no_specials_reduced, SPECIALS_REDUCED, \
     validate_no_numbers, validate_only_ascii
 from urp.models.permissions import Permissions
@@ -42,29 +43,21 @@ class RolesLogManager(GlobalManager):
 
 
 # log table
-class RolesLog(GlobalModel):
-    # id field
-    lifecycle_id = models.UUIDField()
+class RolesLog(GlobalModelLog):
     # custom fields
     role = models.CharField(_('Role'), max_length=CHAR_DEFAULT)
     permissions = models.CharField(_('Permissions'), max_length=CHAR_BIG, blank=True)
     # defaults
     status = models.ForeignKey(Status, on_delete=models.PROTECT)
     version = FIELD_VERSION
-    # log specific fields
-    user = models.CharField(_('User'), max_length=CHAR_DEFAULT)
-    timestamp = models.DateTimeField(_('Timestamp'))
-    action = models.CharField(_('Action'), max_length=CHAR_DEFAULT)
 
     # manager
     objects = RolesLogManager()
 
     # integrity check
     def verify_checksum(self):
-        to_hash_payload = 'role:{};status_id:{};version:{};valid_from:{};valid_to:{};permissions:{};' \
-                          'user:{};timestamp:{};action:{};'. \
-            format(self.role, self.status_id, self.version, self.valid_from, self.valid_to, self.permissions,
-                   self.user, self.timestamp, self.action)
+        to_hash_payload = 'role:{};status_id:{};version:{};valid_from:{};valid_to:{};permissions:{};'. \
+            format(self.role, self.status_id, self.version, self.valid_from, self.valid_to, self.permissions)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
 
     @property
@@ -72,14 +65,11 @@ class RolesLog(GlobalModel):
         return self.status.status
 
     # hashing
-    HASH_SEQUENCE = ['role', 'status_id', 'version', 'valid_from', 'valid_to', 'permissions'] + LOG_HASH_SEQUENCE
+    HASH_SEQUENCE = LOG_HASH_SEQUENCE + ['role', 'status_id', 'version', 'valid_from', 'valid_to', 'permissions']
 
     # permissions
     MODEL_ID = '09'
     MODEL_CONTEXT = 'RolesLog'
-    perms = {
-            '01': 'read',
-        }
 
     class Meta:
         unique_together = None

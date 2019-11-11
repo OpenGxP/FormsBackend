@@ -21,7 +21,8 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 # app imports
-from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, Status, LOG_HASH_SEQUENCE, FIELD_VERSION
+from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, Status, LOG_HASH_SEQUENCE, FIELD_VERSION, \
+    GlobalModelLog
 from urp.models.roles import Roles
 
 
@@ -38,29 +39,21 @@ class SoDLogManager(GlobalManager):
 
 
 # log table
-class SoDLog(GlobalModel):
-    # id field
-    lifecycle_id = models.UUIDField()
+class SoDLog(GlobalModelLog):
     # custom fields
     base = models.CharField(_('Base'), max_length=CHAR_DEFAULT)
     conflict = models.CharField(_('Conflict'), max_length=CHAR_DEFAULT)
     # defaults
     status = models.ForeignKey(Status, on_delete=models.PROTECT)
     version = FIELD_VERSION
-    # log specific fields
-    user = models.CharField(_('User'), max_length=CHAR_DEFAULT)
-    timestamp = models.DateTimeField(_('Timestamp'))
-    action = models.CharField(_('Action'), max_length=CHAR_DEFAULT)
 
     # manager
     objects = SoDLogManager()
 
     # integrity check
     def verify_checksum(self):
-        to_hash_payload = 'base:{};conflict:{};status_id:{};version:{};valid_from:{};valid_to:{};' \
-                          'user:{};timestamp:{};action:{};'. \
-            format(self.base, self.conflict, self.status_id, self.version, self.valid_from, self.valid_to,
-                   self.user, self.timestamp, self.action)
+        to_hash_payload = 'base:{};conflict:{};status_id:{};version:{};valid_from:{};valid_to:{};'. \
+            format(self.base, self.conflict, self.status_id, self.version, self.valid_from, self.valid_to)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
 
     @property
@@ -68,14 +61,11 @@ class SoDLog(GlobalModel):
         return self.status.status
 
     # hashing
-    HASH_SEQUENCE = ['base', 'conflict', 'status_id', 'version', 'valid_from', 'valid_to'] + LOG_HASH_SEQUENCE
+    HASH_SEQUENCE = LOG_HASH_SEQUENCE + ['base', 'conflict', 'status_id', 'version', 'valid_from', 'valid_to']
 
     # permissions
     MODEL_ID = '16'
     MODEL_CONTEXT = 'SoDLog'
-    perms = {
-            '01': 'read',
-        }
 
     class Meta:
         unique_together = None

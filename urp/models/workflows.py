@@ -21,7 +21,8 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 # app imports
-from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, Status, LOG_HASH_SEQUENCE, FIELD_VERSION, CHAR_BIG
+from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, Status, LOG_HASH_SEQUENCE, FIELD_VERSION, \
+    CHAR_BIG, GlobalModelLog
 from urp.models.tags import Tags
 from urp.models.roles import Roles
 from urp.fields import LookupField
@@ -48,9 +49,7 @@ class WorkflowsLogManager(GlobalManager):
 
 
 # log table
-class WorkflowsLog(GlobalModel):
-    # id field
-    lifecycle_id = models.UUIDField()
+class WorkflowsLog(GlobalModelLog):
     # custom fields
     workflow = models.CharField(_('Workflow'), max_length=CHAR_DEFAULT)
     tag = models.CharField(_('Tag'), max_length=CHAR_DEFAULT, blank=True)
@@ -64,10 +63,6 @@ class WorkflowsLog(GlobalModel):
     # defaults
     status = models.ForeignKey(Status, on_delete=models.PROTECT)
     version = FIELD_VERSION
-    # log specific fields
-    user = models.CharField(_('User'), max_length=CHAR_DEFAULT)
-    timestamp = models.DateTimeField(_('Timestamp'))
-    action = models.CharField(_('Action'), max_length=CHAR_DEFAULT)
 
     # manager
     objects = WorkflowsLogManager()
@@ -75,11 +70,9 @@ class WorkflowsLog(GlobalModel):
     # integrity check
     def verify_checksum(self):
         to_hash_payload = 'workflow:{};tag:{};step:{};role:{};predecessors:{};text:{};sequence:{};' \
-                          'status_id:{};version:{};valid_from:{};valid_to:{};' \
-                          'user:{};timestamp:{};action:{};'. \
+                          'status_id:{};version:{};valid_from:{};valid_to:{};'. \
             format(self.workflow, self.tag, self.step, self.role, self.predecessors, self.text, self.sequence,
-                   self.status_id, self.version, self.valid_from, self.valid_to,
-                   self.user, self.timestamp, self.action)
+                   self.status_id, self.version, self.valid_from, self.valid_to)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
 
     @property
@@ -87,15 +80,12 @@ class WorkflowsLog(GlobalModel):
         return self.status.status
 
     # hashing
-    HASH_SEQUENCE = ['workflow', 'tag', 'step', 'role', 'predecessors', 'text', 'sequence', 'status_id', 'version',
-                     'valid_from', 'valid_to'] + LOG_HASH_SEQUENCE
+    HASH_SEQUENCE = LOG_HASH_SEQUENCE + ['workflow', 'tag', 'step', 'role', 'predecessors', 'text', 'sequence',
+                                         'status_id', 'version', 'valid_from', 'valid_to']
 
     # permissions
     MODEL_ID = '27'
     MODEL_CONTEXT = 'WorkflowsLog'
-    perms = {
-            '01': 'read',
-        }
 
     class Meta:
         unique_together = None
@@ -141,6 +131,12 @@ class Workflows(GlobalModel):
     @property
     def linked_steps_values(self):
         return WorkflowsSteps.objects.filter(lifecycle_id=self.lifecycle_id, version=self.version).values()
+
+    @property
+    def linked_steps_roles(self):
+        return WorkflowsSteps.objects.filter(lifecycle_id=self.lifecycle_id, version=self.version).values('step',
+                                                                                                          'role',
+                                                                                                          'sequence')
 
     # manager
     objects = WorkflowsManager()
