@@ -44,6 +44,7 @@ SECURITY_DIR = os.path.join(BASE_DIR, 'security')
 
 ALL_PERMISSIONS = '00.00'
 DEFAULT_LOG_PASSWORD = 'password'
+DEFAULT_LOG_SIGNATURE = 'signature'
 DEFAULT_LOG_QUESTIONS = 'questions'
 CRYPTO_KEY = 'CRYPTO_KEY'
 

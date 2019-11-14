@@ -70,6 +70,9 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         self.context['workflow'] = {}
         self.context['workflow']['productive'] = False
 
+        self._signature = None
+        self.now = timezone.now()
+
     valid = serializers.BooleanField(source='verify_checksum', read_only=True)
     # unique attribute for frontend selection
     unique = serializers.CharField(source='unique_id', read_only=True)
@@ -131,6 +134,14 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
     @workflows_delete_steps.setter
     def workflows_delete_steps(self, value):
         self._workflows_delete_steps.append(value)
+
+    @property
+    def signature(self):
+        return self._signature
+
+    @signature.setter
+    def signature(self, value):
+        self._signature = value
 
     @staticmethod
     def new_version_check(data):
@@ -214,7 +225,8 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                     validated_data['initial_password'] = True
 
                     # create vault record
-                    create_update_vault(data=validated_data, log=False, initial=True)
+                    create_update_vault(data=validated_data, log=False, initial=True, signature=self.signature,
+                                        now=self.now)
 
                 # create profile
                 Profile.objects.generate_profile(username=validated_data['username'], log_user=self.context['user'])
@@ -282,10 +294,10 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                             if field in record:
                                 workflow_log_data[field] = record[field]
                         create_log_record(model=model, context=self.context, obj=obj, validated_data=workflow_log_data,
-                                          action=settings.DEFAULT_LOG_CREATE)
+                                          action=settings.DEFAULT_LOG_CREATE, signature=self.signature, now=self.now)
                 else:
                     create_log_record(model=model, context=self.context, obj=obj, validated_data=validated_data,
-                                      action=settings.DEFAULT_LOG_CREATE)
+                                      action=settings.DEFAULT_LOG_CREATE, signature=self.signature, now=self.now)
         except IntegrityError as e:
             if 'UNIQUE constraint' in e.args[0]:
                 raise serializers.ValidationError('Object already exists.')
@@ -323,13 +335,13 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
 
                 # if "valid_from" is empty, set "valid_from" to timestamp of set productive
                 if self.context['status'] == 'productive' and not self.instance.valid_from and not self_call:
-                    now = timezone.now()
+                    now = self.now
                     validated_data['valid_from'] = now
 
                 # change "valid_to" of previous version to "valid from" of new version
                 # only for set productive step
                 if self.context['status'] == 'productive' and self.instance.version > 1 and not self_call:
-                    now = timezone.now()
+                    now = self.now
                     prev_instance = model.objects.get_previous_version(instance)
                     data = {'valid_to': self.instance.valid_from}
                     # if no valid_to, always set
@@ -363,13 +375,15 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                         # check if previous record was ldap managed
                         if instance.ldap:
                             # create new vault, because now is password managed
-                            create_update_vault(data=validated_data, log=False, initial=True)
+                            create_update_vault(data=validated_data, log=False, initial=True, signature=self.signature,
+                                                now=self.now)
                         else:
                             # get existing vault for that user
                             vault = Vault.objects.filter(username=instance.username).get()
 
                             # update vault
-                            create_update_vault(data=validated_data, instance=vault, log=False, initial=True)
+                            create_update_vault(data=validated_data, instance=vault, log=False, initial=True,
+                                                signature=self.signature, now=self.now)
 
                     else:
                         # check if previous record was ldap managed
@@ -464,7 +478,7 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                         if not self.workflow_step_log_decision[record.step]:
                             continue
                     create_log_record(model=model, context=self.context, obj=instance, validated_data=workflow_log_data,
-                                      action=action, now=now)
+                                      action=action, now=now, signature=self.signature)
 
                 # log deleted ones
                 if not self.status_change:
@@ -478,7 +492,7 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                                     workflow_log_data[field] = getattr(record, field)
                         create_log_record(model=model, context=self.context, obj=instance,
                                           validated_data=workflow_log_data,
-                                          action=settings.DEFAULT_LOG_DELETE, now=now)
+                                          action=settings.DEFAULT_LOG_DELETE, now=now, signature=self.signature)
 
             else:
                 if model.MODEL_ID == '04':
@@ -493,7 +507,7 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 if 'now' in self.context.keys():
                     now = self.context['now']
                 create_log_record(model=model, context=self.context, obj=instance, validated_data=fields,
-                                  action=action, now=now)
+                                  action=action, now=now, signature=self.signature)
         return instance
 
     def delete(self):
@@ -529,11 +543,11 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                     for attr in model.objects.LOG_TABLE.HASH_SEQUENCE:
                         if hasattr(step, attr):
                             workflow_fields[attr] = getattr(step, attr)
-                    create_log_record(model=model, context=self.context, obj=self.instance,
-                                      validated_data=workflow_fields, action=settings.DEFAULT_LOG_DELETE)
+                    create_log_record(model=model, context=self.context, obj=self.instance, signature=self.signature,
+                                      validated_data=workflow_fields, action=settings.DEFAULT_LOG_DELETE, now=self.now)
             else:
                 create_log_record(model=model, context=self.context, obj=self.instance, validated_data=fields,
-                                  action=settings.DEFAULT_LOG_DELETE)
+                                  action=settings.DEFAULT_LOG_DELETE, signature=self.signature, now=self.now)
 
     def validate(self, data):
         if self.context['function'] == 'init':
@@ -553,6 +567,7 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 self.context = validate_method.context
                 self.instance = validate_method.instance
                 self.function = validate_method.context['function']
+                self.validate_method = validate_method
                 self.method_list = [func for func in dir(self) if callable(getattr(self, func))]
                 self.validate()
 
@@ -610,8 +625,9 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                     self.context['workflow']['workflow'] = valid_record
 
                 # validate comment
-                validate_comment(self=self, data=data, perm='circulation')
-                validate_signature(self=self, data=data, perm='circulation')
+                dialog = self.model.MODEL_CONTEXT.lower()
+                validate_comment(dialog=dialog, data=data, perm='circulation')
+                self.signautre = validate_signature(dialog=dialog, data=data, perm='circulation')
                 """
 
             @require_STATUS_CHANGE
@@ -682,13 +698,16 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                         """
 
                     # validate comment
-                    validate_comment(self=self, data=data, perm='productive')
-                    validate_signature(self=self, data=data, perm='productive')
+                    dialog = self.model.MODEL_CONTEXT.lower()
+                    validate_comment(dialog=dialog, data=data, perm='productive')
+                    self.validate_method.signature = validate_signature(dialog=dialog, data=data, perm='productive',
+                                                                        now=self.validate_method.now)
 
                 if self.context['status'] == 'draft':
                     # validate comment
-                    validate_comment(self=self, data=data, perm='reject')
-                    validate_signature(self=self, data=data, perm='reject')
+                    dialog = self.model.MODEL_CONTEXT.lower()
+                    validate_comment(dialog=dialog, data=data, perm='reject')
+                    self.validate_method.signature = validate_signature(dialog=dialog, data=data, perm='reject')
 
             @require_STATUS_CHANGE
             @require_USERS
@@ -711,18 +730,19 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError('From productive only block, archive and inactivate are '
                                                       'allowed.')
 
+                dialog = self.model.MODEL_CONTEXT.lower()
                 if self.context['status'] == 'blocked':
                     # validate comment
-                    validate_comment(self=self, data=data, perm='block')
-                    validate_signature(self=self, data=data, perm='block')
+                    validate_comment(dialog=dialog, data=data, perm='block')
+                    self.validate_method.signature = validate_signature(dialog=dialog, data=data, perm='block')
                 if self.context['status'] == 'inactive':
                     # validate comment
-                    validate_comment(self=self, data=data, perm='inactivate')
-                    validate_signature(self=self, data=data, perm='inactivate')
+                    validate_comment(dialog=dialog, data=data, perm='inactivate')
+                    self.validate_method.signature = validate_signature(dialog=dialog, data=data, perm='inactivate')
                 if self.context['status'] == 'archived':
                     # validate comment
-                    validate_comment(self=self, data=data, perm='archive')
-                    validate_signature(self=self, data=data, perm='archive')
+                    validate_comment(dialog=dialog, data=data, perm='archive')
+                    self.validate_method.signature = validate_signature(dialog=dialog, data=data, perm='archive')
 
             @require_STATUS_CHANGE
             @require_ROLES
@@ -740,8 +760,9 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError('From blocked only back to productive is allowed')
 
                 # validate comment
-                validate_comment(self=self, data=data, perm='productive')
-                validate_signature(self=self, data=data, perm='productive')
+                dialog = self.model.MODEL_CONTEXT.lower()
+                validate_comment(dialog=dialog, data=data, perm='productive')
+                self.validate_method.signature = validate_signature(dialog=dialog, data=data, perm='productive')
 
             @require_STATUS_CHANGE
             @require_inactive
@@ -750,8 +771,9 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError('From inactive only blocked is allowed')
 
                 # validate comment
-                validate_comment(self=self, data=data, perm='block')
-                validate_signature(self=self, data=data, perm='block')
+                dialog = self.model.MODEL_CONTEXT.lower()
+                validate_comment(dialog=dialog, data=data, perm='block')
+                self.validate_method.signature = validate_signature(dialog=dialog, data=data, perm='block')
 
             @require_STATUS_CHANGE
             @require_archived
@@ -793,8 +815,9 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
 
             @require_NONE
             def validate_comment_signature_edit(self):
-                validate_comment(self=self, data=data, perm='edit')
-                validate_signature(self=self, data=data, perm='edit')
+                dialog = self.model.MODEL_CONTEXT.lower()
+                validate_comment(dialog=dialog, data=data, perm='edit')
+                self.validate_method.signature = validate_signature(dialog=dialog, data=data, perm='edit')
 
             @require_NONE
             @require_LDAP
@@ -913,8 +936,10 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
 
             @require_NEW
             def validate_comment_signature_add(self):
-                validate_comment(self=self, data=data, perm='add')
-                validate_signature(self=self, data=data, perm='add')
+                dialog = self.model.MODEL_CONTEXT.lower()
+                validate_comment(dialog=dialog, data=data, perm='add')
+                self.validate_method.signature = validate_signature(dialog=dialog, data=data, perm='add',
+                                                                    now=self.validate_method.now)
 
             @require_NEW_VERSION
             def validate_only_draft_or_circulation(self):
@@ -931,12 +956,14 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
 
             @require_NEW_VERSION
             def validate_comment_signature_nv(self):
+                dialog = self.model.MODEL_CONTEXT.lower()
                 if self.context['nv'] == 'regular':
-                    validate_comment(self=self, data=data, perm='version')
-                    validate_signature(self=self, data=data, perm='version')
+                    validate_comment(dialog=dialog, data=data, perm='version')
+                    self.validate_method.signature = validate_signature(dialog=dialog, data=data, perm='version')
                 if self.context['nv'] == 'archived':
-                    validate_comment(self=self, data=data, perm='version_archived')
-                    validate_signature(self=self, data=data, perm='version_archived')
+                    validate_comment(dialog=dialog, data=data, perm='version_archived')
+                    self.validate_method.signature = validate_signature(dialog=dialog, data=data,
+                                                                        perm='version_archived')
 
             @require_NEW_VERSION
             @require_ROLES
@@ -999,8 +1026,9 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                         raise serializers.ValidationError('Delete is only permitted in status draft.')
 
             def validate_comment_signature_delete(self):
-                validate_comment(self=self, data=data, perm='delete')
-                validate_signature(self=self, data=data, perm='delete')
+                dialog = self.model.MODEL_CONTEXT.lower()
+                validate_comment(dialog=dialog, data=data, perm='delete')
+                self.validate_method.signature = validate_signature(dialog=dialog, data=data, perm='delete')
 
         Patch(self)
         Post(self)
@@ -1050,15 +1078,11 @@ class PermissionsLogReadSerializer(GlobalReadWriteSerializer):
 # CENTRALLOG #
 ##############
 
-central_log_fields_no_comment = tuple(x for x in CentralLog.objects.GET_BASE_ORDER_LOG if not 'comment')
-
-
 # read
 class CentralLogReadWriteSerializer(GlobalReadWriteSerializer):
     class Meta:
         model = CentralLog
-        fields = CentralLog.objects.GET_MODEL_ORDER + central_log_fields_no_comment + \
-            CentralLog.objects.GET_BASE_CALCULATED
+        fields = CentralLog.objects.GET_MODEL_ORDER + CentralLog.objects.GET_BASE_CALCULATED
 
 
 #############

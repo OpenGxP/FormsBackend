@@ -794,8 +794,8 @@ class PostNew(APITestCase):
 
             # positive response if signature is provided
             data = self.valid_payload.copy()
-            data['sig_user'] = 'test'
-            data['sig_pw'] = 'test'
+            data['sig_user'] = self.prerequisites.username
+            data['sig_pw'] = self.prerequisites.password
             response = self.client.post(self.ok_path, data=data, content_type='application/json',
                                         HTTP_X_CSRFTOKEN=csrf_token)
             self.assertEqual(response.status_code, status.HTTP_201_CREATED)

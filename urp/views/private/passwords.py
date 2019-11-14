@@ -31,8 +31,10 @@ from urp.views.base import auto_logout, BaseView
 from basics.custom import render_email_from_template
 from urp.backends.Email import send_email
 from urp.vault import validate_password_input, create_update_vault
+from urp.custom import validate_signature
 
 # django imports
+from django.utils import timezone
 from django.conf import settings
 from django.contrib.auth import authenticate
 from django.core.exceptions import ValidationError
@@ -71,8 +73,11 @@ def change_password_view(request, username):
 
     validate_password_input(request.data, instance=vault)
 
+    now = timezone.now()
+    signature = validate_signature(dialog='passwords', data=request.data, perm='change_password', now=now)
+
     create_update_vault(data=request.data, instance=vault, action=settings.DEFAULT_LOG_PASSWORD,
-                        user=request.user.username)
+                        user=request.user.username, signature=signature, now=now)
 
     # inform user about successful password change
     user = Users.objects.get_valid_by_key(vault.username)
@@ -106,13 +111,14 @@ def user_change_password_view(request):
         return Response(status=http_status.HTTP_400_BAD_REQUEST)
 
     # check if provided password is correct
+    now = timezone.now()
     authenticate(request=request, username=request.user.username, password=request.data['password'],
-                 self_password_change=True)
+                 self_password_change=True, now=now)
 
     validate_password_input(request.data, instance=vault)
 
     create_update_vault(data=request.data, instance=vault, action=settings.DEFAULT_LOG_PASSWORD,
-                        user=request.user.username, self_pw=True)
+                        user=request.user.username, self_pw=True, signature=False, now=now)
 
     # inform user about successful password change
     user = Users.objects.get_valid_by_key(vault.username)

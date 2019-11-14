@@ -65,8 +65,8 @@ def validate_password_input(data, instance=None, password='password_new', initia
                                               'Password must be changed.')
 
 
-def create_update_vault(data, password='password_new', initial=False, instance=None, action=None, user=None, log=True,
-                        now=None, self_pw=False):
+def create_update_vault(data, signature, password='password_new', initial=False, instance=None, action=None, user=None,
+                        log=True, now=None, self_pw=False):
     # create new instance if not passed
     if not instance:
         instance = Vault()
@@ -105,4 +105,5 @@ def create_update_vault(data, password='password_new', initial=False, instance=N
         context = dict()
         context['function'] = 'update_vault'
         context['user'] = user
-        create_log_record(model=Users, context=context, action=action, validated_data=data, now=now)
+        create_log_record(model=Users, context=context, action=action, validated_data=data, now=now,
+                          signature=signature)

@@ -183,7 +183,7 @@ class UsersManager(BaseUserManager, GlobalManager):
         context = dict()
         context['function'] = 'init'
         fields['initial_password'] = initial_password
-        create_log_record(model=self.model, context=context, obj=user,
+        create_log_record(model=self.model, context=context, obj=user, signature=False,
                           validated_data=fields, action=settings.DEFAULT_LOG_CREATE)
 
         # create profile

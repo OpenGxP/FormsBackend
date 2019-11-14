@@ -21,6 +21,7 @@ from rest_framework import serializers
 
 # django imports
 from django.utils import timezone
+from django.contrib.auth import authenticate
 from django.core.exceptions import ValidationError
 
 # app imports
@@ -51,7 +52,7 @@ def create_central_log_record(log_id, now, action, context, user):
         obj.save()
 
 
-def create_log_record(model, context, action, validated_data, obj=None, now=None):
+def create_log_record(model, context, action, validated_data, signature, obj=None, now=None):
     if not now:
         now = timezone.now()
     log_obj = model.objects.LOG_TABLE()
@@ -70,10 +71,15 @@ def create_log_record(model, context, action, validated_data, obj=None, now=None
     validated_data['timestamp'] = now
     validated_data['action'] = action
 
+    # add signature log
+    if signature:
+        validated_data['way'] = 'signature'
+    else:
+        validated_data['way'] = 'logging'
+
     # comment checking
     if 'comment' not in validated_data.keys():
-        validated_data['comment'] = ''
-
+        validated_data['comment'] = Settings.objects.core_devalue
     # generate hash
     for attr in log_hash_sequence:
         if attr in validated_data.keys():
@@ -129,8 +135,7 @@ def create_signatures_record(user, timestamp, context, obj, workflow, step, sequ
         log_obj.save()
 
 
-def validate_comment(self, data, perm):
-    dialog = self.model.MODEL_CONTEXT.lower()
+def validate_comment(dialog, data, perm):
     if dialog not in ['accesslog', 'profile']:
         if Settings.objects.dialog_comment(dialog=dialog, perm=perm) == 'mandatory':
             # validate if comment field in payload
@@ -152,12 +157,15 @@ def validate_comment(self, data, perm):
                 del data['com']
 
 
-def validate_signature(self, data, perm):
-    dialog = self.model.MODEL_CONTEXT.lower()
+def validate_signature(dialog, data, perm, now=None):
     if dialog not in ['accesslog', 'profile']:
         if Settings.objects.dialog_signature(dialog=dialog, perm=perm):
             # validate for signature username and password field
             if 'sig_user' not in data or 'sig_pw' not in data:
                 raise serializers.ValidationError('Signature username and password fields are required.')
 
-            # auth CHECK !
+            # auth check
+            authenticate(request=None, username=data['sig_user'], password=data['sig_pw'], signature=True, now=now)
+
+            # return true for success
+            return True

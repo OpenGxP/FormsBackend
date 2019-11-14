@@ -44,7 +44,7 @@ CHAR_BIG = 1000
 FIELD_VERSION = models.IntegerField(_('Version'))
 
 AVAILABLE_STATUS = ['draft', 'circulation', 'productive', 'blocked', 'inactive', 'archived']
-LOG_HASH_SEQUENCE = ['user', 'timestamp', 'action', 'comment']
+LOG_HASH_SEQUENCE = ['user', 'timestamp', 'action', 'comment', 'way']
 
 
 class GlobalManager(models.Manager):
@@ -72,7 +72,8 @@ class GlobalManager(models.Manager):
                           'action',
                           'comment',
                           'timestamp',
-                          'timestamp_local', )
+                          'timestamp_local',
+                          'way',)
     GET_BASE_CALCULATED = ('valid',
                            'unique',)
     GET_MODEL_ORDER = dict()
@@ -236,14 +237,15 @@ class GlobalModelLog(GlobalModel):
     timestamp = models.DateTimeField(_('Timestamp'))
     action = models.CharField(_('Action'), max_length=CHAR_DEFAULT)
     comment = models.CharField(_('Comment'), max_length=CHAR_DEFAULT, blank=True)
+    way = models.CharField(_('Way'), max_length=CHAR_DEFAULT)
 
     def _verify_checksum(self, to_hash_payload):
         if not self.lifecycle_id:
-            to_hash = 'id:{};user:{};timestamp:{};action:{};comment:{};'.format(self.id, self.user, self.timestamp,
-                                                                                self.action, self.comment)
+            to_hash = 'id:{};user:{};timestamp:{};action:{};comment:{};way:{};' \
+                .format(self.id, self.user, self.timestamp, self.action, self.comment, self.way)
         else:
-            to_hash = 'id:{};lifecycle_id:{};user:{};timestamp:{};action:{};comment:{};'\
-                .format(self.id, self.lifecycle_id, self.user, self.timestamp, self.action, self.comment)
+            to_hash = 'id:{};lifecycle_id:{};user:{};timestamp:{};action:{};comment:{};way:{};' \
+                .format(self.id, self.lifecycle_id, self.user, self.timestamp, self.action, self.comment, self.way)
         to_hash += '{}{}'.format(to_hash_payload, settings.SECRET_HASH_KEY)
         try:
             return HASH_ALGORITHM.verify(to_hash, self.checksum)
@@ -292,7 +294,7 @@ class StatusLog(GlobalModelLog):
     lifecycle_id = None
 
     # hashing
-    HASH_SEQUENCE = LOG_HASH_SEQUENCE+ ['status']
+    HASH_SEQUENCE = LOG_HASH_SEQUENCE + ['status']
 
     # permissions
     MODEL_ID = '07'
@@ -384,7 +386,11 @@ class CentralLogManager(GlobalManager):
     # meta
     GET_MODEL_NOT_RENDER = ('log_id',)
     GET_MODEL_ORDER = ('log_id',
-                       'context',)
+                       'context',
+                       'user',
+                       'action',
+                       'timestamp',
+                       'timestamp_local',)
 
 
 # table

@@ -113,7 +113,7 @@ class ProfileManager(GlobalManager):
                 context['function'] = ''
                 context['user'] = log_user
             create_log_record(model=self.model, context=context, obj=profile, validated_data=data,
-                              action=settings.DEFAULT_LOG_CREATE, now=now)
+                              action=settings.DEFAULT_LOG_CREATE, now=now, signature=False)
 
     # delete profile
     def delete_profile(self, username, log_user):
@@ -126,7 +126,7 @@ class ProfileManager(GlobalManager):
             context['function'] = ''
             context['user'] = log_user
             create_log_record(model=self.model, context=context, obj=item, validated_data={},
-                              action=settings.DEFAULT_LOG_DELETE, now=now)
+                              action=settings.DEFAULT_LOG_DELETE, now=now, signature=False)
 
     # profile calls
     def initial_timezone(self, username):

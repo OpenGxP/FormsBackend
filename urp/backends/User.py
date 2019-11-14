@@ -75,7 +75,7 @@ def activate_user(user, action_user=None, now=None):
 def attempt(username):
     query = AccessLog.objects.latest_record(username)
     if query:
-        if query.action == settings.DEFAULT_LOG_LOGIN:
+        if query.action in [settings.DEFAULT_LOG_LOGIN, settings.DEFAULT_LOG_PASSWORD, settings.DEFAULT_LOG_SIGNATURE]:
             return 1, query
         if query.action == settings.DEFAULT_LOG_ATTEMPT:
             return int(query.attempt) + 1, query
@@ -91,10 +91,13 @@ class MyModelBackend(ModelBackend):
         is_active = getattr(user, 'is_active', None)
         return is_active or is_active is None
 
-    def authenticate(self, request, self_password_change=False, username=None, password=None, **kwargs):
+    def authenticate(self, request, self_password_change=False, signature=False, username=None, password=None, now=None,
+                     **kwargs):
+        if not now:
+            now = timezone.now()
         data = {
             'user': username,
-            'timestamp': timezone.now(),
+            'timestamp': now,
             'mode': 'manual',
             'method': Settings.objects.core_devalue
         }
@@ -137,11 +140,15 @@ class MyModelBackend(ModelBackend):
                             else:
                                 data['attempt'] = _attempt
                             # create log record
-                            data['action'] = settings.DEFAULT_LOG_LOGIN
+                            if self_password_change:
+                                data['action'] = settings.DEFAULT_LOG_PASSWORD
+                            elif signature:
+                                data['action'] = settings.DEFAULT_LOG_SIGNATURE
+                            else:
+                                data['action'] = settings.DEFAULT_LOG_LOGIN
                             data['active'] = Settings.objects.core_devalue
                             data['method'] = 'local'
-                            if not self_password_change:
-                                write_access_log(data)
+                            write_access_log(data)
                             return user
                         # false password but productive and valid user generates speaking error message
                         else:
@@ -172,7 +179,10 @@ class MyModelBackend(ModelBackend):
                             else:
                                 data['attempt'] = _attempt
                             # create log record
-                            data['action'] = settings.DEFAULT_LOG_LOGIN
+                            if signature:
+                                data['action'] = settings.DEFAULT_LOG_SIGNATURE
+                            else:
+                                data['action'] = settings.DEFAULT_LOG_LOGIN
                             data['active'] = Settings.objects.core_devalue
                             data['method'] = 'ldap'
                             write_access_log(data)

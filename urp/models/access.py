@@ -18,6 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # django imports
 from django.db import models
+from django.conf import settings
 from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
 
@@ -44,7 +45,10 @@ class AccessLogManager(GlobalManager):
 
     def latest_record(self, username):
         try:
-            return self.filter(user=username).filter(Q(action='attempt') | Q(action='login')).order_by('-timestamp')[0]
+            return self.filter(user=username).filter(Q(action=settings.DEFAULT_LOG_ATTEMPT) |
+                                                     Q(action=settings.DEFAULT_LOG_LOGIN) |
+                                                     Q(action=settings.DEFAULT_LOG_SIGNATURE) |
+                                                     Q(action=settings.DEFAULT_LOG_PASSWORD)).order_by('-timestamp')[0]
         except IndexError:
             return None
 
