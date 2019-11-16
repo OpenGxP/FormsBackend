@@ -37,6 +37,7 @@ from urp.views.base import auto_logout, GET
 from django.core.exceptions import ValidationError
 from django.contrib.auth import authenticate
 from django.conf import settings
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
 from django.middleware.csrf import get_token
 from django.contrib.auth.hashers import make_password
@@ -65,10 +66,6 @@ def user_permissions_view(request):
 def user_change_questions_view(request):
     if not hasattr(request, 'data'):
         raise serializers.ValidationError('Data is required.')
-
-    # check if provided password is correct
-    authenticate(request=request, username=request.user.username, password=request.data['password'],
-                 self_password_change=True)
 
     error_dict = dict()
     field_error = ['This filed is required.']
@@ -110,7 +107,13 @@ def user_change_questions_view(request):
         # save answers like passwords
         data[answer] = make_password(request.data[answer])
 
-    create_update_vault(data=data, instance=vault, action=settings.DEFAULT_LOG_QUESTIONS, user=request.user.username)
+    # check if provided password is correct
+    now = timezone.now()
+    authenticate(request=request, username=request.user.username, password=request.data['password'], now=now,
+                 self_question_change=True)
+
+    create_update_vault(data=data, instance=vault, action=settings.DEFAULT_LOG_QUESTIONS, user=request.user.username,
+                        signature=False, now=now)
 
     return Response(status=http_status.HTTP_200_OK)
 

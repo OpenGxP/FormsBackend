@@ -91,8 +91,8 @@ class MyModelBackend(ModelBackend):
         is_active = getattr(user, 'is_active', None)
         return is_active or is_active is None
 
-    def authenticate(self, request, self_password_change=False, signature=False, username=None, password=None, now=None,
-                     **kwargs):
+    def authenticate(self, request, self_password_change=False, self_question_change=False, signature=False,
+                     username=None, password=None, now=None, **kwargs):
         if not now:
             now = timezone.now()
         data = {
@@ -142,6 +142,8 @@ class MyModelBackend(ModelBackend):
                             # create log record
                             if self_password_change:
                                 data['action'] = settings.DEFAULT_LOG_PASSWORD
+                            elif self_question_change:
+                                data['action'] = settings.DEFAULT_LOG_QUESTIONS
                             elif signature:
                                 data['action'] = settings.DEFAULT_LOG_SIGNATURE
                             else:

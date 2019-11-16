@@ -74,7 +74,8 @@ def change_password_view(request, username):
     validate_password_input(request.data, instance=vault)
 
     now = timezone.now()
-    signature = validate_signature(dialog='passwords', data=request.data, perm='change_password', now=now)
+    signature = validate_signature(dialog='passwords', data=request.data, perm='change_password', now=now,
+                                   logged_in_user=request.user.username)
 
     create_update_vault(data=request.data, instance=vault, action=settings.DEFAULT_LOG_PASSWORD,
                         user=request.user.username, signature=signature, now=now)

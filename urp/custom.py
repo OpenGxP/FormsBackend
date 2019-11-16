@@ -21,6 +21,7 @@ from rest_framework import serializers
 
 # django imports
 from django.utils import timezone
+from django.conf import settings
 from django.contrib.auth import authenticate
 from django.core.exceptions import ValidationError
 
@@ -80,6 +81,11 @@ def create_log_record(model, context, action, validated_data, signature, obj=Non
     # comment checking
     if 'comment' not in validated_data.keys():
         validated_data['comment'] = Settings.objects.core_devalue
+    # if comment is provided and empty then devalue
+    else:
+        if validated_data['comment'] == '':
+            validated_data['comment'] = Settings.objects.core_devalue
+
     # generate hash
     for attr in log_hash_sequence:
         if attr in validated_data.keys():
@@ -157,12 +163,16 @@ def validate_comment(dialog, data, perm):
                 del data['com']
 
 
-def validate_signature(dialog, data, perm, now=None):
+def validate_signature(dialog, data, perm, now=None, logged_in_user=None):
     if dialog not in ['accesslog', 'profile']:
         if Settings.objects.dialog_signature(dialog=dialog, perm=perm):
             # validate for signature username and password field
             if 'sig_user' not in data or 'sig_pw' not in data:
                 raise serializers.ValidationError('Signature username and password fields are required.')
+
+            if logged_in_user:
+                if data['sig_user'] != logged_in_user and settings.DEFAULT_SIGNATURE_USER_LOCK:
+                    raise serializers.ValidationError('Signature user must be logged in user.')
 
             # auth check
             authenticate(request=None, username=data['sig_user'], password=data['sig_pw'], signature=True, now=now)
