@@ -125,6 +125,17 @@ class UsersManager(BaseUserManager, GlobalManager):
     def existing_users(self):
         return self.all().values_list('username', flat=True)
 
+    def get_all_by_role(self, role):
+        users = []
+        prod_valid_users = self.get_prod_valid_list
+        if not prod_valid_users:
+            return users
+        for record in prod_valid_users:
+            roles = record.roles.split(',')
+            if role in roles:
+                users.append(record)
+        return users
+
     def exist(self, username):
         return self.filter(username=username).exists()
 

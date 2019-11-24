@@ -144,12 +144,17 @@ class MyEmailBackend(EmailBackend):
 
 
 def send_email(email, html_message, subject):
+    recipient_list = []
+    if isinstance(email, str):
+        recipient_list.append(email)
+    if isinstance(email, list):
+        recipient_list += email
     try:
         send_mail(subject=subject,
                   message='opengxp message',
                   html_message=html_message,
                   from_email=Settings.objects.email_sender,
-                  recipient_list=[email])
+                  recipient_list=recipient_list)
     except SMTPException as e:
         logger.error('Email could not be send. Details: {}'.format(e))
     except ImproperlyConfigured:

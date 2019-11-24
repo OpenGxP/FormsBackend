@@ -44,7 +44,7 @@ class Command(BaseCommand):
         for model in models:
             if model == 'tokens' or model == 'vault' or model == 'status' or model == 'permissions' \
                     or model == 'permissionslog' or model == 'statuslog' or model == 'workflowssteps' \
-                    or model == 'profile' or model == 'profilelog':
+                    or model == 'profile' or model == 'profilelog' or model == 'inbox':
                 continue
             for key, value in models[model].perms.items():
                 data = {'model': model,

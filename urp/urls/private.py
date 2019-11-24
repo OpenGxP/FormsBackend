@@ -22,6 +22,7 @@ from django.conf import settings
 
 # app imports
 from urp.views.private.root import private_root_view
+from urp.views.private.inbox import inbox_list
 from urp.views.private.profile import profile_detail, profile_list, profile_log_list, set_timezone_view
 from urp.views.private.forms import forms_list, forms_detail, forms_status, forms_log_list
 from urp.views.private.logs.signatures import signatures_log_list
@@ -52,6 +53,8 @@ urls_private = [
          name='user-change-questions-view'),
     path('{}user/change_password'.format(settings.BASE_URL), user_change_password_view,
          name='user-change-password-view'),
+    # inbox
+    path('{}user/inbox'.format(settings.BASE_URL), inbox_list, name='inbox-list'),
     # general user profile
     path('{}user/profile'.format(settings.BASE_URL), profile_list, name='profile-list'),
     path('{}user/profile/<str:key>'.format(settings.BASE_URL), profile_detail, name='profile-detail'),

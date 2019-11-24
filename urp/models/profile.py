@@ -68,7 +68,7 @@ class ProfileLog(GlobalModelLog):
     HASH_SEQUENCE = LOG_HASH_SEQUENCE + ['username', 'key', 'default', 'value']
 
     # permissions
-    MODEL_ID = '29'
+    MODEL_ID = '32'
     MODEL_CONTEXT = 'ProfileLog'
     perms = None
 
@@ -188,7 +188,7 @@ class Profile(GlobalModel):
     HASH_SEQUENCE = ['username', 'key', 'default', 'value']
 
     # permissions
-    MODEL_ID = '28'
+    MODEL_ID = '31'
     MODEL_CONTEXT = 'Profile'
     perms = None
 

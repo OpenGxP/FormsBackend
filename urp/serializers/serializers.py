@@ -31,14 +31,17 @@ from urp.decorators import require_STATUS_CHANGE, require_POST, require_DELETE, 
     require_NEW_VERSION, require_status, require_LDAP, require_USERS, require_NEW, require_SETTINGS, require_SOD, \
     require_EMAIL, require_ROLES, require_PROFILE
 from urp.custom import create_log_record, create_central_log_record, validate_comment, validate_signature
-# from urp.custom import create_signatures_record
+from urp.custom import create_signatures_record
 from urp.backends.ldap import server_check
 from urp.backends.Email import MyEmailBackend
 from urp.vault import create_update_vault, validate_password_input
 from urp.crypto import encrypt
 from urp.models.profile import Profile
-# from urp.models.workflows import Workflows
-# from urp.models.logs.signatures import SignaturesLog
+from urp.models.workflows import Workflows
+from basics.custom import render_email_from_template
+from urp.backends.Email import send_email
+from urp.models.inbox import Inbox
+from urp.models.logs.signatures import SignaturesLog
 
 # django imports
 from django.utils import timezone
@@ -68,7 +71,6 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
 
         # set workflow flag
         self.context['workflow'] = {}
-        self.context['workflow']['productive'] = False
 
         self._signature = None
         self.now = timezone.now()
@@ -317,41 +319,110 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 validated_data['status_id'] = Status.objects.status_by_text(self.context['status'])
 
                 # check if workflow is used
-                """
-                if self.context['workflow'] and self.model.objects.WF_MGMT:
-                    # write log record for electronic signature
-                    if not now:
-                        now = timezone.now()
-                    create_signatures_record(workflow=self.context['workflow']['workflow'],
-                                             user=self.context['user'],
-                                             timestamp=now, context=self.model.MODEL_CONTEXT, obj=self.instance,
-                                             step=self.context['workflow']['step'],
-                                             sequence=self.context['workflow']['sequence'])
+                if self.model.objects.WF_MGMT and self.context['workflow']:
+                    # workflow start
+                    if self.context['status'] == 'circulation':
+                        # get role(s) that do not have any predecessor (must be root steps)
+                        base_steps = self.context['workflow']['workflow'].linked_steps_root
+                        emails = []
+                        users = []
+                        for st in base_steps:
+                            users_per_role = Users.objects.get_all_by_role(st.role)
+                            for record in users_per_role:
+                                emails.append(record.email)
+                                users.append(record.username)
+                        # remove duplicates
+                        emails = list(set(emails))
+                        users = list(set(users))
 
-                    if self.context['status'] == 'productive' and not self.context['workflow']['productive']:
+                        # send email, do nothing else
+                        email_data = {'context': self.model.MODEL_CONTEXT,
+                                      'object': getattr(self.instance, self.model.UNIQUE),
+                                      'version': self.instance.version,
+                                      'url': '{}/#/md/{}/{}/{}/productive'.format(settings.EMAIL_BASE_URL,
+                                                                                  self.model.MODEL_CONTEXT.lower(),
+                                                                                  self.instance.lifecycle_id,
+                                                                                  self.instance.version)}
+                        html_message = render_email_from_template(template_file_name='email_workflow.html',
+                                                                  data=email_data)
+                        send_email(subject='OpenGxP Workflow Action', html_message=html_message, email=emails)
+                        # create inbox record
+                        email_data['lifecycle_id'] = self.instance.lifecycle_id
+                        email_data['users'] = users
+                        del email_data['url']
+                        Inbox.objects.create(data=email_data)
+
+                    if self.context['status'] == 'productive':
                         self.context['status'] = 'circulation'
                         validated_data['status_id'] = Status.objects.status_by_text(self.context['status'])
-                """
+                        create_signatures_record(workflow=self.context['workflow']['workflow'],
+                                                 user=self.context['user'],
+                                                 timestamp=self.now,
+                                                 context=self.model.MODEL_CONTEXT,
+                                                 obj=self.instance,
+                                                 step=self.context['workflow']['step'],
+                                                 sequence=self.context['workflow']['sequence'])
+
+                        # get history after writing signatures record
+                        executed_steps = SignaturesLog.objects.filter(
+                            object_lifecycle_id=self.instance.lifecycle_id,
+                            object_version=self.instance.version).order_by('-timestamp').all()
+
+                        # pass history to next steps method
+                        next_steps = self.context['workflow']['workflow'].linked_steps_next_incl_parallel(
+                            history=executed_steps)
+
+                        # last step of workflow performed
+                        if not next_steps:
+                            self.context['status'] = 'productive'
+                            validated_data['status_id'] = Status.objects.status_by_text(self.context['status'])
+                        else:
+                            emails = []
+                            users = []
+                            for st in next_steps:
+                                users_per_role = Users.objects.get_all_by_role(st.role)
+                                for record in users_per_role:
+                                    emails.append(record.email)
+                                    users.append(record.username)
+                            # remove duplicates
+                            emails = list(set(emails))
+                            users = list(set(users))
+
+                            # send email, do nothing else
+                            email_data = {'context': self.model.MODEL_CONTEXT,
+                                          'object': getattr(self.instance, self.model.UNIQUE),
+                                          'version': self.instance.version,
+                                          'url': '{}/#/md/{}/{}/{}/productive'.format(settings.EMAIL_BASE_URL,
+                                                                                      self.model.MODEL_CONTEXT.lower(),
+                                                                                      self.instance.lifecycle_id,
+                                                                                      self.instance.version)}
+                            html_message = render_email_from_template(template_file_name='email_workflow.html',
+                                                                      data=email_data)
+                            send_email(subject='OpenGxP Workflow Action', html_message=html_message, email=emails)
+                            # create inbox record
+                            email_data['lifecycle_id'] = self.instance.lifecycle_id
+                            email_data['users'] = users
+                            del email_data['url']
+                            Inbox.objects.delete(lifecycle_id=self.instance.lifecycle_id, version=self.instance.version)
+                            Inbox.objects.create(data=email_data)
 
                 # if "valid_from" is empty, set "valid_from" to timestamp of set productive
                 if self.context['status'] == 'productive' and not self.instance.valid_from and not self_call:
-                    now = self.now
-                    validated_data['valid_from'] = now
+                    validated_data['valid_from'] = self.now
 
                 # change "valid_to" of previous version to "valid from" of new version
                 # only for set productive step
                 if self.context['status'] == 'productive' and self.instance.version > 1 and not self_call:
-                    now = self.now
                     prev_instance = model.objects.get_previous_version(instance)
                     data = {'valid_to': self.instance.valid_from}
                     # if no valid_to, always set
                     valid_to_prev_version = getattr(prev_instance, 'valid_to')
                     if not valid_to_prev_version:
-                        self.update(instance=prev_instance, validated_data=data, self_call=True, now=now)
+                        self.update(instance=prev_instance, validated_data=data, self_call=True, now=self.now)
                     else:
                         # only overlapping validity ranges
                         if getattr(instance, 'valid_from') < valid_to_prev_version:
-                            self.update(instance=prev_instance, validated_data=data, self_call=True, now=now)
+                            self.update(instance=prev_instance, validated_data=data, self_call=True, now=self.now)
             else:
                 if model.objects.HAS_STATUS:
                     # get local timezone of user
@@ -478,7 +549,7 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                         if not self.workflow_step_log_decision[record.step]:
                             continue
                     create_log_record(model=model, context=self.context, obj=instance, validated_data=workflow_log_data,
-                                      action=action, now=now, signature=self.signature)
+                                      action=action, now=self.now, signature=self.signature)
 
                 # log deleted ones
                 if not self.status_change:
@@ -492,7 +563,7 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                                     workflow_log_data[field] = getattr(record, field)
                         create_log_record(model=model, context=self.context, obj=instance,
                                           validated_data=workflow_log_data,
-                                          action=settings.DEFAULT_LOG_DELETE, now=now, signature=self.signature)
+                                          action=settings.DEFAULT_LOG_DELETE, now=self.now, signature=self.signature)
 
             else:
                 if model.MODEL_ID == '04':
@@ -506,6 +577,8 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 # route now for activate user and set password at same time
                 if 'now' in self.context.keys():
                     now = self.context['now']
+                else:
+                    now = self.now
                 create_log_record(model=model, context=self.context, obj=instance, validated_data=fields,
                                   action=action, now=now, signature=self.signature)
         return instance
@@ -607,34 +680,21 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                                                           'of previous version')
 
                 # check if object is workflow managed
-                """
                 if self.model.objects.WF_MGMT:
                     # check if workflow is productive and valid
-                    workflow = self.instance.workflow
-                    valid_record = Workflows.objects.verify_prod_valid(workflow)
-                    if valid_record:
-                        # check if user is in the role of the first step of the valid workflow
-                        for step in valid_record.linked_steps_roles:
-                            if step['sequence'] == 0:
-                                if not self.context['request'].user.has_role(step['role']):
-                                    raise serializers.ValidationError('User is not a member of the workflow step role: '
-                                                                      '{}.'.format(step['role']))
-                                # set used step for further use
-                                self.context['workflow']['step'] = step['step']
-                                self.context['workflow']['sequence'] = step['sequence']
-                                break
-                    else:
+                    valid_wf = Workflows.objects.verify_prod_valid(self.instance.workflow)
+                    if not valid_wf:
                         raise serializers.ValidationError('Workflow not productive and/or valid.')
 
                     # set validated workflow record for further use
-                    self.context['workflow']['workflow'] = valid_record
+                    self.context['workflow']['workflow'] = valid_wf
 
                 # validate comment
                 dialog = self.model.MODEL_CONTEXT.lower()
                 validate_comment(dialog=dialog, data=data, perm='circulation')
-                self.signautre = validate_signature(logged_in_user=self.user, dialog=dialog, data=data, 
-                perm='circulation')
-                """
+                self.validate_method.signature = validate_signature(logged_in_user=self.user, dialog=dialog,
+                                                                    data=data, perm='circulation',
+                                                                    now=self.validate_method.now)
 
             @require_STATUS_CHANGE
             @require_circulation
@@ -646,7 +706,7 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 # FO-122: SoD check only for set productive
                 if self.context['status'] == 'productive':
                     # SoD
-                    if 'disable-sod' not in self.context.keys():
+                    if 'disable-sod' not in self.context.keys() and not self.model.objects.WF_MGMT:
                         log = self.model.objects.LOG_TABLE
                         previous_user = log.objects.get_circulation_user_for_sod(self.instance)
                         if previous_user == self.context['user']:
@@ -654,19 +714,37 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                                                               'the same user as set in circulation.')
 
                     # check if object is workflow managed
-                    """
                     if self.model.objects.WF_MGMT:
                         # check if workflow is productive and valid
                         workflow = self.instance.workflow
-                        valid_record = Workflows.objects.verify_prod_valid(workflow)
-                        if valid_record:
-                            # check next workflow step
-                            last_step = SignaturesLog.objects.filter(object_lifecycle_id=self.instance.lifecycle_id,
-                                                                     object_version=self.instance.version).order_by(
-                                                                     '-sequence')[0]
+                        valid_wf = Workflows.objects.verify_prod_valid(workflow)
+                        if not valid_wf:
+                            raise serializers.ValidationError('Workflow not productive and/or valid.')
 
+                        # get all steps of workflow
+                        steps = valid_wf.linked_steps
+
+                        # if no workflow was ever started for that object
+                        executed_steps = SignaturesLog.objects.filter(
+                            object_lifecycle_id=self.instance.lifecycle_id,
+                            object_version=self.instance.version).order_by('-timestamp').all()
+
+                        if not executed_steps:
+                            # get first step of workflow
+                            for step in steps:
+                                if step.sequence == 0 and not step.predecessors:
+                                    # validate if current user is in role of first step
+                                    if not self.context['request'].user.has_role(step.role):
+                                        raise serializers.ValidationError('You are not allowed to perform '
+                                                                          'that workflow step.')
+                                    self.context['workflow']['step'] = step.step
+                                    self.context['workflow']['sequence'] = step.sequence
+                                    break
+                        # if last step was recorded
+                        else:
                             # verify if last step was performed with same workflow version
-                            if last_step.workflow != workflow or last_step.workflow_version != valid_record.version:
+                            if executed_steps[0].workflow != workflow or \
+                                    executed_steps[0].workflow_version != valid_wf.version:
                                 raise serializers.ValidationError('Workflow was updated since last step, '
                                                                   'please set record back to status draft and '
                                                                   'restart circulation.')
@@ -679,29 +757,27 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                                 for record in signatures:
                                     if self.context['user'] == record.user:
                                         raise serializers.ValidationError(
-                                            'SoD conflict - The workflow step {} was already signed by this user.'
-                                            .format(record.step))
+                                            'SoD conflict - The workflow step {} was already performed by user {}.'
+                                            .format(record.step, self.context['user']))
 
-                            # check if user is in the role of the step of the valid workflow
-                            steps_count = len(valid_record.linked_steps_roles)
-                            if steps_count == last_step.sequence + 2:
-                                self.context['workflow']['productive'] = True
-                            for step in valid_record.linked_steps_roles:
-                                if step['sequence'] == last_step.sequence + 1:
-                                    if not self.context['request'].user.has_role(step['role']):
-                                        raise serializers.ValidationError(
-                                            'User is not a member of the workflow step role: '
-                                            '{}.'.format(step['role']))
-                                    # set used step for further use
-                                    self.context['workflow']['step'] = step['step']
-                                    self.context['workflow']['sequence'] = step['sequence']
+                            # COMPARE TARGET ACTUAL
+                            next_steps = valid_wf.linked_steps_next_incl_parallel(history=executed_steps)
+
+                            flag_in = False
+                            for step in next_steps:
+                                # validate if current user is in role of next step
+                                if self.context['request'].user.has_role(step.role):
+                                    flag_in = True
+                                    self.context['workflow']['step'] = step.step
+                                    self.context['workflow']['sequence'] = step.sequence
                                     break
-                        else:
-                            raise serializers.ValidationError('Workflow not productive and/or valid.')
+
+                            if not flag_in:
+                                raise serializers.ValidationError('You are not allowed to perform that '
+                                                                  'workflow step.')
 
                         # set validated workflow record for further use
-                        self.context['workflow']['workflow'] = valid_record
-                        """
+                        self.context['workflow']['workflow'] = valid_wf
 
                     # validate comment
                     dialog = self.model.MODEL_CONTEXT.lower()

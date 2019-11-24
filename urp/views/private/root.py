@@ -38,6 +38,8 @@ def private_root_view(request):
                                     'rel': 'logout_auto'}}},
             'user': {'profile': {'url': {'abs': reverse('profile-list', request=request),
                                          'rel': 'user/profile'}},
+                     'inbox': {'url': {'abs': reverse('inbox-list', request=request),
+                                       'rel': 'user/inbox'}},
                      'set_timezone': {'url': {'abs': reverse('set-timezone-view', request=request),
                                       'rel': 'user/set_timezone'}},
                      'profile_questions': {'url': {'abs': reverse('user-profile-list', request=request),

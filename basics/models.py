@@ -154,6 +154,16 @@ class GlobalManager(models.Manager):
             return self.filter(**filter_dict).last()
         return self.filter(**filter_dict).order_by(order_str).last()
 
+    @property
+    def get_prod_valid_list(self):
+        prod_valid_records = []
+        status_effective_id = Status.objects.productive
+        query = self.filter(status__id=status_effective_id).all()
+        for record in query:
+            if record.verify_validity_range:
+                prod_valid_records.append(record)
+        return prod_valid_records
+
 
 class GlobalModel(models.Model):
     # id

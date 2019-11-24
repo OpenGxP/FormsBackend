@@ -134,9 +134,53 @@ class Workflows(GlobalModel):
 
     @property
     def linked_steps_roles(self):
-        return WorkflowsSteps.objects.filter(lifecycle_id=self.lifecycle_id, version=self.version).values('step',
-                                                                                                          'role',
-                                                                                                          'sequence')
+        return WorkflowsSteps.objects.filter(lifecycle_id=self.lifecycle_id,
+                                             version=self.version).values('step', 'role', 'sequence', 'predecessors')
+
+    @property
+    def linked_steps_root(self):
+        return WorkflowsSteps.objects.filter(lifecycle_id=self.lifecycle_id, version=self.version,
+                                             predecessors__exact='').all()
+
+    def linked_steps_next(self, predecessor):
+        steps_next = []
+        query = WorkflowsSteps.objects.filter(lifecycle_id=self.lifecycle_id, version=self.version).all()
+        for record in query:
+            if predecessor in record.predecessors.split(','):
+                steps_next.append(record)
+        return steps_next
+
+    def linked_steps_next_incl_parallel(self, history):
+        # history is ordered by -timestamp therefore [0] returns last step
+        last_step = history[0]
+        query = WorkflowsSteps.objects.filter(lifecycle_id=self.lifecycle_id, version=self.version).all()
+        remaining_steps = []
+        for step in query:
+            # loop over all history records, if step is done
+            is_in = False
+            for record in history:
+                if step.step == record.step:
+                    is_in = True
+                    break
+            # only add, if not in history
+            if not is_in:
+                remaining_steps.append(step)
+
+        # get all of remaining steps that share the same predecessors als the last step
+        next_steps = []
+        for item in remaining_steps:
+            predecessors = WorkflowsSteps.objects.filter(lifecycle_id=self.lifecycle_id, version=self.version,
+                                                         step=last_step.step).values_list('predecessors', flat=True)[0]
+            if item.predecessors == predecessors:
+                next_steps.append(item)
+
+        # if no parallels are lef over, take next steps
+        if not next_steps:
+            for item in remaining_steps:
+                if last_step.step in item.predecessors.split(','):
+                    next_steps.append(item)
+
+        return next_steps
 
     # manager
     objects = WorkflowsManager()

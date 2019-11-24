@@ -125,3 +125,4 @@ settings.json
 # test openldap server
 /openldap
 path.py
+start_dev_priv.sh
