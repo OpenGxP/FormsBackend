@@ -235,8 +235,8 @@ def update(request, ser_rw, query):
 
 
 def delete(request, ser_del, query):
-    serializer = ser_del(query, data={}, context={'method': 'DELETE', 'function': '',
-                                                  'user': request.user.username})
+    serializer = ser_del(query, data=request.data, context={'method': 'DELETE', 'function': '',
+                                                            'user': request.user.username})
     if serializer.is_valid():
         serializer.delete()
         return Response(status=http_status.HTTP_204_NO_CONTENT)
