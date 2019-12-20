@@ -158,7 +158,15 @@ class GET(object):
                     except IndexError:
                         pass
                     else:
-                        if cond == 'contains' or cond == 'exact':
+                        if param == 'status':
+                            status_value = Status.objects.status_by_text(value)
+                            if status_value:
+                                q.add(Q(**{'status__exact': status_value}), and_or)
+                                continue
+                            else:
+                                continue
+                        filter_options = ['contains', 'exact', 'startswith', 'endswith']
+                        if cond in filter_options:
                             q.add(Q(**{'{}__{}'.format(param, cond): value}), and_or)
                         if cond == 'notexact':
                             q.add(~Q(**{'{}__exact'.format(param): value}), and_or)
