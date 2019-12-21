@@ -109,7 +109,7 @@ def create_log_record(model, context, action, validated_data, signature, obj=Non
         log_obj.save()
 
 
-def create_signatures_record(user, timestamp, context, obj, workflow, step, sequence):
+def create_signatures_record(user, timestamp, context, obj, workflow, step, sequence, action, cycle):
     log_obj = SignaturesLog()
     log_hash_sequence = log_obj.HASH_SEQUENCE
     validated_data = dict()
@@ -125,6 +125,8 @@ def create_signatures_record(user, timestamp, context, obj, workflow, step, sequ
     validated_data['object_lifecycle_id'] = obj.lifecycle_id
     validated_data['step'] = step
     validated_data['sequence'] = sequence
+    validated_data['cycle'] = cycle
+    validated_data['action'] = action
 
     # generate hash
     for attr in log_hash_sequence:

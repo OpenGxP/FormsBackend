@@ -40,7 +40,9 @@ class SignaturesLogManager(GlobalManager):
                        'object_version',
                        'workflow',
                        'workflow_version',
-                       'step',)
+                       'step',
+                       'action',
+                       'round',)
 
 
 # table
@@ -56,7 +58,9 @@ class SignaturesLog(GlobalModel):
     workflow_lifecycle_id = models.UUIDField()
     workflow_version = models.IntegerField(_('Workflow version'))
     step = models.CharField(_('Step'), max_length=CHAR_DEFAULT)
-    sequence = models.IntegerField()
+    sequence = models.CharField(_('Sequence'), max_length=CHAR_DEFAULT)
+    action = models.CharField(_('Action'), max_length=CHAR_DEFAULT)
+    cycle = models.IntegerField(_('Cycle'))
 
     # manager
     objects = SignaturesLogManager()
@@ -64,9 +68,11 @@ class SignaturesLog(GlobalModel):
     # integrity check
     def verify_checksum(self):
         to_hash_payload = 'user:{};timestamp:{};context:{};object:{};object_lifecycle_id:{};object_version:{};' \
-                          'workflow:{};workflow_lifecycle_id:{};workflow_version:{};step:{};sequence:{};'\
+                          'workflow:{};workflow_lifecycle_id:{};workflow_version:{};step:{};sequence:{};action:{};' \
+                          'cycle:{};' \
             .format(self.user, self.timestamp, self.context, self.object, self.object_lifecycle_id, self.object_version,
-                    self.workflow, self.workflow_lifecycle_id, self.workflow_version, self.step, self.sequence)
+                    self.workflow, self.workflow_lifecycle_id, self.workflow_version, self.step, self.sequence,
+                    self.action, self.cycle)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
 
     valid_from = None
@@ -74,7 +80,7 @@ class SignaturesLog(GlobalModel):
 
     # hashing
     HASH_SEQUENCE = ['user', 'timestamp', 'context', 'object', 'object_lifecycle_id', 'object_version',
-                     'workflow', 'workflow_lifecycle_id', 'workflow_version', 'step', 'sequence']
+                     'workflow', 'workflow_lifecycle_id', 'workflow_version', 'step', 'sequence', 'action', 'cycle']
 
     # permissions
     MODEL_ID = '30'
