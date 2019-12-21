@@ -54,6 +54,8 @@ class GlobalManager(models.Manager):
     LOG_TABLE = None
     IS_LOG = False
     WF_MGMT = False
+    COM_SIG_SETTINGS = True
+    NO_PERMISSIONS = False
 
     # meta information for get and post
     # get
@@ -281,6 +283,7 @@ class StatusLogManager(GlobalManager):
     HAS_VERSION = False
     HAS_STATUS = False
     IS_LOG = True
+    NO_PERMISSIONS = True
 
     # meta
     GET_MODEL_ORDER = ('status',)
@@ -315,6 +318,7 @@ class StatusManager(GlobalManager):
     # flags
     HAS_VERSION = False
     HAS_STATUS = False
+    NO_PERMISSIONS = True
     LOG_TABLE = StatusLog
 
     # meta

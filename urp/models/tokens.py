@@ -32,6 +32,8 @@ class TokensManager(GlobalManager):
     # flags
     HAS_VERSION = False
     HAS_STATUS = False
+    COM_SIG_SETTINGS = False
+    NO_PERMISSIONS = True
 
     def check_token_exists(self, token):
         record = self.filter(id=token).get()

@@ -207,7 +207,8 @@ class Workflows(GlobalModel):
 
 # manager
 class WorkflowsStepsManager(GlobalManager):
-    pass
+    COM_SIG_SETTINGS = False
+    NO_PERMISSIONS = True
 
 
 # sub table
@@ -231,6 +232,9 @@ class WorkflowsSteps(GlobalModel):
 
     # manager
     objects = WorkflowsStepsManager()
+
+    # permissions
+    perms = None
 
     # hashing
     HASH_SEQUENCE = ['step', 'role', 'predecessors', 'text', 'sequence', 'version']

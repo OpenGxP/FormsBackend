@@ -30,6 +30,7 @@ class PermissionsLogManager(GlobalManager):
     HAS_VERSION = False
     HAS_STATUS = False
     IS_LOG = True
+    NO_PERMISSIONS = True
 
     # meta
     GET_MODEL_ORDER = ('key',
@@ -69,6 +70,8 @@ class PermissionsManager(GlobalManager):
     # flags
     HAS_VERSION = False
     HAS_STATUS = False
+    COM_SIG_SETTINGS = False
+    NO_PERMISSIONS = True
     LOG_TABLE = PermissionsLog
 
     # meta

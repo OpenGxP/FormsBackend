@@ -52,9 +52,7 @@ class Command(BaseCommand):
         models = apps.all_models['urp']
         models.update(apps.all_models['basics'])
         for model in models:
-            if model == 'tokens' or model == 'status' or model == 'permissions' \
-                    or model == 'permissionslog' or model == 'statuslog' or model == 'workflowssteps' \
-                    or model == 'profile' or model == 'profilelog' or model == 'inbox':
+            if not models[model].objects.COM_SIG_SETTINGS or models[model].objects.IS_LOG:
                 continue
             for key, value in models[model].perms.items():
                 if key == '01':

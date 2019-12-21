@@ -42,12 +42,13 @@ class Command(BaseCommand):
         models = apps.all_models['urp']
         models.update(apps.all_models['basics'])
         for model in models:
-            if model == 'tokens' or model == 'vault' or model == 'status' or model == 'permissions' \
-                    or model == 'permissionslog' or model == 'statuslog' or model == 'workflowssteps' \
-                    or model == 'profile' or model == 'profilelog' or model == 'inbox':
+            if models[model].objects.NO_PERMISSIONS:
                 continue
             for key, value in models[model].perms.items():
-                data = {'model': model,
+                _model = model
+                if model == 'vault':
+                    _model = 'passwords'
+                data = {'model': _model,
                         'permission': value,
                         'key': '{}.{}'.format(models[model].MODEL_ID, key)}
                 serializer = PermissionsReadWriteSerializer(data=data, context={'method': 'POST', 'function': 'init'})
