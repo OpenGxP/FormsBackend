@@ -42,7 +42,7 @@ class SignaturesLogManager(GlobalManager):
                        'workflow_version',
                        'step',
                        'action',
-                       'round',)
+                       'cycle',)
 
 
 # table
