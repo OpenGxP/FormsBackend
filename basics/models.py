@@ -573,6 +573,13 @@ class SettingsManager(GlobalManager):
             x['key'] = x['key'].split('.')[3]
         return query
 
+    @property
+    def profile_default_timezone(self):
+        try:
+            return self.filter(key='profile.default.timezone').get().value
+        except self.model.DoesNotExist:
+            return settings.PROFILE_DEFAULT_TIMEZONE
+
 
 # table
 class Settings(GlobalModel):

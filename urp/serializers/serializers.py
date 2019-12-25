@@ -1038,6 +1038,11 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                         raise serializers.ValidationError('For signature settings, only "none", "optional" and '
                                                           '"mandatory" are allowed.')
 
+                # validate profile timezone default
+                if self.instance.key == 'profile.default.timezone':
+                    if data['value'] not in settings.PROFILE_TIMEZONES:
+                        raise serializers.ValidationError({'value': ['Selected timezone is not supported.']})
+
             @require_NONE
             @require_PROFILE
             def validate_profile(self):

@@ -24,7 +24,7 @@ from django.utils import timezone
 from django.core.exceptions import ValidationError
 
 # app imports
-from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, LOG_HASH_SEQUENCE, GlobalModelLog
+from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, LOG_HASH_SEQUENCE, GlobalModelLog, Settings
 from basics.custom import generate_checksum, generate_to_hash
 from urp.custom import create_log_record
 
@@ -95,6 +95,10 @@ class ProfileManager(GlobalManager):
         now = timezone.now()
         for item in settings.PROFILE_DATA:
             data = item.copy()
+            if item['key'] == 'loc.timezone':
+                data['default'] = Settings.objects.profile_default_timezone
+                data['value'] = Settings.objects.profile_default_timezone
+
             data['username'] = username
             profile = self.model(**data)
             # generate hash

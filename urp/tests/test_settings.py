@@ -90,6 +90,7 @@ class SettingsMiscellaneous(APITestCase):
         self.test_data_email = 'email.sender'
         self.test_data_dialog_signature = 'dialog.users.signature.add'
         self.test_data_dialog_comment = 'dialog.users.comment.add'
+        self.test_data_profile_default_timezone = 'profile.default.timezone'
 
     def setUp(self):
         self.client = Client(enforce_csrf_checks=True)
@@ -202,6 +203,20 @@ class SettingsMiscellaneous(APITestCase):
         response = self.client.patch(path, data=data, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_400_profile_default_timezone(self):
+        """
+        Test shall show that is not possible to change profile default timezone settings to invalid option.
+        """
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get API response
+        path = '{}/{}'.format(self.base_path, self.test_data_profile_default_timezone)
+        data = {'value': 'notallowed'}
+        response = self.client.patch(path, data=data, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
     def test_200_max_attempts(self):
         """
         Test shall show that it is possible to edit max login attempts to a positive integer.
@@ -269,5 +284,19 @@ class SettingsMiscellaneous(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         # none
         data = {'value': 'none'}
+        response = self.client.patch(path, data=data, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_200_profile_default_timezone(self):
+        """
+        Test shall show that it is possible to edit profile default timezone to a valid timezone.
+        """
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get API response
+        path = '{}/{}'.format(self.base_path, self.test_data_profile_default_timezone)
+        data = {'value': 'Europe/Brussels'}
         response = self.client.patch(path, data=data, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
