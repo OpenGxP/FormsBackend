@@ -109,6 +109,13 @@ class GET(object):
     def filter_base(self):
         return self.model.objects.filter(**self.filter_set_strict)
 
+    @staticmethod
+    def replace_local(field):
+        # route calculated fields
+        if field in ['timestamp_local', 'valid_from_local', 'valid_to_local']:
+            return field.replace('_local', '')
+        return field
+
     def parse_query_param(self):
         # global Q
         g_q = Q()
@@ -134,12 +141,17 @@ class GET(object):
                 except IndexError:
                     pass
                 else:
+                    # route calculated fields
+                    field = self.replace_local(field)
                     if field in self.model_fields:
                         if direction == 'desc' and not self.sort_field:
                             self.sort_field = '-{}'.format(field)
                         if direction == 'asc' and not self.sort_field:
                             self.sort_field = field
                 continue
+
+            # route calculated fields
+            param = self.replace_local(param)
 
             if param in self.model_fields:
                 # split between filter conditions and and/or
@@ -158,6 +170,8 @@ class GET(object):
                     except IndexError:
                         pass
                     else:
+                        if param in ['timestamp', 'valid_from', 'valid_to'] and cond == 'exact':
+                            continue
                         if param == 'status':
                             status_value = Status.objects.status_by_text(value)
                             if status_value:
