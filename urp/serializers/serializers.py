@@ -24,9 +24,8 @@ from rest_framework import serializers
 
 # custom imports
 from urp.models import Permissions, Users, Roles, AccessLog, PermissionsLog, LDAP, Vault
-from urp.models.workflows import WorkflowsSteps
-from basics.custom import generate_checksum, generate_to_hash, value_to_int
-from basics.models import Status, AVAILABLE_STATUS, StatusLog, CentralLog, Settings
+from basics.custom import generate_checksum, generate_to_hash, value_to_int, str_list_change
+from basics.models import Status, AVAILABLE_STATUS, StatusLog, CentralLog, Settings, CHAR_DEFAULT
 from urp.decorators import require_STATUS_CHANGE, require_POST, require_DELETE, require_PATCH, require_NONE, \
     require_NEW_VERSION, require_status, require_LDAP, require_USERS, require_NEW, require_SETTINGS, require_SOD, \
     require_EMAIL, require_ROLES, require_PROFILE
@@ -37,11 +36,12 @@ from urp.backends.Email import MyEmailBackend
 from urp.vault import create_update_vault, validate_password_input
 from urp.crypto import encrypt
 from urp.models.profile import Profile
-from urp.models.workflows import Workflows
+from urp.models.workflows.workflows import Workflows
 from basics.custom import render_email_from_template
 from urp.backends.Email import send_email
 from urp.models.inbox import Inbox
 from urp.models.logs.signatures import SignaturesLog
+from urp.validators import validate_only_ascii, validate_no_specials_reduced, validate_no_space, validate_no_numbers
 
 # django imports
 from django.utils import timezone
@@ -64,13 +64,11 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         self.new_version = False
         self.status_change = False
 
-        self._workflows_changed_steps = []
-        self._workflows_delete_steps = []
-        self.workflow_step_logs = {}
-        self.workflow_step_log_decision = {}
-
         # set workflow flag
         self.context['workflow'] = {}
+
+        # sub elements
+        self.sub_parents = []
 
         self._signature = None
         self.now = timezone.now()
@@ -122,22 +120,6 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         return getattr(getattr(self, 'Meta', None), 'model', None)
 
     @property
-    def workflows_changed_steps(self):
-        return self._workflows_changed_steps
-
-    @workflows_changed_steps.setter
-    def workflows_changed_steps(self, value):
-        self._workflows_changed_steps.append(value)
-
-    @property
-    def workflows_delete_steps(self):
-        return self._workflows_delete_steps
-
-    @workflows_delete_steps.setter
-    def workflows_delete_steps(self, value):
-        self._workflows_delete_steps.append(value)
-
-    @property
     def signature(self):
         return self._signature
 
@@ -150,6 +132,115 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         if 'lifecycle_id' in data and 'version' in data:
             return True
         return
+
+    def validate_sub(self, value, key, sequence=None, predecessors=None, parent=None):
+        unique_check = []
+        sequence_check = []
+        predecessors_check = []
+        has_sequence_zero = False
+
+        for item in value:
+            if key not in item.keys():
+                raise serializers.ValidationError('{} is required.'.format(key.capitalize()))
+            try:
+                validate_only_ascii(item[key])
+                validate_no_specials_reduced(item[key])
+                validate_no_space(item[key])
+                validate_no_numbers(item[key])
+            except serializers.ValidationError as e:
+                raise serializers.ValidationError(
+                    'Not allowed to use {} {}. {}'.format(key, item[key], e.detail[0]))
+            unique_check.append(item[key])
+
+            if sequence:
+                # validate that mandatory field sequence is in payload and collect for later unique check
+                if 'sequence' not in item.keys():
+                    raise serializers.ValidationError('Sequence is required.')
+                if not isinstance(item['sequence'], int):
+                    raise serializers.ValidationError('Sequence field must be integer.')
+                sequence_check.append(item['sequence'])
+
+            if predecessors:
+                # predecessors are optional
+                if 'predecessors' in item.keys():
+                    if not isinstance(item['predecessors'], list):
+                        raise serializers.ValidationError('Predecessor not a valid array.')
+                    predecessors_check.append(item['predecessors'])
+                    # validate predecessors for string items
+                    for pred in item['predecessors']:
+                        if not isinstance(pred, str):
+                            raise serializers.ValidationError('Predecessors must be strings.')
+
+            if sequence and predecessors:
+                # check that all unique items except first have predecessors
+                if item['sequence'] != 0:
+                    if 'predecessors' not in item.keys():
+                        raise serializers.ValidationError('{}s after initial step need predecessors.'
+                                                          .format(key.capitalize()))
+                    # FO-191: unique items shall not self reference
+                    if item[key] in item['predecessors']:
+                        raise serializers.ValidationError('{} can not be self referenced in predecessors.'
+                                                          .format(key.capitalize()))
+
+            if sequence:
+                # check if item has sequence zero, if it may not have predecessors
+                # skip if sequence 0 was already checked
+                if not has_sequence_zero:
+                    if item['sequence'] == 0:
+                        has_sequence_zero = True
+                        # FO-196: treat [""] array as no predecessor unique
+                        if 'predecessors' in item.keys() and (item['predecessors'] and item['predecessors'][0] != ''):
+                            raise serializers.ValidationError('First {} can not have predecessors.'
+                                                              .format(key.capitalize()))
+
+        if sequence:
+            # raise error if no unique item was sequence 0
+            if not has_sequence_zero:
+                raise serializers.ValidationError('First {} without predecessors required.'.format(key))
+
+            # validate sequence unique characteristic
+            if len(sequence_check) != len(set(sequence_check)):
+                raise serializers.ValidationError('Sequence of {} must be unique.'.format(key))
+
+        # validate key unique characteristic
+        if len(unique_check) != len(set(unique_check)):
+            raise serializers.ValidationError('{} must be unique.'.format(key.capitalize()))
+
+        if predecessors:
+            # validate predecessors
+            for item in predecessors_check:
+                for each in item:
+                    # FO-196: treat [""] array as no predecessor
+                    if each == '':
+                        continue
+                    if each not in unique_check:
+                        raise serializers.ValidationError('Predecessors must only contain valid {}s.'.format(key))
+
+        if parent:
+            self.sub_parents = unique_check
+
+        return value
+
+    def validated_form_fields(self, value):
+        for item in value:
+            # validate mandatory field
+            if 'mandatory' not in item.keys():
+                raise serializers.ValidationError('Mandatory field ist required.')
+            if not isinstance(item['mandatory'], bool):
+                raise serializers.ValidationError('Mandatory field must be boolean.')
+
+            # field must be in existing section
+            if item['section'] not in self.sub_parents:
+                raise serializers.ValidationError('Field must be in valid section.')
+
+            # validate optional instruction
+            if 'instruction' in item.keys():
+                if not isinstance(item['instruction'], str):
+                    raise serializers.ValidationError('Instruction field must be string.')
+                if len(item['instruction']) > CHAR_DEFAULT:
+                    raise serializers.ValidationError('Instruction must not be longer than {} characters.'
+                                                      .format(CHAR_DEFAULT))
+        return value
 
     # function for create (POST)
     def create(self, validated_data):
@@ -172,29 +263,12 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 # use users initial_password property method
                 validated_data['initial_password'] = self.instance.initial_password
 
-            # for workflows
-            if model.MODEL_ID == '26':
-                validated_data['linked_steps'] = self.instance.linked_steps_values
-                for record in validated_data['linked_steps']:
-                    # make predecessors an array
-                    if 'predecessors' in record.keys():
-                        record['predecessors'] = record['predecessors'].split(',')
-                    record['version'] = self.instance.version + 1
-                    step = WorkflowsSteps()
-                    steps_hash_sequence = step.HASH_SEQUENCE
-                    setattr(step, 'lifecycle_id', obj.lifecycle_id)
-                    # passed keys
-                    keys = record.keys()
-                    # set attributes of validated data
-                    for attr in steps_hash_sequence:
-                        if attr in keys:
-                            setattr(step, attr, record[attr])
-                    # generate hash
-                    to_hash = generate_to_hash(fields=record, hash_sequence=steps_hash_sequence, unique_id=step.id,
-                                               lifecycle_id=step.lifecycle_id)
-                    step.checksum = generate_checksum(to_hash)
-                    step.full_clean()
-                    step.save()
+            # for workflows and forms
+            if obj.sub_tables:
+                for table, key in obj.sub_tables.items():
+                    validated_data[key] = getattr(self.instance, '{}_values'.format(key))
+                    self.model.objects.create_sub_record(obj=obj, validated_data=validated_data, key=key,
+                                                         sub_model=table, new_version=True, instance=self.instance)
 
         else:
             validated_data['version'] = 1
@@ -233,28 +307,11 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 # create profile
                 Profile.objects.generate_profile(username=validated_data['username'], log_user=self.context['user'])
 
-            # for workflows
-            if obj.MODEL_ID == '26':
-                for record in validated_data['linked_steps']:
-                    # make predecessors an array
-                    if 'predecessors' in record.keys():
-                        record['predecessors'] = record['predecessors'].split(',')
-                    record['version'] = validated_data['version']
-                    step = WorkflowsSteps()
-                    steps_hash_sequence = step.HASH_SEQUENCE
-                    setattr(step, 'lifecycle_id', obj.lifecycle_id)
-                    # passed keys
-                    keys = record.keys()
-                    # set attributes of validated data
-                    for attr in steps_hash_sequence:
-                        if attr in keys:
-                            setattr(step, attr, record[attr])
-                    # generate hash
-                    to_hash = generate_to_hash(fields=record, hash_sequence=steps_hash_sequence, unique_id=step.id,
-                                               lifecycle_id=step.lifecycle_id)
-                    step.checksum = generate_checksum(to_hash)
-                    step.full_clean()
-                    step.save()
+            # for workflows and forms
+            if obj.sub_tables:
+                for table, key in obj.sub_tables.items():
+                    self.model.objects.create_sub_record(obj=obj, validated_data=validated_data, key=key,
+                                                         sub_model=table)
 
             # for access log
             if obj.MODEL_ID == '05':
@@ -284,22 +341,16 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
             obj.save()
             # log record
             if model.objects.LOG_TABLE:
-                # for workflows
-                if obj.MODEL_ID == '26':
-                    for record in validated_data['linked_steps']:
-                        if 'predecessors' in record:
-                            record['predecessors'] = self.make_list_to_string(record['predecessors'])
-                        workflow_log_data = {}
-                        for field in model.objects.LOG_TABLE.HASH_SEQUENCE:
-                            if field in validated_data:
-                                workflow_log_data[field] = validated_data[field]
-                            if field in record:
-                                workflow_log_data[field] = record[field]
-                        create_log_record(model=model, context=self.context, obj=obj, validated_data=workflow_log_data,
-                                          action=settings.DEFAULT_LOG_CREATE, signature=self.signature, now=self.now)
-                else:
-                    create_log_record(model=model, context=self.context, obj=obj, validated_data=validated_data,
-                                      action=settings.DEFAULT_LOG_CREATE, signature=self.signature, now=self.now)
+                create_log_record(model=model, context=self.context, obj=obj, validated_data=validated_data,
+                                  action=settings.DEFAULT_LOG_CREATE, signature=self.signature, now=self.now)
+
+                if obj.sub_tables:
+                    for table, key in obj.sub_tables.items():
+                        for record in validated_data[key]:
+                            create_log_record(model=table, context=self.context, obj=obj, now=self.now,
+                                              validated_data=record, action=settings.DEFAULT_LOG_CREATE,
+                                              signature=self.signature, central=False)
+
         except IntegrityError as e:
             if 'UNIQUE constraint' in e.args[0]:
                 raise serializers.ValidationError('Object already exists.')
@@ -492,58 +543,92 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                             # delete existing vault for that user because not password managed anymore
                             Vault.objects.filter(username=instance.username).delete()
 
-                # for workflows
-                if model.MODEL_ID == '26':
-                    workflows_linked_steps = WorkflowsSteps.objects.filter(lifecycle_id=instance.lifecycle_id,
-                                                                           version=instance.version).all()
-                    for record in validated_data['linked_steps']:
-                        # make predecessors an array
-                        if 'predecessors' in record.keys():
-                            record['predecessors'] = record['predecessors'].split(',')
-                        # get version from parent element
-                        record['version'] = instance.version
-                        # check if step already exist
-                        try:
-                            step = WorkflowsSteps.objects.filter(step=record['step'],
-                                                                 lifecycle_id=instance.lifecycle_id,
-                                                                 version=instance.version).get()
-                            self.workflows_changed_steps = record['step']
-                            self.workflow_step_logs[record['step']] = settings.DEFAULT_LOG_UPDATE
-                        except WorkflowsSteps.DoesNotExist:
-                            step = WorkflowsSteps()
-                            setattr(step, 'lifecycle_id', instance.lifecycle_id)
-                            self.workflows_changed_steps = record['step']
-                            self.workflow_step_logs[record['step']] = settings.DEFAULT_LOG_CREATE
-                        steps_hash_sequence = step.HASH_SEQUENCE
-                        # passed keys
-                        keys = record.keys()
-                        # set attributes of validated data
-                        fields = {}
-                        self.workflow_step_log_decision[record['step']] = False
-                        for attr in steps_hash_sequence:
-                            if attr in keys:
-                                # only attributes of record / keys may be a change
-                                if record[attr] != getattr(step, attr):
-                                    self.workflow_step_log_decision[record['step']] = True
-                                fields[attr] = record[attr]
-                                setattr(step, attr, record[attr])
-                            else:
-                                fields[attr] = getattr(step, attr)
-                        # generate hash
-                        to_hash = generate_to_hash(fields=fields, hash_sequence=steps_hash_sequence, unique_id=step.id,
-                                                   lifecycle_id=step.lifecycle_id)
-                        step.checksum = generate_checksum(to_hash)
-                        step.full_clean()
-                        step.save()
+                # for workflows and forms
 
-                    # delete steps that have not been updated (all steps are send)
-                    for step in workflows_linked_steps:
-                        if step.step not in self.workflows_changed_steps:
-                            del_step = WorkflowsSteps.objects.filter(step=step.step,
-                                                                     lifecycle_id=instance.lifecycle_id,
-                                                                     version=instance.version).get()
-                            self.workflows_delete_steps = del_step
-                            del_step.delete()
+                if instance.sub_tables and not self.status_change:
+                    for table, key in instance.sub_tables.items():
+                        # new / updated items
+                        existing_items = []
+                        for item in validated_data[key]:
+                            _filter = {table.UNIQUE: item[table.UNIQUE],
+                                       'lifecycle_id': instance.lifecycle_id,
+                                       'version': instance.version}
+
+                            # passed keys
+                            keys = item.keys()
+                            flag_change = False
+
+                            try:
+                                # record already exists, update of data possible
+                                record = table.objects.filter(**_filter).get()
+                                action = settings.DEFAULT_LOG_UPDATE
+                            except table.DoesNotExist:
+                                # no record was found, so new item
+                                record = table()
+                                action = settings.DEFAULT_LOG_CREATE
+                                setattr(record, 'lifecycle_id', instance.lifecycle_id)
+                                setattr(record, 'version', instance.version)
+
+                            # add present items
+                            fields_for_hash = {}
+                            for attr in table.HASH_SEQUENCE:
+                                if attr in keys:
+                                    compare = getattr(record, attr)
+                                    if attr == 'predecessors':
+                                        compare = getattr(record, attr).split(',')
+
+                                    if item[attr] != compare:
+                                        flag_change = True
+                                        # new data differs from present data, can be change or new item
+                                        fields_for_hash[attr] = item[attr]
+                                        setattr(record, attr, item[attr])
+                                    else:
+                                        fields_for_hash[attr] = getattr(record, attr)
+                                        if attr == 'predecessors':
+                                            value = getattr(record, attr).split(',')
+                                            setattr(record, attr, value)
+                                            fields_for_hash[attr] = value
+                                else:
+                                    fields_for_hash[attr] = getattr(record, attr)
+                                    if attr == 'predecessors':
+                                        value = getattr(record, attr).split(',')
+                                        setattr(record, attr, value)
+                                        fields_for_hash[attr] = value
+                            # generate hash
+                            to_hash = generate_to_hash(fields=fields_for_hash, hash_sequence=table.HASH_SEQUENCE,
+                                                       unique_id=record.id, lifecycle_id=record.lifecycle_id)
+                            record.checksum = generate_checksum(to_hash)
+                            record.full_clean()
+                            record.save()
+
+                            existing_items.append(getattr(record, table.UNIQUE))
+
+                            if flag_change:
+                                create_log_record(model=table, context=self.context, obj=instance, now=self.now,
+                                                  validated_data=fields_for_hash, action=action,
+                                                  signature=self.signature, central=False)
+
+                        # get data from updated record
+                        new_instance = model.objects.filter(lifecycle_id=self.instance.lifecycle_id,
+                                                            version=self.instance.version).get()
+                        sub_table_data = getattr(new_instance, '{}_values'.format(key))
+
+                        for item in sub_table_data:
+                            if item[table.UNIQUE] not in existing_items:
+                                workflow_log_data = {}
+                                _filter = {table.UNIQUE: item[table.UNIQUE],
+                                           'lifecycle_id': instance.lifecycle_id,
+                                           'version': instance.version}
+                                del_item = table.objects.filter(**_filter).get()
+                                for attr in table.HASH_SEQUENCE:
+                                    workflow_log_data[attr] = getattr(del_item, attr)
+
+                                create_log_record(model=table, context=self.context, obj=instance,
+                                                  now=self.now, validated_data=workflow_log_data,
+                                                  action=settings.DEFAULT_LOG_DELETE,
+                                                  signature=self.signature, central=False)
+
+                                del_item.delete()
 
                 # ldap and email encrypt password before save to db
                 if model.MODEL_ID == '11' or model.MODEL_ID == '18':
@@ -565,52 +650,21 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         # log record
         if model.objects.LOG_TABLE:
             # for workflows
-            if instance.MODEL_ID == '26':
-                for record in instance.linked_steps:
-                    workflow_log_data = {}
-                    for field in model.objects.LOG_TABLE.HASH_SEQUENCE:
-                        if hasattr(instance, field):
-                            workflow_log_data[field] = getattr(instance, field)
-                        else:
-                            if hasattr(record, field):
-                                workflow_log_data[field] = getattr(record, field)
-                    if not self.status_change:
-                        action = self.workflow_step_logs[record.step]
-                        if not self.workflow_step_log_decision[record.step]:
-                            continue
-                    create_log_record(model=model, context=self.context, obj=instance, validated_data=workflow_log_data,
-                                      action=action, now=self.now, signature=self.signature)
-
-                # log deleted ones
-                if not self.status_change:
-                    for record in self.workflows_delete_steps:
-                        workflow_log_data = {}
-                        for field in model.objects.LOG_TABLE.HASH_SEQUENCE:
-                            if hasattr(instance, field):
-                                workflow_log_data[field] = getattr(instance, field)
-                            else:
-                                if hasattr(record, field):
-                                    workflow_log_data[field] = getattr(record, field)
-                        create_log_record(model=model, context=self.context, obj=instance,
-                                          validated_data=workflow_log_data,
-                                          action=settings.DEFAULT_LOG_DELETE, now=self.now, signature=self.signature)
-
-            else:
-                if model.MODEL_ID == '04':
-                    if not instance.ldap:
-                        # add initial password to validated data for logging
-                        vault = Vault.objects.filter(username=instance.username).get()
-                        fields['initial_password'] = vault.initial_password
-                    else:
-                        # ldap is always false
-                        fields['initial_password'] = False
-                # route now for activate user and set password at same time
-                if 'now' in self.context.keys():
-                    now = self.context['now']
+            if model.MODEL_ID == '04':
+                if not instance.ldap:
+                    # add initial password to validated data for logging
+                    vault = Vault.objects.filter(username=instance.username).get()
+                    fields['initial_password'] = vault.initial_password
                 else:
-                    now = self.now
-                create_log_record(model=model, context=self.context, obj=instance, validated_data=fields,
-                                  action=action, now=now, signature=self.signature)
+                    # ldap is always false
+                    fields['initial_password'] = False
+            # route now for activate user and set password at same time
+            if 'now' in self.context.keys():
+                now = self.context['now']
+            else:
+                now = self.now
+            create_log_record(model=model, context=self.context, obj=instance, validated_data=fields,
+                              action=action, now=now, signature=self.signature)
         return instance
 
     def delete(self):
@@ -620,7 +674,6 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         fields = dict()
         for attr in hash_sequence:
             fields[attr] = getattr(self.instance, attr)
-        self.instance.delete()
 
         if model.objects.LOG_TABLE:
             if model.MODEL_ID == '04':
@@ -638,19 +691,19 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 # delete profile
                 Profile.objects.delete_profile(username=self.instance.username, log_user=self.context['user'])
 
-            if model.MODEL_ID == '26':
-                steps = WorkflowsSteps.objects.filter(version=self.instance.version,
-                                                      lifecycle_id=self.instance.lifecycle_id).all()
-                for step in steps:
-                    workflow_fields = fields.copy()
-                    for attr in model.objects.LOG_TABLE.HASH_SEQUENCE:
-                        if hasattr(step, attr):
-                            workflow_fields[attr] = getattr(step, attr)
-                    create_log_record(model=model, context=self.context, obj=self.instance, signature=self.signature,
-                                      validated_data=workflow_fields, action=settings.DEFAULT_LOG_DELETE, now=self.now)
-            else:
-                create_log_record(model=model, context=self.context, obj=self.instance, validated_data=fields,
-                                  action=settings.DEFAULT_LOG_DELETE, signature=self.signature, now=self.now)
+            create_log_record(model=model, context=self.context, obj=self.instance, validated_data=fields,
+                              action=settings.DEFAULT_LOG_DELETE, signature=self.signature, now=self.now)
+
+            if model.sub_tables:
+                for table, key in self.instance.sub_tables.items():
+                    linked_records = getattr(self.instance, '{}_values'.format(key))
+                    for record in linked_records:
+                        create_log_record(model=table, context=self.context, obj=self.instance, now=self.now,
+                                          validated_data=record, action=settings.DEFAULT_LOG_DELETE,
+                                          signature=self.signature, central=False)
+
+        # move delete otherwise log records can not be generated
+        self.instance.delete_me()
 
     def validate(self, data):
         if self.context['function'] == 'init':
@@ -1192,7 +1245,6 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         Patch(self)
         Post(self)
         Delete(self)
-
         return data
 
 

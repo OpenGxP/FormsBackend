@@ -48,7 +48,6 @@ class StepsField(serializers.Field):
     def to_representation(self, value):
         steps = []
         for record in value:
-
             steps.append({'step': record.step,
                           'role': record.role,
                           'predecessors': record.predecessors.split(','),
@@ -63,3 +62,64 @@ class StepsField(serializers.Field):
             if not isinstance(item, dict):
                 raise serializers.ValidationError(_('Value of array not a valid object.'))
         return data
+
+
+class SectionsField(serializers.Field):
+    def to_representation(self, value):
+        sections = []
+        for record in value:
+            sections.append({'section': record.section,
+                             'role': record.role,
+                             'predecessors': record.predecessors.split(','),
+                             'confirmation': record.confirmation,
+                             'sequence': record.sequence})
+        return sections
+
+    def to_internal_value(self, data):
+        if not isinstance(data, list):
+            raise serializers.ValidationError(_('Not a valid array.'))
+        for item in data:
+            if not isinstance(item, dict):
+                raise serializers.ValidationError(_('Value of array not a valid object.'))
+        return data
+
+
+class FormsFieldBase(serializers.Field):
+    @property
+    def fields(self):
+        return []
+
+    def to_representation(self, value):
+        values = []
+        for record in value:
+            _dict = {'section': record.section,
+                     'field': record.field,
+                     'instruction': record.instruction,
+                     'mandatory': record.mandatory,
+                     'sequence': record.sequence}
+
+            for i in self.fields:
+                _dict[i] = getattr(record, i)
+
+            values.append(_dict)
+        return values
+
+    def to_internal_value(self, data):
+        if not isinstance(data, list):
+            raise serializers.ValidationError(_('Not a valid array.'))
+        for item in data:
+            if not isinstance(item, dict):
+                raise serializers.ValidationError(_('Value of array not a valid object.'))
+        return data
+
+
+class TextField(FormsFieldBase):
+    @property
+    def fields(self):
+        return ['default']
+
+
+class BoolField(FormsFieldBase):
+    @property
+    def fields(self):
+        return ['default']

@@ -21,7 +21,7 @@ from rest_framework.decorators import api_view
 
 # app imports
 from urp.views.views import auto_logout
-from urp.models.forms import Forms
+from urp.models.forms.forms import Forms
 from urp.serializers.forms import FormsReadWriteSerializer, FormsNewVersionStatusSerializer, \
     FormsLogReadSerializer, FormsDeleteSerializer
 from urp.decorators import auth_required

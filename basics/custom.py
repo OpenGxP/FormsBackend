@@ -227,3 +227,37 @@ def render_email_from_template(template_file_name, data=None):
     if data:
         return t.render(**data)
     return t.render()
+
+
+def str_list_change(data, target, key):
+    # make array a comma separated string
+    if target == str:
+        if key in data.keys():
+            string_value = ''
+            for item in data[key]:
+                string_value += '{},'.format(item)
+            data[key] = string_value[:-1]
+        return data
+    # make comma separated string an array
+    elif target == list:
+        if key in data.keys():
+            data[key] = data[key].split(',')
+        return data
+    # in case of false target raise error, only internal
+    else:
+        raise ValueError('Target must be of type "str" or "list".')
+
+
+def str_list_change_single(data, target):
+    # make array a comma separated string
+    if target == str:
+        string_value = ''
+        for item in data:
+            string_value += '{},'.format(item)
+        return string_value[:-1]
+    # make comma separated string an array
+    elif target == list:
+        return data.split(',')
+    # in case of false target raise error, only internal
+    else:
+        raise ValueError('Target must be of type "str" or "list".')

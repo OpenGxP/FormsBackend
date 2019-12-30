@@ -21,7 +21,7 @@ from rest_framework.decorators import api_view
 
 # app imports
 from urp.views.views import auto_logout
-from urp.models.workflows import Workflows
+from urp.models.workflows.workflows import Workflows
 from urp.serializers.workflows import WorkflowsReadWriteSerializer, WorkflowsNewVersionStatusSerializer, \
     WorkflowsLogReadSerializer, WorkflowsDeleteSerializer
 from urp.decorators import auth_required

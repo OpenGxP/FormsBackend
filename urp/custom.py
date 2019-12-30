@@ -27,7 +27,7 @@ from django.core.exceptions import ValidationError
 
 # app imports
 from basics.models import CentralLog, Settings
-from basics.custom import generate_checksum, generate_to_hash
+from basics.custom import generate_checksum, generate_to_hash, str_list_change
 from urp.models.logs.signatures import SignaturesLog
 
 
@@ -53,7 +53,7 @@ def create_central_log_record(log_id, now, action, context, user):
         obj.save()
 
 
-def create_log_record(model, context, action, validated_data, signature, obj=None, now=None):
+def create_log_record(model, context, action, validated_data, signature, obj=None, now=None, central=True):
     if not now:
         now = timezone.now()
     log_obj = model.objects.LOG_TABLE()
@@ -71,6 +71,10 @@ def create_log_record(model, context, action, validated_data, signature, obj=Non
         validated_data['user'] = context['user']
     validated_data['timestamp'] = now
     validated_data['action'] = action
+
+    # for delete make predecessors a list, because internal value
+    if action == settings.DEFAULT_LOG_DELETE:
+        validated_data = str_list_change(data=validated_data, key='predecessors', target=list)
 
     # add signature log
     if signature:
@@ -93,8 +97,11 @@ def create_log_record(model, context, action, validated_data, signature, obj=Non
         else:
             if log_obj.MODEL_ID == '27':
                 continue
-            setattr(log_obj, attr, getattr(obj, attr))
-            validated_data[attr] = getattr(obj, attr)
+            try:
+                setattr(log_obj, attr, getattr(obj, attr))
+                validated_data[attr] = getattr(obj, attr)
+            except AttributeError:
+                pass
     setattr(log_obj, 'lifecycle_id', obj.lifecycle_id)
     to_hash = generate_to_hash(fields=validated_data, hash_sequence=log_hash_sequence, unique_id=log_obj.id,
                                lifecycle_id=obj.lifecycle_id)
@@ -104,8 +111,9 @@ def create_log_record(model, context, action, validated_data, signature, obj=Non
     except ValidationError as e:
         raise e
     else:
-        create_central_log_record(log_id=log_obj.id, now=now, action=action, context=model.MODEL_CONTEXT,
-                                  user=validated_data['user'])
+        if central:
+            create_central_log_record(log_id=log_obj.id, now=now, action=action, context=model.MODEL_CONTEXT,
+                                      user=validated_data['user'])
         log_obj.save()
 
 

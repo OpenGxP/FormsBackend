@@ -24,8 +24,11 @@ from django.utils.translation import gettext_lazy as _
 from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, Status, LOG_HASH_SEQUENCE, FIELD_VERSION, \
     GlobalModelLog
 from urp.models.tags import Tags
-from urp.models.workflows import Workflows
+from urp.models.workflows.workflows import Workflows
 from urp.validators import validate_no_space, validate_no_specials_reduced, validate_no_numbers, validate_only_ascii
+from urp.models.forms.sub.sections import FormsSections
+from urp.models.forms.sub.text_fields import FormsTextFields
+from urp.models.forms.sub.bool_fields import FormsBoolFields
 
 
 # log manager
@@ -109,6 +112,42 @@ class Forms(GlobalModel):
     @property
     def get_status(self):
         return self.status.status
+
+    @property
+    def linked_sections(self):
+        return FormsSections.objects.filter(lifecycle_id=self.lifecycle_id, version=self.version).all()
+
+    @property
+    def linked_sections_values(self):
+        return FormsSections.objects.filter(lifecycle_id=self.lifecycle_id, version=self.version).values()
+
+    @property
+    def linked_fields_text(self):
+        return FormsTextFields.objects.filter(lifecycle_id=self.lifecycle_id, version=self.version).all()
+
+    @property
+    def linked_fields_text_values(self):
+        return FormsTextFields.objects.filter(lifecycle_id=self.lifecycle_id, version=self.version).values()
+
+    @property
+    def linked_fields_bool(self):
+        return FormsBoolFields.objects.filter(lifecycle_id=self.lifecycle_id, version=self.version).all()
+
+    @property
+    def linked_fields_bool_values(self):
+        return FormsBoolFields.objects.filter(lifecycle_id=self.lifecycle_id, version=self.version).values()
+
+    def delete_me(self):
+        FormsSections.objects.filter(lifecycle_id=self.lifecycle_id, version=self.version).delete()
+        FormsTextFields.objects.filter(lifecycle_id=self.lifecycle_id, version=self.version).delete()
+        FormsBoolFields.objects.filter(lifecycle_id=self.lifecycle_id, version=self.version).delete()
+        self.delete()
+
+    @property
+    def sub_tables(self):
+        return {FormsSections: 'linked_sections',
+                FormsTextFields: 'linked_fields_text',
+                FormsBoolFields: 'linked_fields_bool'}
 
     # manager
     objects = FormsManager()

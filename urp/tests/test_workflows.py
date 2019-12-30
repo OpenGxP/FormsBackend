@@ -20,7 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from django.urls import reverse
 
 # app imports
-from urp.models.workflows import Workflows
+from urp.models.workflows.workflows import Workflows
 from urp.serializers.workflows import WorkflowsReadWriteSerializer
 
 # test imports
@@ -88,7 +88,6 @@ class PostNewWorkflow(PostNew):
                                             {'step': 'two', 'role': 'all', 'sequence': 1, 'predecessors': ['two']}]},
                                  ]
         self.execute = True
-        self.sub_table = True
         self.pre_data = [{'data': {'tag': 'mytag'},
                           'path': reverse('tags-list'),
                           'status': False}]
@@ -145,7 +144,6 @@ class PostNewVersionWorkflow(PostNewVersion):
                                                        {'step': 'two', 'role': 'all', 'sequence': 1,
                                                         'predecessors': ['one']}]}
         self.execute = True
-        self.sub_table = True
         self.pre_data = [{'data': {'tag': 'mytag'},
                           'path': reverse('tags-list'),
                           'status': False}]
@@ -164,7 +162,6 @@ class DeleteOneWorkflow(DeleteOne):
                                'steps': [{'step': 'one', 'role': 'all', 'sequence': 0},
                                          {'step': 'two', 'role': 'all', 'sequence': 1, 'predecessors': ['one']}]}
         self.execute = True
-        self.sub_table = True
         self.pre_data = [{'data': {'tag': 'mytag'},
                           'path': reverse('tags-list'),
                           'status': False}]
@@ -181,11 +178,12 @@ class PatchOneWorkflow(PatchOne):
         self.ok_object_data = {'workflow': 'test',
                                'tag': 'mytag',
                                'steps': [{'step': 'one', 'role': 'all', 'sequence': 0},
-                                         {'step': 'two', 'role': 'all', 'sequence': 1, 'predecessors': ['one']}]}
+                                         {'step': 'two', 'role': 'all', 'sequence': 1, 'predecessors': ['one']},
+                                         {'step': 'three', 'role': 'all', 'sequence': 2, 'predecessors': ['two']}]}
         self.valid_payload = {'workflow': 'test',
                               'tag': 'mytag',
                               'steps': [{'step': 'one', 'role': 'all', 'text': 'test', 'sequence': 0},
-                                        {'step': 'two', 'role': 'all', 'sequence': 1, 'predecessors': ['one']}]}
+                                        {'step': 'two', 'role': 'all_two', 'sequence': 1, 'predecessors': ['one']}]}
         self.invalid_payload = {'workflow': '',
                                 'tag': 'mytag',
                                 'steps': [{'step': 'one', 'role': 'all', 'sequence': 0},
@@ -196,7 +194,6 @@ class PatchOneWorkflow(PatchOne):
                                                  {'step': 'two', 'role': 'all', 'sequence': 1,
                                                   'predecessors': ['one']}]}
         self.execute = True
-        self.sub_table = True
         self.pre_data = [{'data': {'tag': 'mytag'},
                           'path': reverse('tags-list'),
                           'status': False}]
@@ -219,7 +216,7 @@ class PatchOneStatusWorkflow(PatchOneStatus):
                                'steps': [{'step': 'one', 'role': 'all', 'sequence': 0},
                                          {'step': 'two', 'role': 'all', 'sequence': 1, 'predecessors': ['one']}]}
         self.execute = True
-        self.sub_table = True
+        self.sub_table = False
         self.pre_data = [{'data': {'tag': 'mytag'},
                           'path': reverse('tags-list'),
                           'status': False}]

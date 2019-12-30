@@ -20,12 +20,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from rest_framework import serializers
 
 # app imports
-from urp.models.workflows import Workflows, WorkflowsLog
+from urp.models.workflows.workflows import Workflows, WorkflowsLog
 from urp.models.tags import Tags
 from urp.serializers import GlobalReadWriteSerializer
 from urp.fields import StepsField
 from urp.models.roles import Roles
-from urp.validators import validate_no_space, validate_no_specials_reduced, validate_no_numbers, validate_only_ascii
 from basics.models import CHAR_BIG
 
 
@@ -49,93 +48,24 @@ class WorkflowsReadWriteSerializer(GlobalReadWriteSerializer):
         return value
 
     def validate_steps(self, value):
-        allowed = Roles.objects.get_by_natural_key_productive_list('role')
-        # get all steps
-        steps = []
-        predecessors = []
-        has_sequence_zero = False
-        sequences = []
+        value = self.validate_sub(value, key='step', sequence=True, predecessors=True)
+        allowed_roles = Roles.objects.get_by_natural_key_productive_list('role')
+
         for item in value:
-            if 'step' not in item.keys():
-                raise serializers.ValidationError('Step ist required.')
-            # FO-191: moved step validation before anything else
-            try:
-                validate_only_ascii(item['step'])
-                validate_no_specials_reduced(item['step'])
-                validate_no_space(item['step'])
-                validate_no_numbers(item['step'])
-            except serializers.ValidationError as e:
-                raise serializers.ValidationError(
-                    'Not allowed to use step {}. {}'.format(item['step'], e.detail[0]))
-            steps.append(item['step'])
-
-            # validate that mandatory field sequence is in payload and collect for later unique check
-            if 'sequence' not in item.keys():
-                raise serializers.ValidationError('Sequence is required.')
-            sequences.append(item['sequence'])
-
-            # predecessors are optional
-            if 'predecessors' in item.keys():
-                if not isinstance(item['predecessors'], list):
-                    raise serializers.ValidationError('Predecessor not a valid array.')
-                predecessors.append(item['predecessors'])
-
-            # check that all steps except first have predecessors
-            if item['sequence'] != 0:
-                if 'predecessors' not in item.keys():
-                    raise serializers.ValidationError('Steps after initial step need predecessors.')
-                # FO-191: steps can not be self referenced anymore
-                if item['step'] in item['predecessors']:
-                    raise serializers.ValidationError('Step can not be self referenced in predecessors.')
-
-            # check if item has sequence zero, if it may not have predecessors, skip if sequence 0 was already checked
-            if not has_sequence_zero:
-                if item['sequence'] == 0:
-                    has_sequence_zero = True
-                    # FO-196: treat [""] array as no predecessor step
-                    if 'predecessors' in item.keys() and (item['predecessors'] and item['predecessors'][0] != ''):
-                        raise serializers.ValidationError('First step can not have predecessors.')
-
             # validate role field
             if 'role' not in item.keys():
                 raise serializers.ValidationError('Role ist required.')
-            if item['role'] not in allowed:
+            if not isinstance(item['role'], str):
+                raise serializers.ValidationError('Role field must be string.')
+            if item['role'] not in allowed_roles:
                 raise serializers.ValidationError('Not allowed to use "{}".'.format(item['role']))
 
             # validate text
-            if 'text' in item:
+            if 'text' in item.keys():
+                if not isinstance(item['text'], str):
+                    raise serializers.ValidationError('Text field must be string.')
                 if len(item['text']) > CHAR_BIG:
                     raise serializers.ValidationError('Text must not be longer than {} characters.'.format(CHAR_BIG))
-
-            # transform predecessors to string
-            if 'predecessors' in item.keys():
-                string_value = ''
-                for pred in item['predecessors']:
-                    if not isinstance(pred, str):
-                        raise serializers.ValidationError('Predecessors must be strings.')
-                    string_value += '{},'.format(pred)
-                item['predecessors'] = string_value[:-1]
-
-        # raise error if no step was sequence 0
-        if not has_sequence_zero:
-            raise serializers.ValidationError('First step without predecessors required.')
-
-        # validate sequence unique characteristic
-        if len(sequences) != len(set(sequences)):
-            raise serializers.ValidationError('Sequence of steps must be unique within a workflow.')
-
-        # validate step unique characteristic
-        if len(steps) != len(set(steps)):
-            raise serializers.ValidationError('Steps must be unique within a workflow.')
-
-        # validate predecessors
-        for item in predecessors:
-            for each in item:
-                # FO-196: treat [""] array as no predecessor step
-                if each == '':
-                    continue
-                if each not in steps:
-                    raise serializers.ValidationError('Predecessors must only contain valid steps.')
 
         return value
 

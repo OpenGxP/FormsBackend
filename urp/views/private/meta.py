@@ -20,7 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from urp.decorators import auth_required
 from basics.models import CHAR_MAX, Settings
 from basics.custom import get_model_by_string
-from urp.models.workflows import WorkflowsSteps
+from urp.models.workflows.sub.steps import WorkflowsSteps
 
 # rest imports
 from rest_framework.response import Response

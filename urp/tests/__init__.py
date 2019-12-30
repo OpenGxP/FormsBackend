@@ -31,6 +31,7 @@ from rest_framework.test import APITestCase
 # app imports
 from ..models import Users
 from basics.models import CentralLog, Status
+from basics.custom import str_list_change
 
 
 class Prerequisites(object):
@@ -71,8 +72,8 @@ class Prerequisites(object):
         if response.status_code == status.HTTP_201_CREATED:
             return response.data
         else:
-            raise AssertionError('Error Code: {}, Can not create prerequisite record.'
-                                 .format(response.status_code))
+            raise AssertionError('Error Code: {}, Can not create prerequisite record.\n'
+                                 'Error Message: {}'.format(response.status_code, response.data))
 
     def create_record_manual(self, ext_client, data, path):
         # authenticate
@@ -306,7 +307,7 @@ class Prerequisites(object):
                                  .format(response.status_code))
 
 
-def log_records(model, action, data, access_log=None, _status=True, sub_table=False):
+def log_records(model, action, data, access_log=None, _status=True, sub_tables=True):
     data['action'] = action
     # remove valid field, because its read only and not in db
     del data['valid']
@@ -326,33 +327,43 @@ def log_records(model, action, data, access_log=None, _status=True, sub_table=Fa
         log_model = access_log
 
     # build query structure if sub_table
-    if sub_table:
-        # individual for workflows
-        if model.MODEL_ID == '26':
-            for step in data['steps']:
-                # transform predecessors to string
-                if 'predecessors' in step:
-                    string_value = ''
-                    for pred in step['predecessors']:
-                        string_value += '{},'.format(pred)
-                    step['predecessors'] = string_value[:-1]
-
-                data_no_steps = data.copy()
-                data_no_steps.pop('steps')
-                data_step = {**data_no_steps, **step}
-                try:
-                    log_model.objects.filter(**data_step).all()[0]
-                except log_model.DoesNotExist or IndexError:
-                    assert 'No log record found for "{}".'.format(data_step)
-            return True
-
-    else:
+    if model.sub_tables:
+        dummy_obj = model()
+        # parent table
+        data_parent = data.copy()
+        for value in dummy_obj.sub_tables.values():
+            field = value.replace('linked_', '')
+            del data_parent[field]
         try:
-            query = log_model.objects.filter(**data).all()[0]
-        except model.DoesNotExist or IndexError:
-            assert 'No log record found for "{}".'.format(data)
-        else:
-            return CentralLog.objects.filter(log_id=query.id).exists()
+            log_model.objects.filter(**data_parent).all()[0]
+        except log_model.DoesNotExist or IndexError:
+            assert 'No log record found for "{}".'.format(data_parent)
+
+        # sub tables, not for status
+        if sub_tables:
+            for table, key in dummy_obj.sub_tables.items():
+                field = key.replace('linked_', '')
+                log_table = table.objects.LOG_TABLE
+                for record in data[field]:
+                    # transform predecessors to string
+                    record = str_list_change(data=record, key='predecessors', target=str)
+
+                    # add parent data
+                    record['lifecycle_id'] = data['lifecycle_id']
+                    record['version'] = data['version']
+                    record['action'] = action
+                    try:
+                        log_table.objects.filter(**record).all()[0]
+                    except log_table.DoesNotExist or IndexError:
+                        assert 'No log record found for "{}".'.format(record)
+        return True
+
+    try:
+        query = log_model.objects.filter(**data).all()[0]
+    except model.DoesNotExist or IndexError:
+        assert 'No log record found for "{}".'.format(data)
+    else:
+        return CentralLog.objects.filter(log_id=query.id).exists()
 
 
 class GetAll(APITestCase):
@@ -673,7 +684,6 @@ class PostNew(APITestCase):
         self.valid_payload = None
         self.invalid_payloads = None
         self.pre_data = None
-        self.sub_table = False
 
         # flag for execution
         self.execute = False
@@ -749,7 +759,7 @@ class PostNew(APITestCase):
                 self.assertEqual(response.data['status'], 'draft')
             # verify log record
             self.assertEqual(log_records(model=self.model, data=response.data, action=settings.DEFAULT_LOG_CREATE,
-                                         _status=self.status, sub_table=self.sub_table), True)
+                                         _status=self.status), True)
 
     def test_comment(self):
         if self.execute:
@@ -853,7 +863,6 @@ class PostNewVersion(APITestCase):
         self.fail_object_circulation_data = None
         self.prerequisites = None
         self.pre_data = None
-        self.sub_table = False
 
         # flag for execution
         self.execute = False
@@ -1018,8 +1027,8 @@ class PostNewVersion(APITestCase):
                 self.assertEqual(response.data[self.model.UNIQUE], serializer.data[self.model.UNIQUE])
             self.assertEqual(response.data['valid_from'], serializer.data['valid_from'])
             # verify log record
-            self.assertEqual(log_records(model=self.model, data=response.data, action=settings.DEFAULT_LOG_CREATE,
-                                         sub_table=self.sub_table), True)
+            self.assertEqual(log_records(model=self.model, data=response.data, action=settings.DEFAULT_LOG_CREATE),
+                             True)
 
     # FO-121: new test to verify user cannot proceed when blocked
     def test_401_blocked(self):
@@ -1092,7 +1101,6 @@ class DeleteOne(APITestCase):
         self.ok_object_data = None
         self.prerequisites = None
         self.pre_data = None
-        self.sub_table = False
 
         # flag for execution
         self.execute = False
@@ -1197,8 +1205,8 @@ class DeleteOne(APITestCase):
             except self.model.DoesNotExist:
                 pass
             # verify log record
-            self.assertEqual(log_records(model=self.model, data=self.ok_object, action=settings.DEFAULT_LOG_DELETE,
-                                         sub_table=self.sub_table), True)
+            self.assertEqual(log_records(model=self.model, data=self.ok_object, action=settings.DEFAULT_LOG_DELETE),
+                             True)
 
     # FO-121: new test to verify user cannot proceed when blocked
     def test_401_blocked(self):
@@ -1337,7 +1345,6 @@ class DeleteOneNoStatus(APITestCase):
         self.ok_object_data_unique = str()
         self.prerequisites = None
         self.pre_data = None
-        self.sub_table = False
 
         # flag for execution
         self.execute = False
@@ -1412,7 +1419,7 @@ class DeleteOneNoStatus(APITestCase):
                 pass
             # verify log record
             self.assertEqual(log_records(model=self.model, data=self.ok_object, action=settings.DEFAULT_LOG_DELETE,
-                                         _status=False, sub_table=self.sub_table), True)
+                                         _status=False), True)
 
     # FO-121: new test to verify user cannot proceed when blocked
     def test_401_blocked(self):
@@ -1454,7 +1461,6 @@ class PatchOne(APITestCase):
         self.invalid_payload = None
         self.unique_invalid_payload = None
         self.pre_data = None
-        self.sub_table = False
 
         # flag for execution
         self.execute = False
@@ -1672,8 +1678,8 @@ class PatchOne(APITestCase):
             self.assertEqual(response.status_code, status.HTTP_200_OK)
             self.assertEqual(response.data, serializer.data)
             # verify log record
-            self.assertEqual(log_records(model=self.model, data=response.data, action=settings.DEFAULT_LOG_UPDATE,
-                                         sub_table=self.sub_table), True)
+            self.assertEqual(log_records(model=self.model, data=response.data, action=settings.DEFAULT_LOG_UPDATE),
+                             True)
     
     # FO-121: new test to verify user cannot proceed when blocked
     def test_401_blocked(self):
@@ -1750,7 +1756,6 @@ class PatchOneNoStatus(APITestCase):
         self.data_available = False
         self.test_data = str()
         self.pre_data = None
-        self.sub_table = False
         self.filter = {}
 
         # flag for execution
@@ -1839,7 +1844,7 @@ class PatchOneNoStatus(APITestCase):
             self.assertEqual(response.data, serializer.data)
             # verify log record
             self.assertEqual(log_records(model=self.model, data=response.data, action=settings.DEFAULT_LOG_UPDATE,
-                                         _status=False, sub_table=self.sub_table), True)
+                                         _status=False), True)
     
     # FO-121: new test to verify user cannot proceed when blocked
     def test_401_blocked(self):
@@ -1895,7 +1900,7 @@ class PatchOneStatus(APITestCase):
         self.assertEqual(response.data['status'], _status)
         # verify log record
         self.assertEqual(log_records(model=self.model, data=response.data, action=settings.DEFAULT_LOG_STATUS,
-                                     sub_table=self.sub_table), True)
+                                     sub_tables=self.sub_table), True)
 
     def setUp(self):
         if self.execute:
@@ -2138,8 +2143,16 @@ class PatchOneStatus(APITestCase):
             # get API response
             # draft to circulation
             self.status_life_cycle(csrf_token, 'circulation')
+            # auth with second user to avoid SoD
+            self.prerequisites.auth_two(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
             # circulation back to draft
             self.status_life_cycle(csrf_token, 'draft')
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
             # start circulation again
             self.status_life_cycle(csrf_token, 'circulation')
             # auth with second user to avoid SoD

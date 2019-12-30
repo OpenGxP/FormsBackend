@@ -28,7 +28,7 @@ from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
 
 # app imports
-from .custom import HASH_ALGORITHM
+from .custom import HASH_ALGORITHM, generate_checksum, generate_to_hash, str_list_change
 
 
 ##########
@@ -56,6 +56,30 @@ class GlobalManager(models.Manager):
     WF_MGMT = False
     COM_SIG_SETTINGS = True
     NO_PERMISSIONS = False
+
+    @staticmethod
+    def create_sub_record(obj, validated_data, key, sub_model, new_version=None, instance=None):
+        for record in validated_data[key]:
+            record['version'] = validated_data['version']
+            if new_version:
+                record['version'] = instance.version + 1
+                # for new version make predecessors a list, because internal value
+                record = str_list_change(data=record, key='predecessors', target=list)
+            sub_record = sub_model()
+            sub_record_hash_sequence = sub_record.HASH_SEQUENCE
+            setattr(sub_record, 'lifecycle_id', obj.lifecycle_id)
+            # passed keys
+            keys = record.keys()
+            # set attributes of validated data
+            for attr in sub_record_hash_sequence:
+                if attr in keys:
+                    setattr(sub_record, attr, record[attr])
+            # generate hash
+            to_hash = generate_to_hash(fields=record, hash_sequence=sub_record_hash_sequence,
+                                       unique_id=sub_record.id, lifecycle_id=sub_record.lifecycle_id)
+            sub_record.checksum = generate_checksum(to_hash)
+            sub_record.full_clean()
+            sub_record.save()
 
     # meta information for get and post
     # get
@@ -189,6 +213,10 @@ class GlobalModel(models.Model):
     HASH_SEQUENCE = []
     UNIQUE = None
 
+    @property
+    def sub_tables(self):
+        return {}
+
     def unique_id(self):
         if self.MODEL_ID == '30':
             return
@@ -218,6 +246,9 @@ class GlobalModel(models.Model):
                 return True
             if self.valid_to > now > self.valid_from:
                 return True
+
+    def delete_me(self):
+        self.delete()
 
     # default permissions for every status and version managed dialog
     MODEL_ID = None
