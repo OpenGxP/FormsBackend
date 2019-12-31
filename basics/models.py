@@ -43,7 +43,8 @@ CHAR_BIG = 1000
 # default fields
 FIELD_VERSION = models.IntegerField(_('Version'))
 
-AVAILABLE_STATUS = ['draft', 'circulation', 'productive', 'blocked', 'inactive', 'archived']
+AVAILABLE_STATUS = ['draft', 'circulation', 'productive', 'blocked', 'inactive', 'archived'] + \
+                   ['created', 'started', 'canceled', 'complete']
 LOG_HASH_SEQUENCE = ['user', 'timestamp', 'action', 'comment', 'way']
 
 
@@ -56,6 +57,7 @@ class GlobalManager(models.Manager):
     WF_MGMT = False
     COM_SIG_SETTINGS = True
     NO_PERMISSIONS = False
+    IS_RT = False
 
     @staticmethod
     def create_sub_record(obj, validated_data, key, sub_model, new_version=None, instance=None):
@@ -388,6 +390,23 @@ class StatusManager(GlobalManager):
     def archived(self):
         return self.filter(status='archived').get().id
 
+    # runtime status
+    @property
+    def created(self):
+        return self.filter(status='created').get().id
+
+    @property
+    def started(self):
+        return self.filter(status='started').get().id
+
+    @property
+    def canceled(self):
+        return self.filter(status='canceled').get().id
+
+    @property
+    def complete(self):
+        return self.filter(status='complete').get().id
+
 
 # table
 class Status(GlobalModel):
@@ -610,6 +629,13 @@ class SettingsManager(GlobalManager):
             return self.filter(key='profile.default.timezone').get().value
         except self.model.DoesNotExist:
             return settings.PROFILE_DEFAULT_TIMEZONE
+
+    @property
+    def rtd_number_range(self):
+        try:
+            return int(self.filter(key='rtd.number_range').get().value)
+        except self.model.DoesNotExist:
+            return settings.DEFAULT_RT_NUMBER_RANGE
 
 
 # table

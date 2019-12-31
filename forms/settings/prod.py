@@ -287,7 +287,8 @@ INITIALIZE_SETTINGS = {'auth.max_login_attempts': MAX_LOGIN_ATTEMPTS,
                        'core.password_reset_time': DEFAULT_PASSWORD_RESET_TIME,
                        'email.sender': DEFAULT_EMAIL_SENDER,
                        'core.initial_role': DEFAULT_INITIAL_ROLE,
-                       'profile.default.timezone': PROFILE_DEFAULT_TIMEZONE}
+                       'profile.default.timezone': PROFILE_DEFAULT_TIMEZONE,
+                       'rtd.number_range': DEFAULT_RT_NUMBER_RANGE}
 
 EMAIL_BASE_URL = 'https://{}'.format(ALLOWED_HOSTS[0])
 EMAIL_BACKEND = 'urp.backends.Email.MyEmailBackend'

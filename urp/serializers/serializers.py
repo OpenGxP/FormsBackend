@@ -1060,15 +1060,20 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
             @require_NONE
             @require_SETTINGS
             def validate_settings(self):
-                # validate maximum login attempts and maximum inactive time
+                # validate maximum login attempts and maximum inactive time and run time data number range start
                 if self.instance.key == 'auth.max_login_attempts' or self.instance.key == 'core.auto_logout' \
-                        or self.instance.key == 'core.password_reset_time':
+                        or self.instance.key == 'core.password_reset_time' or self.instance.key == 'rtd.number_range':
                     try:
                         # try to convert to integer
                         data['value'] = value_to_int(data['value'])
                         # verify that integer is positive
-                        if data['value'] < 1:
-                            raise ValueError
+                        if self.instance.key == 'rtd.number_range':
+                            # 0 is allowed as number range
+                            if data['value'] < 0:
+                                raise ValueError
+                        else:
+                            if data['value'] < 1:
+                                raise ValueError
                     except ValueError:
                         raise serializers.ValidationError('Setting "{}" must be a positive integer.'
                                                           .format(self.instance.key))

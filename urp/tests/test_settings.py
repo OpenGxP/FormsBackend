@@ -91,6 +91,7 @@ class SettingsMiscellaneous(APITestCase):
         self.test_data_dialog_signature = 'dialog.users.signature.add'
         self.test_data_dialog_comment = 'dialog.users.comment.add'
         self.test_data_profile_default_timezone = 'profile.default.timezone'
+        self.test_data_rtd_number_range = 'rtd.number_range'
 
     def setUp(self):
         self.client = Client(enforce_csrf_checks=True)
@@ -217,6 +218,20 @@ class SettingsMiscellaneous(APITestCase):
         response = self.client.patch(path, data=data, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_400_rtd_number_range(self):
+        """
+        Test shall show that is not possible to edit run time data number range lower than configured on backend.
+        """
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get API response
+        path = '{}/{}'.format(self.base_path, self.test_data_rtd_number_range)
+        data = {'value': -1}
+        response = self.client.patch(path, data=data, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
     def test_200_max_attempts(self):
         """
         Test shall show that it is possible to edit max login attempts to a positive integer.
@@ -298,5 +313,23 @@ class SettingsMiscellaneous(APITestCase):
         # get API response
         path = '{}/{}'.format(self.base_path, self.test_data_profile_default_timezone)
         data = {'value': 'Europe/Brussels'}
+        response = self.client.patch(path, data=data, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_200_rdt_number_range(self):
+        """
+        Test shall show that it is possible to edit run time data number range to a positive integer and 0.
+        """
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get API response
+        path = '{}/{}'.format(self.base_path, self.test_data_rtd_number_range)
+        data = {'value': 10000}
+        response = self.client.patch(path, data=data, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        path = '{}/{}'.format(self.base_path, self.test_data_rtd_number_range)
+        data = {'value': 0}
         response = self.client.patch(path, data=data, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
