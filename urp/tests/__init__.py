@@ -307,7 +307,7 @@ class Prerequisites(object):
                                  .format(response.status_code))
 
 
-def log_records(model, action, data, access_log=None, _status=True, sub_tables=True):
+def log_records(model, action, data, access_log=None, _status=True, sub_tables=True, rtd=None):
     data['action'] = action
     # remove valid field, because its read only and not in db
     del data['valid']
@@ -317,7 +317,7 @@ def log_records(model, action, data, access_log=None, _status=True, sub_tables=T
     if 'valid_to_local' in data:
         del data['valid_to_local']
     # human readable status is a read only field and not in db, but uuid
-    if _status:
+    if _status or rtd:
         data['status_id'] = Status.objects.status_by_text(data['status'])
         del data['status']
     # get log model of tested model
@@ -691,6 +691,9 @@ class PostNew(APITestCase):
         # flag for non-status managed objects
         self.status = True
 
+        # flag for runtime objects
+        self.rtd = False
+
     def setUp(self):
         if self.execute:
             self.client = Client(enforce_csrf_checks=True)
@@ -757,9 +760,11 @@ class PostNew(APITestCase):
             if self.status:
                 self.assertEqual(response.data['version'], 1)
                 self.assertEqual(response.data['status'], 'draft')
+            if self.rtd:
+                self.assertEqual(response.data['status'], 'created')
             # verify log record
             self.assertEqual(log_records(model=self.model, data=response.data, action=settings.DEFAULT_LOG_CREATE,
-                                         _status=self.status), True)
+                                         _status=self.status, rtd=self.rtd), True)
 
     def test_comment(self):
         if self.execute:
@@ -837,7 +842,7 @@ class PostNew(APITestCase):
             self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_400_second(self):
-        if self.execute:
+        if self.execute and not self.rtd:
             self.test_201()
             # authenticate
             self.prerequisites.auth(self.client)

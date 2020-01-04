@@ -242,6 +242,9 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                                                       .format(CHAR_DEFAULT))
         return value
 
+    def create_specific(self, validated_data, obj):
+        return validated_data, obj
+
     # function for create (POST)
     def create(self, validated_data):
         # get meta model assigned in custom serializer
@@ -272,7 +275,7 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
 
         else:
             validated_data['version'] = 1
-            if model.objects.HAS_STATUS:
+            if model.objects.HAS_STATUS and not model.objects.IS_RT:
 
                 # get local timezone of user
                 user_tz = pytz_timezone(Profile.objects.timezone(username=self.context['user']))
@@ -324,8 +327,10 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 validated_data['password'] = encrypt(raw_pw)
 
         # add default fields for new objects
-        if model.objects.HAS_STATUS:
+        if model.objects.HAS_STATUS and not model.objects.IS_RT:
             validated_data['status_id'] = Status.objects.draft
+
+        validated_data, obj = self.create_specific(validated_data, obj)
         # passed keys
         keys = validated_data.keys()
         # set attributes of validated data
@@ -705,6 +710,15 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         # move delete otherwise log records can not be generated
         self.instance.delete_me()
 
+    def validate_patch_specific(self):
+        pass
+
+    def validate_post_specific(self):
+        pass
+
+    def validate_delete_specific(self):
+        pass
+
     def validate(self, data):
         if self.context['function'] == 'init':
             return data
@@ -716,6 +730,12 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         require_blocked = require_status(Status.objects.blocked)
         require_inactive = require_status(Status.objects.inactive)
         require_archived = require_status(Status.objects.archived)
+
+        # rtd status
+        require_created = require_status(Status.objects.created)
+        require_started = require_status(Status.objects.started)
+        # require_canceled = require_status(Status.objects.canceled)
+        # require_complete = require_status(Status.objects.complete)
 
         class Validate:
             def __init__(self, validate_method):
@@ -739,6 +759,9 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
 
         @require_PATCH
         class Patch(Validate):
+            def validate_patch_specific(self):
+                self.validate_method.validate_patch_specific()
+
             @require_STATUS_CHANGE
             def validate_correct_status(self):
                 # verify if valid status
@@ -985,7 +1008,7 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
 
             @require_NONE
             def validate_updates_only_in_draft(self):
-                if self.model.objects.HAS_STATUS:
+                if self.model.objects.HAS_STATUS and not self.model.objects.IS_RT:
                     if self.instance.status.id != Status.objects.draft:
                         raise serializers.ValidationError('Updates are only permitted in status draft.')
 
@@ -1134,9 +1157,12 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
 
         @require_POST
         class Post(Validate):
+            def validate_post_specific(self):
+                self.validate_method.validate_post_specific()
+
             @require_NEW
             def validate_unique(self):
-                if self.model.objects.HAS_STATUS:
+                if self.model.objects.HAS_STATUS and not self.model.objects.IS_RT:
                     # if unique is not only one, but a list of fields
                     if isinstance(self.model.UNIQUE, list):
                         _filter = dict()
@@ -1236,8 +1262,11 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
 
         @require_DELETE
         class Delete(Validate):
+            def validate_delete_specific(self):
+                self.validate_method.validate_delete_specific()
+
             def validate_delete_only_in_draft(self):
-                if self.model.objects.HAS_STATUS:
+                if self.model.objects.HAS_STATUS and not self.model.objects.IS_RT:
                     if self.instance.status.id != Status.objects.draft:
                         raise serializers.ValidationError('Delete is only permitted in status draft.')
 

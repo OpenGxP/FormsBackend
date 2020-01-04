@@ -172,6 +172,17 @@ def private_root_view(request):
                                                              'patch': True,
                                                              'delete': True,
                                                              'version': True}}},
+                           'rtd': {'title': 'Runtime Data',
+                                   'subjects': {'execution': {'title': 'Execution',
+                                                              'url': {'abs': reverse('execution-list', request=request),
+                                                                      'rel': 'rtd/execution'},
+                                                              'log': {'abs': reverse('execution-log-list',
+                                                                                     request=request),
+                                                                      'rel': 'logs/execution'},
+                                                              'post': True,
+                                                              'patch': True,
+                                                              'delete': True,
+                                                              'version': True}}},
                            'logs': {'title': 'Logs',
                                     'subjects': {'central': {'title': 'Central',
                                                              'url': {'abs': reverse('central-log-list',
@@ -223,7 +234,11 @@ def private_root_view(request):
                                                  'forms': {'title': 'Forms',
                                                            'url': {'abs': reverse('forms-log-list',
                                                                                   request=request),
-                                                                   'rel': 'logs/forms'}}
+                                                                   'rel': 'logs/forms'}},
+                                                 'execution': {'title': 'Execution',
+                                                               'url': {'abs': reverse('execution-log-list',
+                                                                                      request=request),
+                                                                       'rel': 'logs/execution'}}
                                                  }}}}
 
     return Response(root)

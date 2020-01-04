@@ -1,6 +1,6 @@
 """
 opengxp.org
-Copyright (C) 2018  Henrik Baran
+Copyright (C) 2020 Henrik Baran
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@ from urp.views.private.inbox import inbox_list
 from urp.views.private.profile import profile_detail, profile_list, profile_log_list, set_timezone_view
 from urp.views.private.forms import forms_list, forms_detail, forms_status, forms_log_list
 from urp.views.private.logs.signatures import signatures_log_list
+from urp.views.private.execution import execution_list, execution_detail, execution_log_list, execution_status
 
 # app imports
 from urp.views import permissions_list, roles_list, roles_detail, status_list, \
@@ -81,6 +82,7 @@ urls_private = [
     path('{}logs/workflows'.format(settings.BASE_URL), workflows_log_list, name='workflows-log-list'),
     path('{}logs/forms'.format(settings.BASE_URL), forms_log_list, name='forms-log-list'),
     path('{}logs/profile'.format(settings.BASE_URL), profile_log_list, name='profile-log-list'),
+    path('{}logs/execution'.format(settings.BASE_URL), execution_log_list, name='execution-log-list'),
     # ldap
     path('{}admin/ldap'.format(settings.BASE_URL), ldap_list, name='ldap-list'),
     path('{}admin/ldap/<str:host>'.format(settings.BASE_URL), ldap_detail, name='ldap-detail'),
@@ -128,6 +130,11 @@ urls_private = [
     path('{}md/forms'.format(settings.BASE_URL), forms_list, name='forms-list'),
     path('{}md/forms/<str:lifecycle_id>/<int:version>'.format(settings.BASE_URL), forms_detail),
     path('{}md/forms/<str:lifecycle_id>/<int:version>/<str:status>'.format(settings.BASE_URL), forms_status,
+         name='forms-status'),
+    # execution
+    path('{}rtd/execution'.format(settings.BASE_URL), execution_list, name='execution-list'),
+    path('{}rtd/execution/<int:number>'.format(settings.BASE_URL), execution_detail),
+    path('{}rtd/execution/<int:number>/<str:status>'.format(settings.BASE_URL), execution_status,
          name='forms-status'),
     # audit trails
     path('{}at/<str:dialog>/<str:lifecycle_id>'.format(settings.BASE_URL), audit_trail_list, name='audit-trail-list'),
