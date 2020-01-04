@@ -24,6 +24,7 @@ from basics.models import Status
 from urp.serializers import GlobalReadWriteSerializer
 from urp.models.forms.forms import Forms
 from urp.models.execution.execution import Execution, ExecutionLog
+from urp.decorators import require_status
 
 
 # read / add / edit
@@ -53,6 +54,9 @@ class ExecutionReadWriteSerializer(GlobalReadWriteSerializer):
     def validate_post_specific(self):
         pass
 
+    def validate_patch_specific(self):
+        raise serializers.ValidationError('Patch is not supported yet.')
+
     def create_specific(self, validated_data, obj):
         validated_data['status_id'] = Status.objects.created
         validated_data['number'] = Execution.objects.next_number
@@ -75,16 +79,43 @@ class ExecutionStatusSerializer(GlobalReadWriteSerializer):
         fields = model.objects.GET_MODEL_ORDER + ('status', ) + model.objects.GET_BASE_CALCULATED + \
             model.objects.COMMENT_SIGNATURE
 
+    def validate_patch_specific(self):
+        require_created = require_status(Status.objects.created)
+        require_started = require_status(Status.objects.started)
+        require_canceled = require_status(Status.objects.canceled)
+        require_complete = require_status(Status.objects.complete)
+
+        class Patch(self.Validate):
+            @require_created
+            def validate_created(self):
+                if self.context['status'] != 'started':
+                    raise serializers.ValidationError('Start can only be executed from status created.')
+
+            @require_started
+            def validate_started(self):
+                if self.context['status'] not in ['canceled', 'complete']:
+                    raise serializers.ValidationError('From started only canceled and complete are allowed.')
+
+            @require_canceled
+            def validate_canceled(self):
+                raise serializers.ValidationError('Canceled is a final state.')
+
+            @require_complete
+            def validate_complete(self):
+                raise serializers.ValidationError('Complete is a final state.')
+
+        Patch(self)
+
 
 # delete
 class ExecutionDeleteSerializer(GlobalReadWriteSerializer):
-    def validate_delete_specific(self):
-        if self.instance.status.id != Status.objects.created:
-            raise serializers.ValidationError('Delete is only permitted in status created.')
-
     class Meta:
         model = Execution
         fields = model.objects.COMMENT_SIGNATURE
+
+    def validate_delete_specific(self):
+        if self.instance.status.id != Status.objects.created:
+            raise serializers.ValidationError('Delete is only permitted in status created.')
 
 
 # read logs

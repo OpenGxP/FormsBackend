@@ -25,11 +25,11 @@ from urp.models.execution.execution import Execution
 from urp.serializers.execution import ExecutionReadWriteSerializer, ExecutionStatusSerializer, \
     ExecutionLogReadSerializer, ExecutionDeleteSerializer
 from urp.decorators import auth_required
-from urp.views.base import StatusView
+from urp.views.base import RTDView
 
 
-view = StatusView(model=Execution, ser_rw=ExecutionReadWriteSerializer, ser_del=ExecutionDeleteSerializer,
-                  ser_log=ExecutionLogReadSerializer, ser_st=ExecutionStatusSerializer)
+view = RTDView(model=Execution, ser_rw=ExecutionReadWriteSerializer, ser_del=ExecutionDeleteSerializer,
+               ser_log=ExecutionLogReadSerializer, ser_st=ExecutionStatusSerializer)
 
 
 @api_view(['GET', 'POST'])
@@ -39,18 +39,18 @@ def execution_list(request):
     return view.list(request)
 
 
-@api_view(['GET', 'PATCH', 'POST', 'DELETE'])
+@api_view(['GET', 'PATCH', 'DELETE'])
 @auth_required()
 @auto_logout()
-def execution_detail(request, lifecycle_id, version):
-    return view.detail(request, lifecycle_id, version)
+def execution_detail(request, number):
+    return view.detail(request, number)
 
 
 @api_view(['PATCH'])
 @auth_required()
 @auto_logout()
-def execution_status(request, lifecycle_id, version, status):
-    return view.status(request, lifecycle_id, version, status)
+def execution_status(request, number, status):
+    return view.status(request, number, status)
 
 
 @api_view(['GET'])

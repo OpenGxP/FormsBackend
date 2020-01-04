@@ -719,6 +719,26 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
     def validate_delete_specific(self):
         pass
 
+    class Validate:
+        def __init__(self, validate_method):
+            self.model = getattr(getattr(validate_method, 'Meta', None), 'model', None)
+            self.context = validate_method.context
+            self.instance = validate_method.instance
+            self.function = validate_method.context['function']
+            self.validate_method = validate_method
+
+            self.user = None
+            if 'user' in self.context.keys():
+                self.user = self.context['user']
+
+            self.method_list = [func for func in dir(self) if callable(getattr(self, func))]
+            self.validate()
+
+        def validate(self):
+            for method in self.method_list:
+                if method.startswith('validate_'):
+                    getattr(self, method)()
+
     def validate(self, data):
         if self.context['function'] == 'init':
             return data
@@ -731,34 +751,8 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         require_inactive = require_status(Status.objects.inactive)
         require_archived = require_status(Status.objects.archived)
 
-        # rtd status
-        require_created = require_status(Status.objects.created)
-        require_started = require_status(Status.objects.started)
-        # require_canceled = require_status(Status.objects.canceled)
-        # require_complete = require_status(Status.objects.complete)
-
-        class Validate:
-            def __init__(self, validate_method):
-                self.model = getattr(getattr(validate_method, 'Meta', None), 'model', None)
-                self.context = validate_method.context
-                self.instance = validate_method.instance
-                self.function = validate_method.context['function']
-                self.validate_method = validate_method
-
-                self.user = None
-                if 'user' in self.context.keys():
-                    self.user = self.context['user']
-
-                self.method_list = [func for func in dir(self) if callable(getattr(self, func))]
-                self.validate()
-
-            def validate(self):
-                for method in self.method_list:
-                    if method.startswith('validate_'):
-                        getattr(self, method)()
-
         @require_PATCH
-        class Patch(Validate):
+        class Patch(self.Validate):
             def validate_patch_specific(self):
                 self.validate_method.validate_patch_specific()
 
@@ -1156,7 +1150,7 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                         raise serializers.ValidationError('Role "{}" does not exist.'.format(data[field]))
 
         @require_POST
-        class Post(Validate):
+        class Post(self.Validate):
             def validate_post_specific(self):
                 self.validate_method.validate_post_specific()
 
@@ -1261,7 +1255,7 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                         raise serializers.ValidationError('Role "{}" does not exist.'.format(data[field]))
 
         @require_DELETE
-        class Delete(Validate):
+        class Delete(self.Validate):
             def validate_delete_specific(self):
                 self.validate_method.validate_delete_specific()
 

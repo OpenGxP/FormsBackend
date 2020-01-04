@@ -1,6 +1,6 @@
 """
 opengxp.org
-Copyright (C) 2019 Henrik Baran
+Copyright (C) 2020 Henrik Baran
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -553,3 +553,94 @@ class StatusView(BaseView):
 
     def list_log(self, request, tags=True, ext_filter=None):
         return super().list_log(request, tags, ext_filter)
+
+
+class RTDView(StatusView):
+    def detail(self, request, number, lifecycle_id=None, version=None, tags=True):
+        # permissions
+        perm_read = '{}.01'.format(self.model.MODEL_ID)
+        perm_patch = '{}.03'.format(self.model.MODEL_ID)
+        perm_del = '{}.04'.format(self.model.MODEL_ID)
+
+        # serializer
+        ser_rw = self.ser_rw
+        ser_del = self.ser_del
+
+        @perm_required(perm_patch)
+        @csrf_protect
+        def patch(_request):
+            return update(request, ser_rw, query)
+
+        @perm_required(perm_del)
+        @csrf_protect
+        def _delete(_request):
+            return delete(request, ser_del, query)
+
+        @perm_required(perm_read)
+        @ensure_csrf_cookie
+        def get(_request):
+            _get = GET(model=self.model, request=request, serializer=ser_rw, _filter=_filter)
+            if tags:
+                _get.tags = True
+            return _get.standard
+
+        try:
+            _filter = {'number': number}
+            query = self.model.objects.get(**_filter)
+        except self.model.DoesNotExist:
+            return Response(status=http_status.HTTP_404_NOT_FOUND)
+        except ValidationError:
+            return Response(status=http_status.HTTP_400_BAD_REQUEST)
+
+        if request.method == 'GET':
+            return get(request)
+        elif request.method == 'PATCH':
+            return patch(request)
+        elif request.method == 'DELETE':
+            return _delete(request)
+
+    def status(self, request, number, status, lifecycle_id=None, version=None):
+        # permissions
+        perm_start = '{}.05'.format(self.model.MODEL_ID)
+        perm_cancel = '{}.06'.format(self.model.MODEL_ID)
+        perm_complete = '{}.07'.format(self.model.MODEL_ID)
+        # serializer
+        ser_st = self.ser_st
+
+        @csrf_protect
+        def patch_base(_request):
+            serializer = ser_st(query, data=request.data, context={'method': 'PATCH', 'function': 'status_change',
+                                                                   'status': status, 'user': request.user.username,
+                                                                   'request': request})
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            return Response(serializer.errors, status=http_status.HTTP_400_BAD_REQUEST)
+
+        @perm_required(perm_start)
+        def patch_start(_request):
+            return patch_base(_request)
+
+        @perm_required(perm_cancel)
+        def patch_cancel(_request):
+            return patch_base(_request)
+
+        @perm_required(perm_complete)
+        def patch_complete(_request):
+            return patch_base(_request)
+
+        try:
+            query = self.model.objects.get(number=number)
+        except self.model.DoesNotExist:
+            return Response(status=http_status.HTTP_404_NOT_FOUND)
+        except ValidationError:
+            return Response(status=http_status.HTTP_400_BAD_REQUEST)
+
+        if request.method == 'PATCH':
+            if status == 'started':
+                return patch_start(request)
+            if status == 'canceled':
+                return patch_cancel(request)
+            if status == 'complete':
+                return patch_complete(request)
+            return patch_base(request)

@@ -127,6 +127,15 @@ class Execution(GlobalModel):
     # permissions
     MODEL_ID = '40'
     MODEL_CONTEXT = 'Execution'
+    perms = {
+        '01': 'read',
+        '02': 'add',
+        '03': 'edit',
+        '04': 'delete',
+        '05': 'start',
+        '06': 'cancel',
+        '07': 'complete',
+    }
 
     # unique field
     UNIQUE = 'number'

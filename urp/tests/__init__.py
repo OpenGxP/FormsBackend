@@ -461,6 +461,7 @@ class GetOne(APITestCase):
 
         # flag for execution
         self.execute = False
+        self.rtd = False
 
     def setUp(self):
         if self.execute:
@@ -477,13 +478,19 @@ class GetOne(APITestCase):
                         self.prerequisites.create_record_manual(self.client, record['data'], record['path'])
             self.ok_object = self.prerequisites.create_record(self.client, self.ok_object_data)
             # create ok path
-            self.ok_path = '{}/{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], self.ok_object['version'])
-            self.query = {'lifecycle_id': self.ok_object['lifecycle_id'],
-                          'version': self.ok_object['version']}
-            self.false_path_version = '{}/{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], 2)
-            self.false_path_uuid = '{}/{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f',
-                                                     self.ok_object['version'])
-            self.false_path_both = '{}/{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f', 2)
+            if self.rtd:
+                self.ok_path = '{}/{}'.format(self.base_path, self.ok_object['number'])
+                self.query = {'number': self.ok_object['number']}
+                self.false_path_uuid = '{}/{}'.format(self.base_path, '1231412341')
+            else:
+                self.ok_path = '{}/{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'],
+                                                 self.ok_object['version'])
+                self.query = {'lifecycle_id': self.ok_object['lifecycle_id'],
+                              'version': self.ok_object['version']}
+                self.false_path_version = '{}/{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], 2)
+                self.false_path_uuid = '{}/{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f',
+                                                         self.ok_object['version'])
+                self.false_path_both = '{}/{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f', 2)
 
     def test_401(self):
         if self.execute:
@@ -544,7 +551,7 @@ class GetOne(APITestCase):
             self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_404_both(self):
-        if self.execute:
+        if self.execute and not self.rtd:
             # authenticate
             self.prerequisites.auth(self.client)
             # get API response
@@ -552,7 +559,7 @@ class GetOne(APITestCase):
             self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_404_version(self):
-        if self.execute:
+        if self.execute and not self.rtd:
             # authenticate
             self.prerequisites.auth(self.client)
             # get API response
@@ -1109,6 +1116,7 @@ class DeleteOne(APITestCase):
 
         # flag for execution
         self.execute = False
+        self.rtd = False
 
     def setUp(self):
         if self.execute:
@@ -1125,14 +1133,19 @@ class DeleteOne(APITestCase):
                         self.prerequisites.create_record_manual(self.client, record['data'], record['path'])
             self.ok_object = self.prerequisites.create_record(self.client, self.ok_object_data)
             # create ok path
-            self.ok_path = '{}/{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], self.ok_object['version'])
-            self.query = {'lifecycle_id': self.ok_object['lifecycle_id'],
-                          'version': self.ok_object['version']}
-
-            self.false_path_version = '{}/{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], 2)
-            self.false_path_uuid = '{}/{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f',
-                                                     self.ok_object['version'])
-            self.false_path_both = '{}/{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f', 2)
+            if self.rtd:
+                self.ok_path = '{}/{}'.format(self.base_path, self.ok_object['number'])
+                self.query = {'number': self.ok_object['number']}
+                self.false_path_uuid = '{}/{}'.format(self.base_path, '1231231233')
+            else:
+                self.ok_path = '{}/{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'],
+                                                 self.ok_object['version'])
+                self.query = {'lifecycle_id': self.ok_object['lifecycle_id'],
+                              'version': self.ok_object['version']}
+                self.false_path_version = '{}/{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], 2)
+                self.false_path_uuid = '{}/{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f',
+                                                         self.ok_object['version'])
+                self.false_path_both = '{}/{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f', 2)
 
     def test_401(self):
         if self.execute:
@@ -1161,7 +1174,7 @@ class DeleteOne(APITestCase):
             self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_404_both(self):
-        if self.execute:
+        if self.execute and not self.rtd:
             # authenticate
             self.prerequisites.auth(self.client)
             # get csrf
@@ -1172,7 +1185,7 @@ class DeleteOne(APITestCase):
             self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_404_version(self):
-        if self.execute:
+        if self.execute and not self.rtd:
             # authenticate
             self.prerequisites.auth(self.client)
             # get csrf
@@ -1215,7 +1228,7 @@ class DeleteOne(APITestCase):
 
     # FO-121: new test to verify user cannot proceed when blocked
     def test_401_blocked(self):
-        if self.execute:
+        if self.execute and not self.rtd:
             # authenticate
             self.prerequisites.auth(self.client)
             # get csrf
@@ -1228,7 +1241,7 @@ class DeleteOne(APITestCase):
 
     # FO-121: new test to verify user cannot proceed when not valid anymore
     def test_401_invalid(self):
-        if self.execute:
+        if self.execute and not self.rtd:
             # authenticate
             self.prerequisites.auth(self.client)
             # block authenticated user
@@ -1238,7 +1251,7 @@ class DeleteOne(APITestCase):
             self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_400_circulation(self):
-        if self.execute:
+        if self.execute and not self.rtd:
             # authenticate
             self.prerequisites.auth(self.client)
             # get csrf
@@ -1252,7 +1265,7 @@ class DeleteOne(APITestCase):
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_400_productive(self):
-        if self.execute:
+        if self.execute and not self.rtd:
             # authenticate
             self.prerequisites.auth(self.client)
             # get csrf
@@ -1272,7 +1285,7 @@ class DeleteOne(APITestCase):
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_400_blocked(self):
-        if self.execute:
+        if self.execute and not self.rtd:
             # authenticate
             self.prerequisites.auth(self.client)
             # get csrf
@@ -1294,7 +1307,7 @@ class DeleteOne(APITestCase):
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_400_inactive(self):
-        if self.execute:
+        if self.execute and not self.rtd:
             # authenticate
             self.prerequisites.auth(self.client)
             # get csrf
@@ -1316,7 +1329,7 @@ class DeleteOne(APITestCase):
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_400_archived(self):
-        if self.execute:
+        if self.execute and not self.rtd:
             # authenticate
             self.prerequisites.auth(self.client)
             # get csrf
@@ -1894,6 +1907,7 @@ class PatchOneStatus(APITestCase):
 
         # flag for execution
         self.execute = False
+        self.rtd = False
 
     def status_life_cycle(self, csrf_token, _status):
         response = self.client.patch('{}/{}'.format(self.ok_path, _status), content_type='application/json',
@@ -1922,14 +1936,20 @@ class PatchOneStatus(APITestCase):
                         self.prerequisites.create_record_manual(self.client, record['data'], record['path'])
             self.ok_object = self.prerequisites.create_record(self.client, self.ok_object_data)
             # create ok path
-            self.ok_path = '{}/{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], self.ok_object['version'])
-            self.query = {'lifecycle_id': self.ok_object['lifecycle_id'],
-                          'version': self.ok_object['version']}
+            if self.rtd:
+                self.ok_path = '{}/{}'.format(self.base_path, self.ok_object['number'])
+                self.query = {'number': self.ok_object['number']}
+                self.false_path_uuid = '{}/{}'.format(self.base_path, '1231412341')
+            else:
+                self.ok_path = '{}/{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'],
+                                                 self.ok_object['version'])
+                self.query = {'lifecycle_id': self.ok_object['lifecycle_id'],
+                              'version': self.ok_object['version']}
 
-            self.false_path_version = '{}/{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], 2)
-            self.false_path_uuid = '{}/{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f',
-                                                     self.ok_object['version'])
-            self.false_path_both = '{}/{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f', 2)
+                self.false_path_version = '{}/{}/{}'.format(self.base_path, self.ok_object['lifecycle_id'], 2)
+                self.false_path_uuid = '{}/{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f',
+                                                         self.ok_object['version'])
+                self.false_path_both = '{}/{}/{}'.format(self.base_path, 'cac8d0f0-ce96-421c-9327-a44e4703d26f', 2)
 
     def test_401(self):
         if self.execute:
@@ -1948,7 +1968,7 @@ class PatchOneStatus(APITestCase):
             self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_403_permission(self):
-        if self.execute:
+        if self.execute and not self.rtd:
             # authenticate
             self.prerequisites.auth_no_write_perms(self.client)
             # get csrf
@@ -1959,7 +1979,7 @@ class PatchOneStatus(APITestCase):
             self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_404_both(self):
-        if self.execute:
+        if self.execute and not self.rtd:
             # authenticate
             self.prerequisites.auth(self.client)
             # get csrf
@@ -1970,7 +1990,7 @@ class PatchOneStatus(APITestCase):
             self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_404_version(self):
-        if self.execute:
+        if self.execute and not self.rtd:
             # authenticate
             self.prerequisites.auth(self.client)
             # get csrf
@@ -2003,7 +2023,7 @@ class PatchOneStatus(APITestCase):
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_400_draft(self):
-        if self.execute:
+        if self.execute and not self.rtd:
             # authenticate
             self.prerequisites.auth(self.client)
             # get csrf
@@ -2016,7 +2036,7 @@ class PatchOneStatus(APITestCase):
                 self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_400_circulation(self):
-        if self.execute:
+        if self.execute and not self.rtd:
             # authenticate
             self.prerequisites.auth(self.client)
             # get csrf
@@ -2032,7 +2052,7 @@ class PatchOneStatus(APITestCase):
                 self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_400_productive(self):
-        if self.execute:
+        if self.execute and not self.rtd:
             # authenticate
             self.prerequisites.auth(self.client)
             # get csrf
@@ -2054,7 +2074,7 @@ class PatchOneStatus(APITestCase):
                 self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_400_blocked(self):
-        if self.execute:
+        if self.execute and not self.rtd:
             # authenticate
             self.prerequisites.auth(self.client)
             # get csrf
@@ -2078,7 +2098,7 @@ class PatchOneStatus(APITestCase):
                 self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_400_archived(self):
-        if self.execute:
+        if self.execute and not self.rtd:
             # authenticate
             self.prerequisites.auth(self.client)
             # get csrf
@@ -2102,7 +2122,7 @@ class PatchOneStatus(APITestCase):
                 self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_400_inactive(self):
-        if self.execute:
+        if self.execute and not self.rtd:
             # authenticate
             self.prerequisites.auth(self.client)
             # get csrf
@@ -2126,7 +2146,7 @@ class PatchOneStatus(APITestCase):
                 self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_400_sod(self):
-        if self.execute:
+        if self.execute and not self.rtd:
             # authenticate
             self.prerequisites.auth(self.client)
             # get csrf
@@ -2140,7 +2160,7 @@ class PatchOneStatus(APITestCase):
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_200(self):
-        if self.execute:
+        if self.execute and not self.rtd:
             # authenticate
             self.prerequisites.auth(self.client)
             # get csrf
@@ -2204,3 +2224,70 @@ class PatchOneStatus(APITestCase):
             response = self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), content_type='application/json', 
                                          HTTP_X_CSRFTOKEN=csrf_token)
             self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_400_created(self):
+        if self.execute and self.rtd:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            # get API response
+            not_allowed_status = ['created', 'canceled', 'complete']
+            for _status in not_allowed_status:
+                response = self.client.patch('{}/{}'.format(self.ok_path, _status), content_type='application/json',
+                                             HTTP_X_CSRFTOKEN=csrf_token)
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_400_started(self):
+        if self.execute and self.rtd:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            # get API response
+            response = self.client.patch('{}/{}'.format(self.ok_path, 'started'), content_type='application/json',
+                                         HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.data['status'], 'started')
+            not_allowed_status = ['created', 'started']
+            for _status in not_allowed_status:
+                response = self.client.patch('{}/{}'.format(self.ok_path, _status), content_type='application/json',
+                                             HTTP_X_CSRFTOKEN=csrf_token)
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_400_canceled(self):
+        if self.execute and self.rtd:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            # get API response
+            response = self.client.patch('{}/{}'.format(self.ok_path, 'started'), content_type='application/json',
+                                         HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.data['status'], 'started')
+            response = self.client.patch('{}/{}'.format(self.ok_path, 'canceled'), content_type='application/json',
+                                         HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.data['status'], 'canceled')
+            not_allowed_status = ['created', 'started', 'canceled', 'complete']
+            for _status in not_allowed_status:
+                response = self.client.patch('{}/{}'.format(self.ok_path, _status), content_type='application/json',
+                                             HTTP_X_CSRFTOKEN=csrf_token)
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_400_complete(self):
+        if self.execute and self.rtd:
+            # authenticate
+            self.prerequisites.auth(self.client)
+            # get csrf
+            csrf_token = self.prerequisites.get_csrf(self.client)
+            # get API response
+            response = self.client.patch('{}/{}'.format(self.ok_path, 'started'), content_type='application/json',
+                                         HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.data['status'], 'started')
+            response = self.client.patch('{}/{}'.format(self.ok_path, 'complete'), content_type='application/json',
+                                         HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.data['status'], 'complete')
+            not_allowed_status = ['created', 'started', 'canceled', 'complete']
+            for _status in not_allowed_status:
+                response = self.client.patch('{}/{}'.format(self.ok_path, _status), content_type='application/json',
+                                             HTTP_X_CSRFTOKEN=csrf_token)
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
