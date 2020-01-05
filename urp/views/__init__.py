@@ -35,3 +35,5 @@ from urp.views.private.users import users_list, users_detail, users_status, user
 from urp.views.private.roles import roles_list, roles_detail, roles_status, roles_log_list
 from urp.views.private.email import email_list, email_detail, email_log_list
 from urp.views.private.ldap import ldap_list, ldap_detail, ldap_log_list
+from urp.views.private.logs.access import access_log_list
+from urp.views.private.logs.central import central_log_list

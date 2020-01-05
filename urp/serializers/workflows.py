@@ -26,6 +26,10 @@ from urp.serializers import GlobalReadWriteSerializer
 from urp.fields import StepsField
 from urp.models.roles import Roles
 from basics.models import CHAR_BIG
+from urp.custom import create_log_record
+
+# django imports
+from django.conf import settings
 
 
 # read / add / edit
@@ -69,6 +73,16 @@ class WorkflowsReadWriteSerializer(GlobalReadWriteSerializer):
 
         return value
 
+    def create_specific(self, validated_data, obj):
+        for table, key in obj.sub_tables.items():
+            self.model.objects.create_sub_record(obj=obj, validated_data=validated_data, key=key,
+                                                 sub_model=table)
+        return validated_data, obj
+
+    def update_specific(self, validated_data, instance):
+        self.update_sub(validated_data, instance)
+        return validated_data, instance
+
 
 # new version / status
 class WorkflowsNewVersionStatusSerializer(GlobalReadWriteSerializer):
@@ -83,12 +97,29 @@ class WorkflowsNewVersionStatusSerializer(GlobalReadWriteSerializer):
         fields = model.objects.GET_MODEL_ORDER + ('steps', ) + model.objects.GET_BASE_ORDER_STATUS_MANAGED + \
             model.objects.GET_BASE_CALCULATED + model.objects.COMMENT_SIGNATURE
 
+    def create_specific(self, validated_data, obj):
+        for table, key in obj.sub_tables.items():
+            validated_data[key] = getattr(self.instance, '{}_values'.format(key))
+            self.model.objects.create_sub_record(obj=obj, validated_data=validated_data, key=key,
+                                                 sub_model=table, new_version=True, instance=self.instance)
+        return validated_data, obj
+
 
 # delete
 class WorkflowsDeleteSerializer(GlobalReadWriteSerializer):
     class Meta:
         model = Workflows
         fields = model.objects.COMMENT_SIGNATURE
+
+    def delete_specific(self, fields):
+        for table, key in self.instance.sub_tables.items():
+            linked_records = getattr(self.instance, '{}_values'.format(key))
+            for record in linked_records:
+                create_log_record(model=table, context=self.context, obj=self.instance, now=self.now,
+                                  validated_data=record, action=settings.DEFAULT_LOG_DELETE,
+                                  signature=self.signature, central=False)
+
+        return fields
 
 
 # read logs

@@ -33,7 +33,7 @@ from django.utils.translation import ugettext_lazy as _
 # custom imports
 from ..models import AccessLog, LDAP
 from urp.serializers.users import UsersDeleteSerializer
-from urp.serializers import AccessLogReadWriteSerializer
+from urp.serializers.logs.access import AccessLogReadWriteSerializer
 from basics.models import Settings
 
 # define logger

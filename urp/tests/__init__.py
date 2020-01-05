@@ -420,7 +420,11 @@ class GetAll(APITestCase):
             # get API response
             response = self.client.get(self.ok_path, content_type='application/json')
             # get data from db
-            query = self.model.objects.filter(**self.filter).all()[:settings.PROFILE_DEFAULT_PAGINATION_LIMIT]
+            if self.model.MODEL_ID == '02':
+                limit = settings.DEFAULT_PERMISSIONS_PAGINATION_LIMIT
+            else:
+                limit = settings.PROFILE_DEFAULT_PAGINATION_LIMIT
+            query = self.model.objects.filter(**self.filter).all()[:limit]
             serializer = self.serializer(query, many=True, context={'user': self.prerequisites.username})
             self.assertEqual(response.data['results'], serializer.data)
             self.assertEqual(response.status_code, status.HTTP_200_OK)

@@ -24,22 +24,17 @@ from rest_framework import serializers
 
 # custom imports
 from urp.models import Permissions, Users, Roles, AccessLog, PermissionsLog, LDAP, Vault
-from basics.custom import generate_checksum, generate_to_hash, value_to_int, str_list_change
+from basics.custom import generate_checksum, generate_to_hash, value_to_int
 from basics.models import Status, AVAILABLE_STATUS, StatusLog, CentralLog, Settings, CHAR_DEFAULT
 from urp.decorators import require_STATUS_CHANGE, require_POST, require_DELETE, require_PATCH, require_NONE, \
     require_NEW_VERSION, require_status, require_LDAP, require_USERS, require_NEW, require_SETTINGS, require_SOD, \
     require_EMAIL, require_ROLES, require_PROFILE
-from urp.custom import create_log_record, create_central_log_record, validate_comment, validate_signature
-from urp.custom import create_signatures_record
+from urp.custom import create_log_record, validate_comment, validate_signature
 from urp.backends.ldap import server_check
 from urp.backends.Email import MyEmailBackend
-from urp.vault import create_update_vault, validate_password_input
-from urp.crypto import encrypt
+from urp.vault import validate_password_input
 from urp.models.profile import Profile
 from urp.models.workflows.workflows import Workflows
-from basics.custom import render_email_from_template
-from urp.backends.Email import send_email
-from urp.models.inbox import Inbox
 from urp.models.logs.signatures import SignaturesLog
 from urp.validators import validate_only_ascii, validate_no_specials_reduced, validate_no_space, validate_no_numbers
 
@@ -242,6 +237,91 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                                                       .format(CHAR_DEFAULT))
         return value
 
+    def update_sub(self, validated_data, instance):
+        for table, key in instance.sub_tables.items():
+            # new / updated items
+            existing_items = []
+            for item in validated_data[key]:
+                _filter = {table.UNIQUE: item[table.UNIQUE],
+                           'lifecycle_id': instance.lifecycle_id,
+                           'version': instance.version}
+
+                # passed keys
+                keys = item.keys()
+                flag_change = False
+
+                try:
+                    # record already exists, update of data possible
+                    record = table.objects.filter(**_filter).get()
+                    action = settings.DEFAULT_LOG_UPDATE
+                except table.DoesNotExist:
+                    # no record was found, so new item
+                    record = table()
+                    action = settings.DEFAULT_LOG_CREATE
+                    setattr(record, 'lifecycle_id', instance.lifecycle_id)
+                    setattr(record, 'version', instance.version)
+
+                # add present items
+                fields_for_hash = {}
+                for attr in table.HASH_SEQUENCE:
+                    if attr in keys:
+                        compare = getattr(record, attr)
+                        if attr == 'predecessors':
+                            compare = getattr(record, attr).split(',')
+
+                        if item[attr] != compare:
+                            flag_change = True
+                            # new data differs from present data, can be change or new item
+                            fields_for_hash[attr] = item[attr]
+                            setattr(record, attr, item[attr])
+                        else:
+                            fields_for_hash[attr] = getattr(record, attr)
+                            if attr == 'predecessors':
+                                value = getattr(record, attr).split(',')
+                                setattr(record, attr, value)
+                                fields_for_hash[attr] = value
+                    else:
+                        fields_for_hash[attr] = getattr(record, attr)
+                        if attr == 'predecessors':
+                            value = getattr(record, attr).split(',')
+                            setattr(record, attr, value)
+                            fields_for_hash[attr] = value
+                # generate hash
+                to_hash = generate_to_hash(fields=fields_for_hash, hash_sequence=table.HASH_SEQUENCE,
+                                           unique_id=record.id, lifecycle_id=record.lifecycle_id)
+                record.checksum = generate_checksum(to_hash)
+                record.full_clean()
+                record.save()
+
+                existing_items.append(getattr(record, table.UNIQUE))
+
+                if flag_change:
+                    create_log_record(model=table, context=self.context, obj=instance, now=self.now,
+                                      validated_data=fields_for_hash, action=action,
+                                      signature=self.signature, central=False)
+
+            # get data from updated record
+            new_instance = self.model.objects.filter(lifecycle_id=self.instance.lifecycle_id,
+                                                     version=self.instance.version).get()
+            sub_table_data = getattr(new_instance, '{}_values'.format(key))
+
+            for item in sub_table_data:
+                if item[table.UNIQUE] not in existing_items:
+                    workflow_log_data = {}
+                    _filter = {table.UNIQUE: item[table.UNIQUE],
+                               'lifecycle_id': instance.lifecycle_id,
+                               'version': instance.version}
+                    del_item = table.objects.filter(**_filter).get()
+                    for attr in table.HASH_SEQUENCE:
+                        workflow_log_data[attr] = getattr(del_item, attr)
+
+                    create_log_record(model=table, context=self.context, obj=instance,
+                                      now=self.now, validated_data=workflow_log_data,
+                                      action=settings.DEFAULT_LOG_DELETE,
+                                      signature=self.signature, central=False)
+
+                    del_item.delete()
+
     def create_specific(self, validated_data, obj):
         return validated_data, obj
 
@@ -261,18 +341,6 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 validated_data[attr] = getattr(self.instance, attr)
             validated_data['version'] = self.instance.version + 1
 
-            # for users
-            if model.MODEL_ID == '04':
-                # use users initial_password property method
-                validated_data['initial_password'] = self.instance.initial_password
-
-            # for workflows and forms
-            if obj.sub_tables:
-                for table, key in obj.sub_tables.items():
-                    validated_data[key] = getattr(self.instance, '{}_values'.format(key))
-                    self.model.objects.create_sub_record(obj=obj, validated_data=validated_data, key=key,
-                                                         sub_model=table, new_version=True, instance=self.instance)
-
         else:
             validated_data['version'] = 1
             if model.objects.HAS_STATUS and not model.objects.IS_RT:
@@ -291,46 +359,13 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                             timezone.make_naive(validated_data['valid_to']),
                             is_dst=None).astimezone(pytz_utc)
 
-            # for users
-            if obj.MODEL_ID == '04':
-                # add is_active because django framework needs it
-                validated_data['is_active'] = True
-                # default initial password is false for ldap (initial_password required for log record)
-                validated_data['initial_password'] = False
-
-                # if not ldap managed user create vault record
-                if not validated_data['ldap']:
-                    # default initial password for not ldap managed users is true
-                    validated_data['initial_password'] = True
-
-                    # create vault record
-                    create_update_vault(data=validated_data, log=False, initial=True, signature=self.signature,
-                                        now=self.now)
-
-                # create profile
-                Profile.objects.generate_profile(username=validated_data['username'], log_user=self.context['user'])
-
-            # for workflows and forms
-            if obj.sub_tables:
-                for table, key in obj.sub_tables.items():
-                    self.model.objects.create_sub_record(obj=obj, validated_data=validated_data, key=key,
-                                                         sub_model=table)
-
-            # for access log
-            if obj.MODEL_ID == '05':
-                create_central_log_record(log_id=obj.id, now=validated_data['timestamp'], context=model.MODEL_CONTEXT,
-                                          action=validated_data['action'], user=validated_data['user'])
-
-            # ldap and email encrypt password before save to db
-            if obj.MODEL_ID == '11' or obj.MODEL_ID == '18':
-                raw_pw = validated_data['password']
-                validated_data['password'] = encrypt(raw_pw)
-
         # add default fields for new objects
         if model.objects.HAS_STATUS and not model.objects.IS_RT:
             validated_data['status_id'] = Status.objects.draft
 
+        # specific
         validated_data, obj = self.create_specific(validated_data, obj)
+
         # passed keys
         keys = validated_data.keys()
         # set attributes of validated data
@@ -364,6 +399,9 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
             self.instance = obj
             return obj
 
+    def update_specific(self, validated_data, instance):
+        return validated_data, instance
+
     # update
     def update(self, instance, validated_data, self_call=None, now=None):
         action = settings.DEFAULT_LOG_UPDATE
@@ -373,124 +411,6 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 self.status_change = True
                 action = settings.DEFAULT_LOG_STATUS
                 validated_data['status_id'] = Status.objects.status_by_text(self.context['status'])
-
-                # check if workflow is used
-                if self.model.objects.WF_MGMT and self.context['workflow']:
-                    # workflow start
-                    if self.context['status'] == 'circulation':
-                        # get role(s) that do not have any predecessor (must be root steps)
-                        base_steps = self.context['workflow']['workflow'].linked_steps_root
-                        emails = []
-                        users = []
-                        for st in base_steps:
-                            users_per_role = Users.objects.get_all_by_role(st.role)
-                            for record in users_per_role:
-                                emails.append(record.email)
-                                users.append(record.username)
-                        # remove duplicates
-                        emails = list(set(emails))
-                        users = list(set(users))
-
-                        # send email, do nothing else
-                        email_data = {'context': self.model.MODEL_CONTEXT,
-                                      'object': getattr(self.instance, self.model.UNIQUE),
-                                      'version': self.instance.version,
-                                      'url': '{}/#/md/{}/{}/{}/productive'.format(settings.EMAIL_BASE_URL,
-                                                                                  self.model.MODEL_CONTEXT.lower(),
-                                                                                  self.instance.lifecycle_id,
-                                                                                  self.instance.version)}
-
-                        # create signatures record for start circulation
-                        create_signatures_record(workflow=self.context['workflow']['workflow'],
-                                                 user=self.context['user'],
-                                                 timestamp=self.now,
-                                                 context=self.model.MODEL_CONTEXT,
-                                                 obj=self.instance,
-                                                 step=self.context['workflow']['step'],
-                                                 sequence=self.context['workflow']['sequence'],
-                                                 cycle=self.context['workflow']['cycle'],
-                                                 action=self.context['workflow']['action'])
-
-                        html_message = render_email_from_template(template_file_name='email_workflow.html',
-                                                                  data=email_data)
-                        send_email(subject='OpenGxP Workflow Action', html_message=html_message, email=emails)
-                        # create inbox record
-                        email_data['lifecycle_id'] = self.instance.lifecycle_id
-                        email_data['users'] = users
-                        del email_data['url']
-                        Inbox.objects.create(data=email_data)
-
-                    if self.context['status'] == 'productive':
-                        self.context['status'] = 'circulation'
-                        validated_data['status_id'] = Status.objects.status_by_text(self.context['status'])
-                        create_signatures_record(workflow=self.context['workflow']['workflow'],
-                                                 user=self.context['user'],
-                                                 timestamp=self.now,
-                                                 context=self.model.MODEL_CONTEXT,
-                                                 obj=self.instance,
-                                                 step=self.context['workflow']['step'],
-                                                 sequence=self.context['workflow']['sequence'],
-                                                 cycle=self.context['workflow']['cycle'],
-                                                 action=self.context['workflow']['action'])
-
-                        # get history after writing signatures record
-                        history = SignaturesLog.objects.filter(
-                            object_lifecycle_id=self.instance.lifecycle_id, cycle=self.context['workflow']['cycle'],
-                            object_version=self.instance.version,
-                            action=settings.DEFAULT_LOG_WF_WORKFLOW).order_by('-timestamp').all()
-
-                        # pass history to next steps method
-                        next_steps = self.context['workflow']['workflow'].linked_steps_next_incl_parallel(
-                            history=history)
-
-                        # last step of workflow performed
-                        if not next_steps:
-                            self.context['status'] = 'productive'
-                            validated_data['status_id'] = Status.objects.status_by_text(self.context['status'])
-                        else:
-                            emails = []
-                            users = []
-                            for st in next_steps:
-                                users_per_role = Users.objects.get_all_by_role(st.role)
-                                for record in users_per_role:
-                                    emails.append(record.email)
-                                    users.append(record.username)
-                            # remove duplicates
-                            emails = list(set(emails))
-                            users = list(set(users))
-
-                            # send email, do nothing else
-                            email_data = {'context': self.model.MODEL_CONTEXT,
-                                          'object': getattr(self.instance, self.model.UNIQUE),
-                                          'version': self.instance.version,
-                                          'url': '{}/#/md/{}/{}/{}/productive'.format(settings.EMAIL_BASE_URL,
-                                                                                      self.model.MODEL_CONTEXT.lower(),
-                                                                                      self.instance.lifecycle_id,
-                                                                                      self.instance.version)}
-                            html_message = render_email_from_template(template_file_name='email_workflow.html',
-                                                                      data=email_data)
-                            send_email(subject='OpenGxP Workflow Action', html_message=html_message, email=emails)
-                            # create inbox record
-                            email_data['lifecycle_id'] = self.instance.lifecycle_id
-                            email_data['users'] = users
-                            del email_data['url']
-                            Inbox.objects.delete(lifecycle_id=self.instance.lifecycle_id, version=self.instance.version)
-                            Inbox.objects.create(data=email_data)
-
-                    if self.context['status'] == 'draft':
-                        # delete all inbox records because back in draft
-                        Inbox.objects.delete(lifecycle_id=self.instance.lifecycle_id, version=self.instance.version)
-
-                        # create signatures record for set back on draft
-                        create_signatures_record(workflow=self.context['workflow']['workflow'],
-                                                 user=self.context['user'],
-                                                 timestamp=self.now,
-                                                 context=self.model.MODEL_CONTEXT,
-                                                 obj=self.instance,
-                                                 step=self.context['workflow']['step'],
-                                                 sequence=self.context['workflow']['sequence'],
-                                                 cycle=self.context['workflow']['cycle'],
-                                                 action=self.context['workflow']['action'])
 
                 # if "valid_from" is empty, set "valid_from" to timestamp of set productive
                 if self.context['status'] == 'productive' and not self.instance.valid_from and not self_call:
@@ -525,120 +445,8 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                                 timezone.make_naive(validated_data['valid_to']),
                                 is_dst=None).astimezone(pytz_utc)
 
-                # FO-132: hash password before saving
-                if model.MODEL_ID == '04':
-                    # draft updates shall be reflected in vault
-                    if not validated_data['ldap']:
-                        # check if previous record was ldap managed
-                        if instance.ldap:
-                            # create new vault, because now is password managed
-                            create_update_vault(data=validated_data, log=False, initial=True, signature=self.signature,
-                                                now=self.now)
-                        else:
-                            # get existing vault for that user
-                            vault = Vault.objects.filter(username=instance.username).get()
-
-                            # update vault
-                            create_update_vault(data=validated_data, instance=vault, log=False, initial=True,
-                                                signature=self.signature, now=self.now)
-
-                    else:
-                        # check if previous record was ldap managed
-                        if not instance.ldap:
-                            # delete existing vault for that user because not password managed anymore
-                            Vault.objects.filter(username=instance.username).delete()
-
-                # for workflows and forms
-
-                if instance.sub_tables and not self.status_change:
-                    for table, key in instance.sub_tables.items():
-                        # new / updated items
-                        existing_items = []
-                        for item in validated_data[key]:
-                            _filter = {table.UNIQUE: item[table.UNIQUE],
-                                       'lifecycle_id': instance.lifecycle_id,
-                                       'version': instance.version}
-
-                            # passed keys
-                            keys = item.keys()
-                            flag_change = False
-
-                            try:
-                                # record already exists, update of data possible
-                                record = table.objects.filter(**_filter).get()
-                                action = settings.DEFAULT_LOG_UPDATE
-                            except table.DoesNotExist:
-                                # no record was found, so new item
-                                record = table()
-                                action = settings.DEFAULT_LOG_CREATE
-                                setattr(record, 'lifecycle_id', instance.lifecycle_id)
-                                setattr(record, 'version', instance.version)
-
-                            # add present items
-                            fields_for_hash = {}
-                            for attr in table.HASH_SEQUENCE:
-                                if attr in keys:
-                                    compare = getattr(record, attr)
-                                    if attr == 'predecessors':
-                                        compare = getattr(record, attr).split(',')
-
-                                    if item[attr] != compare:
-                                        flag_change = True
-                                        # new data differs from present data, can be change or new item
-                                        fields_for_hash[attr] = item[attr]
-                                        setattr(record, attr, item[attr])
-                                    else:
-                                        fields_for_hash[attr] = getattr(record, attr)
-                                        if attr == 'predecessors':
-                                            value = getattr(record, attr).split(',')
-                                            setattr(record, attr, value)
-                                            fields_for_hash[attr] = value
-                                else:
-                                    fields_for_hash[attr] = getattr(record, attr)
-                                    if attr == 'predecessors':
-                                        value = getattr(record, attr).split(',')
-                                        setattr(record, attr, value)
-                                        fields_for_hash[attr] = value
-                            # generate hash
-                            to_hash = generate_to_hash(fields=fields_for_hash, hash_sequence=table.HASH_SEQUENCE,
-                                                       unique_id=record.id, lifecycle_id=record.lifecycle_id)
-                            record.checksum = generate_checksum(to_hash)
-                            record.full_clean()
-                            record.save()
-
-                            existing_items.append(getattr(record, table.UNIQUE))
-
-                            if flag_change:
-                                create_log_record(model=table, context=self.context, obj=instance, now=self.now,
-                                                  validated_data=fields_for_hash, action=action,
-                                                  signature=self.signature, central=False)
-
-                        # get data from updated record
-                        new_instance = model.objects.filter(lifecycle_id=self.instance.lifecycle_id,
-                                                            version=self.instance.version).get()
-                        sub_table_data = getattr(new_instance, '{}_values'.format(key))
-
-                        for item in sub_table_data:
-                            if item[table.UNIQUE] not in existing_items:
-                                workflow_log_data = {}
-                                _filter = {table.UNIQUE: item[table.UNIQUE],
-                                           'lifecycle_id': instance.lifecycle_id,
-                                           'version': instance.version}
-                                del_item = table.objects.filter(**_filter).get()
-                                for attr in table.HASH_SEQUENCE:
-                                    workflow_log_data[attr] = getattr(del_item, attr)
-
-                                create_log_record(model=table, context=self.context, obj=instance,
-                                                  now=self.now, validated_data=workflow_log_data,
-                                                  action=settings.DEFAULT_LOG_DELETE,
-                                                  signature=self.signature, central=False)
-
-                                del_item.delete()
-
-                # ldap and email encrypt password before save to db
-                if model.MODEL_ID == '11' or model.MODEL_ID == '18':
-                    raw_pw = validated_data['password']
-                    validated_data['password'] = encrypt(raw_pw)
+        # specific
+        validated_data, instance = self.update_specific(validated_data, instance)
 
         hash_sequence = instance.HASH_SEQUENCE
         fields = dict()
@@ -672,6 +480,9 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                               action=action, now=now, signature=self.signature)
         return instance
 
+    def delete_specific(self, fields):
+        return fields
+
     def delete(self):
         # get meta model assigned in custom serializer
         model = self.model
@@ -681,31 +492,11 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
             fields[attr] = getattr(self.instance, attr)
 
         if model.objects.LOG_TABLE:
-            if model.MODEL_ID == '04':
-                if not self.instance.ldap:
-                    # add initial password to validated data for logging
-                    vault = Vault.objects.filter(username=self.instance.username).get()
-                    fields['initial_password'] = vault.initial_password
-                else:
-                    fields['initial_password'] = False
-                # FO-140: delete vault record after deleting object, only for version 1
-                if not self.instance.ldap and self.instance.version == 1:
-                    vault = Vault.objects.filter(username=self.instance.username).get()
-                    vault.delete()
-
-                # delete profile
-                Profile.objects.delete_profile(username=self.instance.username, log_user=self.context['user'])
+            # specific
+            fields = self.delete_specific(fields)
 
             create_log_record(model=model, context=self.context, obj=self.instance, validated_data=fields,
                               action=settings.DEFAULT_LOG_DELETE, signature=self.signature, now=self.now)
-
-            if model.sub_tables:
-                for table, key in self.instance.sub_tables.items():
-                    linked_records = getattr(self.instance, '{}_values'.format(key))
-                    for record in linked_records:
-                        create_log_record(model=table, context=self.context, obj=self.instance, now=self.now,
-                                          validated_data=record, action=settings.DEFAULT_LOG_DELETE,
-                                          signature=self.signature, central=False)
 
         # move delete otherwise log records can not be generated
         self.instance.delete_me()

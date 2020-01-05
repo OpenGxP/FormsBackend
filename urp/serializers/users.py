@@ -1,6 +1,6 @@
 """
 opengxp.org
-Copyright (C) 2019  Henrik Baran
+Copyright (C) 2020 Henrik Baran
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -22,7 +22,10 @@ from rest_framework import serializers
 # app imports
 from urp.models.users import Users, UsersLog
 from urp.models.roles import Roles
+from urp.vault import create_update_vault
 from urp.serializers import GlobalReadWriteSerializer
+from urp.models.profile import Profile
+from urp.models.vault import Vault
 
 
 # read / add / edit
@@ -46,6 +49,54 @@ class UsersReadWriteSerializer(GlobalReadWriteSerializer):
             if item not in allowed:
                 raise serializers.ValidationError('Not allowed to use "{}".'.format(item))
         return value
+
+    def create_specific(self, validated_data, obj):
+        if self.context['function'] == 'new_version':
+            # use users initial_password property method
+            validated_data['initial_password'] = self.instance.initial_password
+        else:
+            # add is_active because django framework needs it
+            validated_data['is_active'] = True
+            # default initial password is false for ldap (initial_password required for log record)
+            validated_data['initial_password'] = False
+
+            # if not ldap managed user create vault record
+            if not validated_data['ldap']:
+                # default initial password for not ldap managed users is true
+                validated_data['initial_password'] = True
+
+                # create vault record
+                create_update_vault(data=validated_data, log=False, initial=True, signature=self.signature,
+                                    now=self.now)
+
+            # create profile
+            Profile.objects.generate_profile(username=validated_data['username'], log_user=self.context['user'])
+
+        return validated_data, obj
+
+    def update_specific(self, validated_data, instance):
+        # draft updates shall be reflected in vault
+        if not validated_data['ldap']:
+            # check if previous record was ldap managed
+            if instance.ldap:
+                # create new vault, because now is password managed
+                create_update_vault(data=validated_data, log=False, initial=True, signature=self.signature,
+                                    now=self.now)
+            else:
+                # get existing vault for that user
+                vault = Vault.objects.filter(username=instance.username).get()
+
+                # update vault
+                create_update_vault(data=validated_data, instance=vault, log=False, initial=True,
+                                    signature=self.signature, now=self.now)
+
+        else:
+            # check if previous record was ldap managed
+            if not instance.ldap:
+                # delete existing vault for that user because not password managed anymore
+                Vault.objects.filter(username=instance.username).delete()
+
+        return validated_data, instance
 
 
 # new version / status
@@ -72,6 +123,23 @@ class UsersDeleteSerializer(GlobalReadWriteSerializer):
     class Meta:
         model = Users
         fields = model.objects.COMMENT_SIGNATURE
+
+    def delete_specific(self, fields):
+        if not self.instance.ldap:
+            # add initial password to validated data for logging
+            vault = Vault.objects.filter(username=self.instance.username).get()
+            fields['initial_password'] = vault.initial_password
+        else:
+            fields['initial_password'] = False
+        # FO-140: delete vault record after deleting object, only for version 1
+        if not self.instance.ldap and self.instance.version == 1:
+            vault = Vault.objects.filter(username=self.instance.username).get()
+            vault.delete()
+
+        # delete profile
+        Profile.objects.delete_profile(username=self.instance.username, log_user=self.context['user'])
+
+        return fields
 
 
 # read logs

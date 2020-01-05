@@ -23,13 +23,20 @@ from rest_framework import serializers
 from django.conf import settings
 
 # app imports
-from basics.models import CHAR_DEFAULT
+from basics.models import CHAR_DEFAULT, Status
 from urp.models.forms.forms import Forms, FormsLog
 from urp.models.tags import Tags
 from urp.fields import SectionsField, TextField, BoolField
 from urp.models.workflows.workflows import Workflows
 from urp.models.roles import Roles
 from urp.serializers import GlobalReadWriteSerializer
+from urp.custom import create_log_record
+from urp.models.users import Users
+from urp.custom import create_signatures_record
+from basics.custom import render_email_from_template
+from urp.backends.Email import send_email
+from urp.models.inbox import Inbox
+from urp.models.logs.signatures import SignaturesLog
 
 
 FORM_FIELDS = ('sections', 'fields_text', 'fields_bool', )
@@ -111,6 +118,16 @@ class FormsReadWriteSerializer(GlobalReadWriteSerializer):
 
         return value
 
+    def create_specific(self, validated_data, obj):
+        for table, key in obj.sub_tables.items():
+            self.model.objects.create_sub_record(obj=obj, validated_data=validated_data, key=key,
+                                                 sub_model=table)
+        return validated_data, obj
+
+    def update_specific(self, validated_data, instance):
+        self.update_sub(validated_data, instance)
+        return validated_data, instance
+
 
 # new version / status
 class FormsNewVersionStatusSerializer(GlobalReadWriteSerializer):
@@ -128,12 +145,148 @@ class FormsNewVersionStatusSerializer(GlobalReadWriteSerializer):
         fields = model.objects.GET_MODEL_ORDER + FORM_FIELDS + model.objects.GET_BASE_ORDER_STATUS_MANAGED + \
             model.objects.GET_BASE_CALCULATED + model.objects.COMMENT_SIGNATURE
 
+    def create_specific(self, validated_data, obj):
+        for table, key in obj.sub_tables.items():
+            validated_data[key] = getattr(self.instance, '{}_values'.format(key))
+            self.model.objects.create_sub_record(obj=obj, validated_data=validated_data, key=key,
+                                                 sub_model=table, new_version=True, instance=self.instance)
+        return validated_data, obj
+
+    def update_specific(self, validated_data, instance):
+        if self.context['workflow']:
+            # workflow start
+            if self.context['status'] == 'circulation':
+                # get role(s) that do not have any predecessor (must be root steps)
+                base_steps = self.context['workflow']['workflow'].linked_steps_root
+                emails = []
+                users = []
+                for st in base_steps:
+                    users_per_role = Users.objects.get_all_by_role(st.role)
+                    for record in users_per_role:
+                        emails.append(record.email)
+                        users.append(record.username)
+                # remove duplicates
+                emails = list(set(emails))
+                users = list(set(users))
+
+                # send email, do nothing else
+                email_data = {'context': self.model.MODEL_CONTEXT,
+                              'object': getattr(self.instance, self.model.UNIQUE),
+                              'version': self.instance.version,
+                              'url': '{}/#/md/{}/{}/{}/productive'.format(settings.EMAIL_BASE_URL,
+                                                                          self.model.MODEL_CONTEXT.lower(),
+                                                                          self.instance.lifecycle_id,
+                                                                          self.instance.version)}
+
+                # create signatures record for start circulation
+                create_signatures_record(workflow=self.context['workflow']['workflow'],
+                                         user=self.context['user'],
+                                         timestamp=self.now,
+                                         context=self.model.MODEL_CONTEXT,
+                                         obj=self.instance,
+                                         step=self.context['workflow']['step'],
+                                         sequence=self.context['workflow']['sequence'],
+                                         cycle=self.context['workflow']['cycle'],
+                                         action=self.context['workflow']['action'])
+
+                html_message = render_email_from_template(template_file_name='email_workflow.html',
+                                                          data=email_data)
+                send_email(subject='OpenGxP Workflow Action', html_message=html_message, email=emails)
+                # create inbox record
+                email_data['lifecycle_id'] = self.instance.lifecycle_id
+                email_data['users'] = users
+                del email_data['url']
+                Inbox.objects.create(data=email_data)
+
+            if self.context['status'] == 'productive':
+                self.context['status'] = 'circulation'
+                validated_data['status_id'] = Status.objects.status_by_text(self.context['status'])
+                create_signatures_record(workflow=self.context['workflow']['workflow'],
+                                         user=self.context['user'],
+                                         timestamp=self.now,
+                                         context=self.model.MODEL_CONTEXT,
+                                         obj=self.instance,
+                                         step=self.context['workflow']['step'],
+                                         sequence=self.context['workflow']['sequence'],
+                                         cycle=self.context['workflow']['cycle'],
+                                         action=self.context['workflow']['action'])
+
+                # get history after writing signatures record
+                history = SignaturesLog.objects.filter(
+                    object_lifecycle_id=self.instance.lifecycle_id, cycle=self.context['workflow']['cycle'],
+                    object_version=self.instance.version,
+                    action=settings.DEFAULT_LOG_WF_WORKFLOW).order_by('-timestamp').all()
+
+                # pass history to next steps method
+                next_steps = self.context['workflow']['workflow'].linked_steps_next_incl_parallel(
+                    history=history)
+
+                # last step of workflow performed
+                if not next_steps:
+                    self.context['status'] = 'productive'
+                    validated_data['status_id'] = Status.objects.status_by_text(self.context['status'])
+                else:
+                    emails = []
+                    users = []
+                    for st in next_steps:
+                        users_per_role = Users.objects.get_all_by_role(st.role)
+                        for record in users_per_role:
+                            emails.append(record.email)
+                            users.append(record.username)
+                    # remove duplicates
+                    emails = list(set(emails))
+                    users = list(set(users))
+
+                    # send email, do nothing else
+                    email_data = {'context': self.model.MODEL_CONTEXT,
+                                  'object': getattr(self.instance, self.model.UNIQUE),
+                                  'version': self.instance.version,
+                                  'url': '{}/#/md/{}/{}/{}/productive'.format(settings.EMAIL_BASE_URL,
+                                                                              self.model.MODEL_CONTEXT.lower(),
+                                                                              self.instance.lifecycle_id,
+                                                                              self.instance.version)}
+                    html_message = render_email_from_template(template_file_name='email_workflow.html',
+                                                              data=email_data)
+                    send_email(subject='OpenGxP Workflow Action', html_message=html_message, email=emails)
+                    # create inbox record
+                    email_data['lifecycle_id'] = self.instance.lifecycle_id
+                    email_data['users'] = users
+                    del email_data['url']
+                    Inbox.objects.delete(lifecycle_id=self.instance.lifecycle_id, version=self.instance.version)
+                    Inbox.objects.create(data=email_data)
+
+            if self.context['status'] == 'draft':
+                # delete all inbox records because back in draft
+                Inbox.objects.delete(lifecycle_id=self.instance.lifecycle_id, version=self.instance.version)
+
+                # create signatures record for set back on draft
+                create_signatures_record(workflow=self.context['workflow']['workflow'],
+                                         user=self.context['user'],
+                                         timestamp=self.now,
+                                         context=self.model.MODEL_CONTEXT,
+                                         obj=self.instance,
+                                         step=self.context['workflow']['step'],
+                                         sequence=self.context['workflow']['sequence'],
+                                         cycle=self.context['workflow']['cycle'],
+                                         action=self.context['workflow']['action'])
+
+        return validated_data, instance
+
 
 # delete
 class FormsDeleteSerializer(GlobalReadWriteSerializer):
     class Meta:
         model = Forms
         fields = model.objects.COMMENT_SIGNATURE
+
+    def delete_specific(self, fields):
+        for table, key in self.instance.sub_tables.items():
+            linked_records = getattr(self.instance, '{}_values'.format(key))
+            for record in linked_records:
+                create_log_record(model=table, context=self.context, obj=self.instance, now=self.now,
+                                  validated_data=record, action=settings.DEFAULT_LOG_DELETE,
+                                  signature=self.signature, central=False)
+        return fields
 
 
 # read logs

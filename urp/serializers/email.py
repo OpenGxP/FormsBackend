@@ -17,6 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 # app imports
+from urp.crypto import encrypt
 from urp.models.email import Email, EmailLog
 from urp.serializers import GlobalReadWriteSerializer
 
@@ -27,6 +28,16 @@ class EmailReadWriteSerializer(GlobalReadWriteSerializer):
         model = Email
         extra_kwargs = {'password': {'write_only': True}}
         fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_CALCULATED + model.objects.COMMENT_SIGNATURE
+
+    def create_specific(self, validated_data, obj):
+        raw_pw = validated_data['password']
+        validated_data['password'] = encrypt(raw_pw)
+        return validated_data, obj
+
+    def update_specific(self, validated_data, instance):
+        raw_pw = validated_data['password']
+        validated_data['password'] = encrypt(raw_pw)
+        return validated_data, instance
 
 
 # delete

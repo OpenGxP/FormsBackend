@@ -23,9 +23,9 @@ from rest_framework.decorators import api_view
 from rest_framework import serializers
 
 # custom imports
-from urp.models import Roles, Permissions,  AccessLog, PermissionsLog, RolesLog, Vault
+from urp.models import Roles, Permissions, PermissionsLog, RolesLog, Vault
 from urp.serializers import StatusReadWriteSerializer, PermissionsReadWriteSerializer, \
-    AccessLogReadWriteSerializer, CentralLogReadWriteSerializer, StatusLogReadSerializer, \
+    CentralLogReadWriteSerializer, StatusLogReadSerializer, \
     PermissionsLogReadSerializer, AUDIT_TRAIL_SERIALIZERS, UserProfile
 from urp.decorators import perm_required, auth_required
 from basics.models import Status, StatusLog, CentralLog
@@ -182,34 +182,6 @@ def permissions_list(request):
 @perm_required('{}.01'.format(RolesLog.MODEL_ID))
 def permissions_log_list(request):
     get = GET(model=PermissionsLog, request=request, serializer=PermissionsLogReadSerializer)
-    return get.standard
-
-
-##############
-# CENTRALLOG #
-##############
-
-# GET list
-@api_view(['GET'])
-@auth_required()
-@auto_logout()
-@perm_required('{}.01'.format(CentralLog.MODEL_ID))
-def central_log_list(request):
-    get = GET(model=CentralLog, request=request, serializer=CentralLogReadWriteSerializer)
-    return get.standard
-
-
-#############
-# ACCESSLOG #
-#############
-
-# GET list
-@api_view(['GET'])
-@auth_required()
-@auto_logout()
-@perm_required('{}.01'.format(AccessLog.MODEL_ID))
-def access_log_list(request):
-    get = GET(model=AccessLog, request=request, serializer=AccessLogReadWriteSerializer)
     return get.standard
 
 

@@ -83,7 +83,7 @@ class GET(object):
         self.paginator = MyPagination()
         # no pagination for permissions
         if model.MODEL_ID == '02':
-            limit = 1000
+            limit = settings.DEFAULT_PERMISSIONS_PAGINATION_LIMIT
         else:
             limit = Profile.objects.pagination_limit(username=request.user.username)
         self.paginator.limit = limit
