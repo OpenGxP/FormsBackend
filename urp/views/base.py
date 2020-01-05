@@ -81,7 +81,11 @@ class GET(object):
     def __init__(self, model, request, serializer, _filter=None):
         # paginator
         self.paginator = MyPagination()
-        limit = Profile.objects.pagination_limit(username=request.user.username)
+        # no pagination for permissions
+        if model.MODEL_ID == '02':
+            limit = 1000
+        else:
+            limit = Profile.objects.pagination_limit(username=request.user.username)
         self.paginator.limit = limit
         self.paginator.default_limit = limit
 
