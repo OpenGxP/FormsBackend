@@ -61,30 +61,31 @@ class GlobalManager(models.Manager):
 
     @staticmethod
     def create_sub_record(obj, validated_data, key, sub_model, new_version=None, instance=None):
-        for record in validated_data[key]:
-            record['version'] = validated_data['version']
-            if new_version:
-                record['version'] = instance.version + 1
-                # for new version make predecessors a list, because internal value
-                record = str_list_change(data=record, key='predecessors', target=list)
-            sub_record = sub_model()
-            sub_record_hash_sequence = sub_record.HASH_SEQUENCE
-            setattr(sub_record, 'lifecycle_id', obj.lifecycle_id)
-            # passed keys
-            keys = record.keys()
-            # set attributes of validated data
-            for attr in sub_record_hash_sequence:
-                if attr in keys:
-                    setattr(sub_record, attr, record[attr])
-            # for hashing make predecessors comma separated string
-            fields = record.copy()
-            fields = str_list_change(data=fields, key='predecessors', target=str)
-            # generate hash
-            to_hash = generate_to_hash(fields=fields, hash_sequence=sub_record_hash_sequence,
-                                       unique_id=sub_record.id, lifecycle_id=sub_record.lifecycle_id)
-            sub_record.checksum = generate_checksum(to_hash)
-            sub_record.full_clean()
-            sub_record.save()
+        if key in validated_data:
+            for record in validated_data[key]:
+                record['version'] = validated_data['version']
+                if new_version:
+                    record['version'] = instance.version + 1
+                    # for new version make predecessors a list, because internal value
+                    record = str_list_change(data=record, key='predecessors', target=list)
+                sub_record = sub_model()
+                sub_record_hash_sequence = sub_record.HASH_SEQUENCE
+                setattr(sub_record, 'lifecycle_id', obj.lifecycle_id)
+                # passed keys
+                keys = record.keys()
+                # set attributes of validated data
+                for attr in sub_record_hash_sequence:
+                    if attr in keys:
+                        setattr(sub_record, attr, record[attr])
+                # for hashing make predecessors comma separated string
+                fields = record.copy()
+                fields = str_list_change(data=fields, key='predecessors', target=str)
+                # generate hash
+                to_hash = generate_to_hash(fields=fields, hash_sequence=sub_record_hash_sequence,
+                                           unique_id=sub_record.id, lifecycle_id=sub_record.lifecycle_id)
+                sub_record.checksum = generate_checksum(to_hash)
+                sub_record.full_clean()
+                sub_record.save()
 
     # meta information for get and post
     # get

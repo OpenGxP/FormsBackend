@@ -241,86 +241,87 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         for table, key in instance.sub_tables.items():
             # new / updated items
             existing_items = []
-            for item in validated_data[key]:
-                _filter = {table.UNIQUE: item[table.UNIQUE],
-                           'lifecycle_id': instance.lifecycle_id,
-                           'version': instance.version}
+            if key in validated_data:
+                for item in validated_data[key]:
+                    _filter = {table.UNIQUE: item[table.UNIQUE],
+                               'lifecycle_id': instance.lifecycle_id,
+                               'version': instance.version}
 
-                # passed keys
-                keys = item.keys()
-                flag_change = False
+                    # passed keys
+                    keys = item.keys()
+                    flag_change = False
 
-                try:
-                    # record already exists, update of data possible
-                    record = table.objects.filter(**_filter).get()
-                    action = settings.DEFAULT_LOG_UPDATE
-                except table.DoesNotExist:
-                    # no record was found, so new item
-                    record = table()
-                    action = settings.DEFAULT_LOG_CREATE
-                    setattr(record, 'lifecycle_id', instance.lifecycle_id)
-                    setattr(record, 'version', instance.version)
+                    try:
+                        # record already exists, update of data possible
+                        record = table.objects.filter(**_filter).get()
+                        action = settings.DEFAULT_LOG_UPDATE
+                    except table.DoesNotExist:
+                        # no record was found, so new item
+                        record = table()
+                        action = settings.DEFAULT_LOG_CREATE
+                        setattr(record, 'lifecycle_id', instance.lifecycle_id)
+                        setattr(record, 'version', instance.version)
 
-                # add present items
-                fields_for_hash = {}
-                for attr in table.HASH_SEQUENCE:
-                    if attr in keys:
-                        compare = getattr(record, attr)
-                        if attr == 'predecessors':
-                            compare = getattr(record, attr).split(',')
+                    # add present items
+                    fields_for_hash = {}
+                    for attr in table.HASH_SEQUENCE:
+                        if attr in keys:
+                            compare = getattr(record, attr)
+                            if attr == 'predecessors':
+                                compare = getattr(record, attr).split(',')
 
-                        if item[attr] != compare:
-                            flag_change = True
-                            # new data differs from present data, can be change or new item
-                            fields_for_hash[attr] = item[attr]
-                            setattr(record, attr, item[attr])
+                            if item[attr] != compare:
+                                flag_change = True
+                                # new data differs from present data, can be change or new item
+                                fields_for_hash[attr] = item[attr]
+                                setattr(record, attr, item[attr])
+                            else:
+                                fields_for_hash[attr] = getattr(record, attr)
+                                if attr == 'predecessors':
+                                    value = getattr(record, attr).split(',')
+                                    setattr(record, attr, value)
+                                    fields_for_hash[attr] = value
                         else:
                             fields_for_hash[attr] = getattr(record, attr)
                             if attr == 'predecessors':
                                 value = getattr(record, attr).split(',')
                                 setattr(record, attr, value)
                                 fields_for_hash[attr] = value
-                    else:
-                        fields_for_hash[attr] = getattr(record, attr)
-                        if attr == 'predecessors':
-                            value = getattr(record, attr).split(',')
-                            setattr(record, attr, value)
-                            fields_for_hash[attr] = value
-                # generate hash
-                to_hash = generate_to_hash(fields=fields_for_hash, hash_sequence=table.HASH_SEQUENCE,
-                                           unique_id=record.id, lifecycle_id=record.lifecycle_id)
-                record.checksum = generate_checksum(to_hash)
-                record.full_clean()
-                record.save()
+                    # generate hash
+                    to_hash = generate_to_hash(fields=fields_for_hash, hash_sequence=table.HASH_SEQUENCE,
+                                               unique_id=record.id, lifecycle_id=record.lifecycle_id)
+                    record.checksum = generate_checksum(to_hash)
+                    record.full_clean()
+                    record.save()
 
-                existing_items.append(getattr(record, table.UNIQUE))
+                    existing_items.append(getattr(record, table.UNIQUE))
 
-                if flag_change:
-                    create_log_record(model=table, context=self.context, obj=instance, now=self.now,
-                                      validated_data=fields_for_hash, action=action,
-                                      signature=self.signature, central=False)
+                    if flag_change:
+                        create_log_record(model=table, context=self.context, obj=instance, now=self.now,
+                                          validated_data=fields_for_hash, action=action,
+                                          signature=self.signature, central=False)
 
-            # get data from updated record
-            new_instance = self.model.objects.filter(lifecycle_id=self.instance.lifecycle_id,
-                                                     version=self.instance.version).get()
-            sub_table_data = getattr(new_instance, '{}_values'.format(key))
+                # get data from updated record
+                new_instance = self.model.objects.filter(lifecycle_id=self.instance.lifecycle_id,
+                                                         version=self.instance.version).get()
+                sub_table_data = getattr(new_instance, '{}_values'.format(key))
 
-            for item in sub_table_data:
-                if item[table.UNIQUE] not in existing_items:
-                    workflow_log_data = {}
-                    _filter = {table.UNIQUE: item[table.UNIQUE],
-                               'lifecycle_id': instance.lifecycle_id,
-                               'version': instance.version}
-                    del_item = table.objects.filter(**_filter).get()
-                    for attr in table.HASH_SEQUENCE:
-                        workflow_log_data[attr] = getattr(del_item, attr)
+                for item in sub_table_data:
+                    if item[table.UNIQUE] not in existing_items:
+                        workflow_log_data = {}
+                        _filter = {table.UNIQUE: item[table.UNIQUE],
+                                   'lifecycle_id': instance.lifecycle_id,
+                                   'version': instance.version}
+                        del_item = table.objects.filter(**_filter).get()
+                        for attr in table.HASH_SEQUENCE:
+                            workflow_log_data[attr] = getattr(del_item, attr)
 
-                    create_log_record(model=table, context=self.context, obj=instance,
-                                      now=self.now, validated_data=workflow_log_data,
-                                      action=settings.DEFAULT_LOG_DELETE,
-                                      signature=self.signature, central=False)
+                        create_log_record(model=table, context=self.context, obj=instance,
+                                          now=self.now, validated_data=workflow_log_data,
+                                          action=settings.DEFAULT_LOG_DELETE,
+                                          signature=self.signature, central=False)
 
-                    del_item.delete()
+                        del_item.delete()
 
     def create_specific(self, validated_data, obj):
         return validated_data, obj
@@ -386,10 +387,11 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
 
                 if obj.sub_tables:
                     for table, key in obj.sub_tables.items():
-                        for record in validated_data[key]:
-                            create_log_record(model=table, context=self.context, obj=obj, now=self.now,
-                                              validated_data=record, action=settings.DEFAULT_LOG_CREATE,
-                                              signature=self.signature, central=False)
+                        if key in validated_data:
+                            for record in validated_data[key]:
+                                create_log_record(model=table, context=self.context, obj=obj, now=self.now,
+                                                  validated_data=record, action=settings.DEFAULT_LOG_CREATE,
+                                                  signature=self.signature, central=False)
 
         except IntegrityError as e:
             if 'UNIQUE constraint' in e.args[0]:
@@ -501,13 +503,13 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         # move delete otherwise log records can not be generated
         self.instance.delete_me()
 
-    def validate_patch_specific(self):
+    def validate_patch_specific(self, data):
         pass
 
-    def validate_post_specific(self):
+    def validate_post_specific(self, data):
         pass
 
-    def validate_delete_specific(self):
+    def validate_delete_specific(self, data):
         pass
 
     class Validate:
@@ -545,7 +547,7 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         @require_PATCH
         class Patch(self.Validate):
             def validate_patch_specific(self):
-                self.validate_method.validate_patch_specific()
+                self.validate_method.validate_patch_specific(data)
 
             @require_STATUS_CHANGE
             def validate_correct_status(self):
@@ -943,7 +945,7 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         @require_POST
         class Post(self.Validate):
             def validate_post_specific(self):
-                self.validate_method.validate_post_specific()
+                self.validate_method.validate_post_specific(data)
 
             @require_NEW
             def validate_unique(self):
@@ -1048,7 +1050,7 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         @require_DELETE
         class Delete(self.Validate):
             def validate_delete_specific(self):
-                self.validate_method.validate_delete_specific()
+                self.validate_method.validate_delete_specific(data)
 
             def validate_delete_only_in_draft(self):
                 if self.model.objects.HAS_STATUS and not self.model.objects.IS_RT:

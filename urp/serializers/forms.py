@@ -48,8 +48,8 @@ FORM_FIELDS = ('sections', 'fields_text', 'fields_bool', )
 # read / add / edit
 class FormsReadWriteSerializer(GlobalReadWriteSerializer):
     sections = SectionsField(source='linked_sections')
-    fields_text = TextField(source='linked_fields_text')
-    fields_bool = BoolField(source='linked_fields_bool')
+    fields_text = TextField(source='linked_fields_text', required=False)
+    fields_bool = BoolField(source='linked_fields_bool', required=False)
 
     status = serializers.CharField(source='get_status', read_only=True)
 
@@ -72,6 +72,14 @@ class FormsReadWriteSerializer(GlobalReadWriteSerializer):
             if value not in allowed:
                 raise serializers.ValidationError('Not allowed to use "{}".'.format(value))
         return value
+
+    def validate_post_specific(self, data):
+        # validate that any field type is present
+        for k in data:
+            if k in ['linked_fields_text', 'linked_fields_bool']:
+                if data[k]:
+                    return
+        raise serializers.ValidationError('At least one field must be available.')
 
     def validate_sections(self, value):
         value = self.validate_sub(value, key='section', sequence=True, predecessors=True, parent=True)

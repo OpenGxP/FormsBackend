@@ -51,10 +51,7 @@ class ExecutionReadWriteSerializer(GlobalReadWriteSerializer):
             self.form = form
         return value
 
-    def validate_post_specific(self):
-        pass
-
-    def validate_patch_specific(self):
+    def validate_patch_specific(self, data):
         raise serializers.ValidationError('Patch is not supported yet.')
 
     def create_specific(self, validated_data, obj):
@@ -79,7 +76,7 @@ class ExecutionStatusSerializer(GlobalReadWriteSerializer):
         fields = model.objects.GET_MODEL_ORDER + ('status', ) + model.objects.GET_BASE_CALCULATED + \
             model.objects.COMMENT_SIGNATURE
 
-    def validate_patch_specific(self):
+    def validate_patch_specific(self, data):
         require_created = require_status(Status.objects.created)
         require_started = require_status(Status.objects.started)
         require_canceled = require_status(Status.objects.canceled)
@@ -113,7 +110,7 @@ class ExecutionDeleteSerializer(GlobalReadWriteSerializer):
         model = Execution
         fields = model.objects.COMMENT_SIGNATURE
 
-    def validate_delete_specific(self):
+    def validate_delete_specific(self, data):
         if self.instance.status.id != Status.objects.created:
             raise serializers.ValidationError('Delete is only permitted in status created.')
 
