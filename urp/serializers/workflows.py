@@ -21,6 +21,7 @@ from rest_framework import serializers
 
 # app imports
 from urp.models.workflows.workflows import Workflows, WorkflowsLog
+from urp.models.workflows.sub.steps import WorkflowsStepsLog
 from urp.models.tags import Tags
 from urp.serializers import GlobalReadWriteSerializer
 from urp.fields import StepsField
@@ -129,4 +130,12 @@ class WorkflowsLogReadSerializer(GlobalReadWriteSerializer):
     class Meta:
         model = WorkflowsLog
         fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_ORDER_STATUS_MANAGED + \
+            model.objects.GET_BASE_ORDER_LOG + model.objects.GET_BASE_CALCULATED
+
+
+# read logs steps
+class WorkflowsStepsLogReadSerializer(GlobalReadWriteSerializer):
+    class Meta:
+        model = WorkflowsStepsLog
+        fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_ORDER_SUB + \
             model.objects.GET_BASE_ORDER_LOG + model.objects.GET_BASE_CALCULATED

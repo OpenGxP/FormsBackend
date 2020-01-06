@@ -20,11 +20,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from rest_framework.decorators import api_view
 
 # app imports
-from urp.views.views import auto_logout
+from urp.views.views import auto_logout, GET
 from urp.models.workflows.workflows import Workflows
+from urp.models.workflows.sub.steps import WorkflowsStepsLog
 from urp.serializers.workflows import WorkflowsReadWriteSerializer, WorkflowsNewVersionStatusSerializer, \
-    WorkflowsLogReadSerializer, WorkflowsDeleteSerializer
-from urp.decorators import auth_required
+    WorkflowsLogReadSerializer, WorkflowsDeleteSerializer, WorkflowsStepsLogReadSerializer
+from urp.decorators import auth_required, perm_required
 from urp.views.base import StatusView
 
 
@@ -58,3 +59,13 @@ def workflows_status(request, lifecycle_id, version, status):
 @auto_logout()
 def workflows_log_list(request):
     return view.list_log(request)
+
+
+# steps log
+@api_view(['GET'])
+@auth_required()
+@auto_logout()
+@perm_required('{}.01'.format(Workflows.MODEL_ID))
+def workflows_steps_log_list(request):
+    get = GET(model=WorkflowsStepsLog, request=request, serializer=WorkflowsStepsLogReadSerializer)
+    return get.standard

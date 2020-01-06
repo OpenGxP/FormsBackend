@@ -26,6 +26,7 @@ from urp.views.private.inbox import inbox_list
 from urp.views.private.profile import profile_detail, profile_list, profile_log_list, set_timezone_view
 from urp.views.private.forms import forms_list, forms_detail, forms_status, forms_log_list, forms_sections_log_list, \
     forms_bool_fields_log_list, forms_text_fields_log_list
+from urp.views.private.workflows import workflows_steps_log_list
 from urp.views.private.logs.signatures import signatures_log_list
 from urp.views.private.execution import execution_list, execution_detail, execution_log_list, execution_status
 
@@ -81,6 +82,7 @@ urls_private = [
     path('{}logs/spaces'.format(settings.BASE_URL), spaces_log_list, name='spaces-log-list'),
     path('{}logs/lists'.format(settings.BASE_URL), lists_log_list, name='lists-log-list'),
     path('{}logs/workflows'.format(settings.BASE_URL), workflows_log_list, name='workflows-log-list'),
+    path('{}logs/workflows_steps'.format(settings.BASE_URL), workflows_steps_log_list, name='workflows-steps-log-list'),
     path('{}logs/forms'.format(settings.BASE_URL), forms_log_list, name='forms-log-list'),
     path('{}logs/forms_sections'.format(settings.BASE_URL), forms_sections_log_list, name='forms-sections-log-list'),
     path('{}logs/forms_text_fields'.format(settings.BASE_URL), forms_text_fields_log_list,

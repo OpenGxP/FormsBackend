@@ -59,7 +59,7 @@ class WorkflowsStepsLog(GlobalModelLog):
 
     # integrity check
     def verify_checksum(self):
-        to_hash_payload = 'step:{};role:{};predecessors:{};text:{};sequence:{};version:{}'. \
+        to_hash_payload = 'step:{};role:{};predecessors:{};text:{};sequence:{};version:{};'. \
             format(self.step, self.role, self.predecessors, self.text, self.sequence, self.version)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
 
