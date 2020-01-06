@@ -76,8 +76,11 @@ class GlobalManager(models.Manager):
             for attr in sub_record_hash_sequence:
                 if attr in keys:
                     setattr(sub_record, attr, record[attr])
+            # for hashing make predecessors comma separated string
+            fields = record.copy()
+            fields = str_list_change(data=fields, key='predecessors', target=str)
             # generate hash
-            to_hash = generate_to_hash(fields=record, hash_sequence=sub_record_hash_sequence,
+            to_hash = generate_to_hash(fields=fields, hash_sequence=sub_record_hash_sequence,
                                        unique_id=sub_record.id, lifecycle_id=sub_record.lifecycle_id)
             sub_record.checksum = generate_checksum(to_hash)
             sub_record.full_clean()
@@ -96,6 +99,8 @@ class GlobalManager(models.Manager):
                                      'status',
                                      'version',
                                      'lifecycle_id',)
+    GET_BASE_ORDER_SUB = ('version',
+                          'lifecycle_id',)
     GET_BASE_ORDER_LOG = ('user',
                           'action',
                           'comment',

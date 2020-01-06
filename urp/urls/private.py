@@ -24,7 +24,8 @@ from django.conf import settings
 from urp.views.private.root import private_root_view
 from urp.views.private.inbox import inbox_list
 from urp.views.private.profile import profile_detail, profile_list, profile_log_list, set_timezone_view
-from urp.views.private.forms import forms_list, forms_detail, forms_status, forms_log_list
+from urp.views.private.forms import forms_list, forms_detail, forms_status, forms_log_list, forms_sections_log_list, \
+    forms_bool_fields_log_list, forms_text_fields_log_list
 from urp.views.private.logs.signatures import signatures_log_list
 from urp.views.private.execution import execution_list, execution_detail, execution_log_list, execution_status
 
@@ -81,6 +82,11 @@ urls_private = [
     path('{}logs/lists'.format(settings.BASE_URL), lists_log_list, name='lists-log-list'),
     path('{}logs/workflows'.format(settings.BASE_URL), workflows_log_list, name='workflows-log-list'),
     path('{}logs/forms'.format(settings.BASE_URL), forms_log_list, name='forms-log-list'),
+    path('{}logs/forms_sections'.format(settings.BASE_URL), forms_sections_log_list, name='forms-sections-log-list'),
+    path('{}logs/forms_text_fields'.format(settings.BASE_URL), forms_text_fields_log_list,
+         name='forms-text-fields-log-list'),
+    path('{}logs/forms_bool_fields'.format(settings.BASE_URL), forms_bool_fields_log_list,
+         name='forms-bool-fields-log-list'),
     path('{}logs/profile'.format(settings.BASE_URL), profile_log_list, name='profile-log-list'),
     path('{}logs/execution'.format(settings.BASE_URL), execution_log_list, name='execution-log-list'),
     # ldap

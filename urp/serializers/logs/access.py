@@ -29,7 +29,6 @@ class AccessLogReadWriteSerializer(GlobalReadWriteSerializer):
         fields = AccessLog.objects.GET_MODEL_ORDER + AccessLog.objects.GET_BASE_CALCULATED
 
     def create_specific(self, validated_data, obj):
-        print('drin at login')
         create_central_log_record(log_id=obj.id, now=validated_data['timestamp'], context=self.model.MODEL_CONTEXT,
                                   action=validated_data['action'], user=validated_data['user'])
         return validated_data, obj

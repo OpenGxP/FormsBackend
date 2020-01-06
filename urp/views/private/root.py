@@ -235,6 +235,21 @@ def private_root_view(request):
                                                            'url': {'abs': reverse('forms-log-list',
                                                                                   request=request),
                                                                    'rel': 'logs/forms'}},
+                                                 'forms_sections': {'title': 'Forms Sections',
+                                                                    'url': {'abs': reverse(
+                                                                        'forms-sections-log-list',
+                                                                        request=request),
+                                                                        'rel': 'logs/forms_sections'}},
+                                                 'forms_text_fields': {'title': 'Forms Text Fields',
+                                                                       'url': {'abs': reverse(
+                                                                           'forms-text-fields-log-list',
+                                                                           request=request),
+                                                                           'rel': 'logs/forms_text_fields'}},
+                                                 'forms_bool_fields': {'title': 'Forms Bool Fields',
+                                                                       'url': {'abs': reverse(
+                                                                           'forms-bool-fields-log-list',
+                                                                           request=request),
+                                                                           'rel': 'logs/forms_bool_fields'}},
                                                  'execution': {'title': 'Execution',
                                                                'url': {'abs': reverse('execution-log-list',
                                                                                       request=request),

@@ -20,12 +20,16 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from rest_framework.decorators import api_view
 
 # app imports
-from urp.views.views import auto_logout
+from urp.views.views import auto_logout, GET
 from urp.models.forms.forms import Forms
 from urp.serializers.forms import FormsReadWriteSerializer, FormsNewVersionStatusSerializer, \
-    FormsLogReadSerializer, FormsDeleteSerializer
-from urp.decorators import auth_required
+    FormsLogReadSerializer, FormsDeleteSerializer, FormsSectionsLogReadSerializer, FormsTextFieldsLogReadSerializer, \
+    FormsBoolFieldsLogReadSerializer
+from urp.decorators import auth_required, perm_required
 from urp.views.base import StatusView
+from urp.models.forms.sub.sections import FormsSectionsLog
+from urp.models.forms.sub.text_fields import FormsTextFieldsLog
+from urp.models.forms.sub.bool_fields import FormsBoolFieldsLog
 
 
 view = StatusView(model=Forms, ser_rw=FormsReadWriteSerializer, ser_del=FormsDeleteSerializer,
@@ -58,3 +62,33 @@ def forms_status(request, lifecycle_id, version, status):
 @auto_logout()
 def forms_log_list(request):
     return view.list_log(request)
+
+
+# sections log
+@api_view(['GET'])
+@auth_required()
+@auto_logout()
+@perm_required('{}.01'.format(Forms.MODEL_ID))
+def forms_sections_log_list(request):
+    get = GET(model=FormsSectionsLog, request=request, serializer=FormsSectionsLogReadSerializer)
+    return get.standard
+
+
+# tex fields log
+@api_view(['GET'])
+@auth_required()
+@auto_logout()
+@perm_required('{}.01'.format(Forms.MODEL_ID))
+def forms_text_fields_log_list(request):
+    get = GET(model=FormsTextFieldsLog, request=request, serializer=FormsTextFieldsLogReadSerializer)
+    return get.standard
+
+
+# bool fields log
+@api_view(['GET'])
+@auth_required()
+@auto_logout()
+@perm_required('{}.01'.format(Forms.MODEL_ID))
+def forms_bool_fields_log_list(request):
+    get = GET(model=FormsBoolFieldsLog, request=request, serializer=FormsBoolFieldsLogReadSerializer)
+    return get.standard

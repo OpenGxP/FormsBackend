@@ -233,6 +233,8 @@ def str_list_change(data, target, key):
     # make array a comma separated string
     if target == str:
         if key in data.keys():
+            if isinstance(data[key], str):
+                return data
             string_value = ''
             for item in data[key]:
                 string_value += '{},'.format(item)
@@ -241,6 +243,8 @@ def str_list_change(data, target, key):
     # make comma separated string an array
     elif target == list:
         if key in data.keys():
+            if isinstance(data[key], list):
+                return data
             data[key] = data[key].split(',')
         return data
     # in case of false target raise error, only internal

@@ -37,6 +37,9 @@ from basics.custom import render_email_from_template
 from urp.backends.Email import send_email
 from urp.models.inbox import Inbox
 from urp.models.logs.signatures import SignaturesLog
+from urp.models.forms.sub.sections import FormsSectionsLog
+from urp.models.forms.sub.text_fields import FormsTextFieldsLog
+from urp.models.forms.sub.bool_fields import FormsBoolFieldsLog
 
 
 FORM_FIELDS = ('sections', 'fields_text', 'fields_bool', )
@@ -296,4 +299,28 @@ class FormsLogReadSerializer(GlobalReadWriteSerializer):
     class Meta:
         model = FormsLog
         fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_ORDER_STATUS_MANAGED + \
+            model.objects.GET_BASE_ORDER_LOG + model.objects.GET_BASE_CALCULATED
+
+
+# read logs sections
+class FormsSectionsLogReadSerializer(GlobalReadWriteSerializer):
+    class Meta:
+        model = FormsSectionsLog
+        fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_ORDER_SUB + \
+            model.objects.GET_BASE_ORDER_LOG + model.objects.GET_BASE_CALCULATED
+
+
+# read logs text
+class FormsTextFieldsLogReadSerializer(GlobalReadWriteSerializer):
+    class Meta:
+        model = FormsTextFieldsLog
+        fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_ORDER_SUB + \
+            model.objects.GET_BASE_ORDER_LOG + model.objects.GET_BASE_CALCULATED
+
+
+# read logs bool
+class FormsBoolFieldsLogReadSerializer(GlobalReadWriteSerializer):
+    class Meta:
+        model = FormsBoolFieldsLog
+        fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_ORDER_SUB + \
             model.objects.GET_BASE_ORDER_LOG + model.objects.GET_BASE_CALCULATED

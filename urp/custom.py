@@ -73,8 +73,7 @@ def create_log_record(model, context, action, validated_data, signature, obj=Non
     validated_data['action'] = action
 
     # for delete make predecessors a list, because internal value
-    if action == settings.DEFAULT_LOG_DELETE:
-        validated_data = str_list_change(data=validated_data, key='predecessors', target=list)
+    validated_data = str_list_change(data=validated_data, key='predecessors', target=list)
 
     # add signature log
     if signature:
@@ -103,7 +102,9 @@ def create_log_record(model, context, action, validated_data, signature, obj=Non
             except AttributeError:
                 pass
     setattr(log_obj, 'lifecycle_id', obj.lifecycle_id)
-    to_hash = generate_to_hash(fields=validated_data, hash_sequence=log_hash_sequence, unique_id=log_obj.id,
+    fields = validated_data.copy()
+    fields = str_list_change(data=fields, key='predecessors', target=str)
+    to_hash = generate_to_hash(fields=fields, hash_sequence=log_hash_sequence, unique_id=log_obj.id,
                                lifecycle_id=obj.lifecycle_id)
     log_obj.checksum = generate_checksum(to_hash)
     try:
