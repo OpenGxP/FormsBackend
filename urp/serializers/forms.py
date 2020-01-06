@@ -40,6 +40,7 @@ from urp.models.logs.signatures import SignaturesLog
 from urp.models.forms.sub.sections import FormsSectionsLog
 from urp.models.forms.sub.text_fields import FormsTextFieldsLog
 from urp.models.forms.sub.bool_fields import FormsBoolFieldsLog
+from urp.execptions import DummyException
 
 
 FORM_FIELDS = ('sections', 'fields_text', 'fields_bool', )
@@ -75,14 +76,22 @@ class FormsReadWriteSerializer(GlobalReadWriteSerializer):
 
     def validate_post_specific(self, data):
         # validate that any field type is present
-        for k in data:
-            if k in ['linked_fields_text', 'linked_fields_bool']:
-                if data[k]:
-                    return
-        raise serializers.ValidationError('At least one field must be available.')
+        try:
+            for k in data:
+                if k in ['linked_fields_text', 'linked_fields_bool']:
+                    if data[k]:
+                        raise DummyException
+            raise serializers.ValidationError('At least one field must be available.')
+        except DummyException:
+            for p in self.sub_parents:
+                # validate sequence unique characteristic within parent
+                if len(self.global_sequence_check[p]) != len(set(self.global_sequence_check[p])):
+                    raise serializers.ValidationError('Sequence within one section must be unique.')
 
     def validate_sections(self, value):
-        value = self.validate_sub(value, key='section', sequence=True, predecessors=True, parent=True)
+        value = self.validate_sub(value, key='section', parent=True)
+        self.validate_sequence_plain(value)
+        self.validate_predecessors(value, key='section')
         allowed_roles = Roles.objects.get_by_natural_key_productive_list('role')
 
         for item in value:
@@ -103,7 +112,8 @@ class FormsReadWriteSerializer(GlobalReadWriteSerializer):
         return value
 
     def validate_fields_text(self, value):
-        value = self.validate_sub(value, key='field', sequence=True)
+        value = self.validate_sub(value, key='field')
+        self.validate_sequence_plain(value, form=True)
         value = self.validated_form_fields(value)
 
         for item in value:
@@ -118,7 +128,8 @@ class FormsReadWriteSerializer(GlobalReadWriteSerializer):
         return value
 
     def validate_fields_bool(self, value):
-        value = self.validate_sub(value, key='field', sequence=True)
+        value = self.validate_sub(value, key='field')
+        self.validate_sequence_plain(value, form=True)
         value = self.validated_form_fields(value)
 
         for item in value:

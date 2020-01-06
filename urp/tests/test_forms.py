@@ -77,7 +77,7 @@ class PostNewForm(PostNew):
                                                'field': 'boolfieldOne',
                                                'mandatory': False,
                                                'instruction': 'text',
-                                               'sequence': 0}]}
+                                               'sequence': 1}]}
         self.invalid_payloads = [dict(),
                                  {'form': ''}]
         self.execute = True
@@ -129,7 +129,7 @@ class GetOneForm(GetOne):
                                                 'field': 'boolfieldOne',
                                                 'mandatory': False,
                                                 'instruction': 'text',
-                                                'sequence': 0}]}
+                                                'sequence': 1}]}
         self.execute = True
         self.pre_data = [{'data': {'tag': 'mytag'},
                           'path': reverse('tags-list'),
@@ -180,7 +180,7 @@ class PostNewVersionForm(PostNewVersion):
                                                 'field': 'boolfieldOne',
                                                 'mandatory': False,
                                                 'instruction': 'text',
-                                                'sequence': 0}]}
+                                                'sequence': 1}]}
         self.fail_object_draft_data = {'form': 'testfail',
                                        'workflow': 'myworkflow',
                                        'tag': 'mytag',
@@ -207,7 +207,7 @@ class PostNewVersionForm(PostNewVersion):
                                                         'field': 'boolfieldOne',
                                                         'mandatory': False,
                                                         'instruction': 'text',
-                                                        'sequence': 0}]}
+                                                        'sequence': 1}]}
         self.fail_object_circulation_data = {'form': 'testcircfail',
                                              'workflow': 'myworkflow',
                                              'tag': 'mytag',
@@ -234,7 +234,7 @@ class PostNewVersionForm(PostNewVersion):
                                                               'field': 'boolfieldOne',
                                                               'mandatory': False,
                                                               'instruction': 'text',
-                                                              'sequence': 0}]}
+                                                              'sequence': 1}]}
         self.execute = True
         self.pre_data = [{'data': {'tag': 'mytag'},
                           'path': reverse('tags-list'),
@@ -280,7 +280,7 @@ class DeleteOneForm(DeleteOne):
                                                 'field': 'boolfieldOne',
                                                 'mandatory': False,
                                                 'instruction': 'text',
-                                                'sequence': 0}]}
+                                                'sequence': 1}]}
         self.execute = True
         self.pre_data = [{'data': {'tag': 'mytag'},
                           'path': reverse('tags-list'),
@@ -326,7 +326,7 @@ class PatchOneForm(PatchOne):
                                                 'field': 'boolfieldOne',
                                                 'mandatory': False,
                                                 'instruction': 'text',
-                                                'sequence': 0}]}
+                                                'sequence': 1}]}
         self.valid_payload = {'form': 'test',
                               'workflow': 'myworkflow',
                               'tag': 'mytag',
@@ -348,7 +348,7 @@ class PatchOneForm(PatchOne):
                                                'field': 'boolfieldOne',
                                                'mandatory': True,
                                                'instruction': 'text',
-                                               'sequence': 0}]}
+                                               'sequence': 1}]}
         self.invalid_payload = {'form': 'test',
                                 'workflow': 'myworkflowdddd',
                                 'tag': 'mytag'}
@@ -407,7 +407,7 @@ class PatchOneStatusForm(PatchOneStatus):
                                                 'field': 'boolfieldOne',
                                                 'mandatory': False,
                                                 'instruction': 'text',
-                                                'sequence': 0}]}
+                                                'sequence': 1}]}
         self.execute = True
         self.sub_table = False
         self.pre_data = [{'data': {'tag': 'mytag'},

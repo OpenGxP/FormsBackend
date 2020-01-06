@@ -53,7 +53,9 @@ class WorkflowsReadWriteSerializer(GlobalReadWriteSerializer):
         return value
 
     def validate_steps(self, value):
-        value = self.validate_sub(value, key='step', sequence=True, predecessors=True)
+        value = self.validate_sub(value, key='step', parent=True)
+        self.validate_sequence_plain(value)
+        self.validate_predecessors(value, key='step')
         allowed_roles = Roles.objects.get_by_natural_key_productive_list('role')
 
         for item in value:

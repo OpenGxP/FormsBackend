@@ -64,6 +64,8 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
 
         # sub elements
         self.sub_parents = []
+        # sequence check
+        self.global_sequence_check = {}
 
         self._signature = None
         self.now = timezone.now()
@@ -128,11 +130,55 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
             return True
         return
 
-    def validate_sub(self, value, key, sequence=None, predecessors=None, parent=None):
-        unique_check = []
-        sequence_check = []
+    def validate_predecessors(self, value, key):
         predecessors_check = []
-        has_sequence_zero = False
+        for item in value:
+            # predecessors are optional
+            if 'predecessors' in item.keys():
+                if not isinstance(item['predecessors'], list):
+                    raise serializers.ValidationError('Predecessor not a valid array.')
+                predecessors_check.append(item['predecessors'])
+                # validate predecessors for string items
+                for pred in item['predecessors']:
+                    if not isinstance(pred, str):
+                        raise serializers.ValidationError('Predecessors must be strings.')
+
+                # FO-191: unique items shall not self reference
+                if item[key] in item['predecessors']:
+                    raise serializers.ValidationError('{} can not be self referenced in predecessors.'
+                                                      .format(key.capitalize()))
+
+        # check that predecessors exist
+        for item in predecessors_check:
+            for each in item:
+                # FO-196: treat [""] array as no predecessor
+                if each == '':
+                    continue
+                if each not in self.sub_parents:
+                    raise serializers.ValidationError('Predecessors must only contain valid {}s.'.format(key))
+
+    def validate_sequence_plain(self, value, form=None):
+        sequence_check = []
+        for item in value:
+            # validate that mandatory field sequence is in payload and collect for later unique check
+            if 'sequence' not in item.keys():
+                raise serializers.ValidationError('Sequence is required.')
+            if not isinstance(item['sequence'], int):
+                raise serializers.ValidationError('Sequence field must be integer.')
+            sequence_check.append(item['sequence'])
+            if form:
+                try:
+                    self.global_sequence_check[item['section']].append(item['sequence'])
+                except KeyError:
+                    self.global_sequence_check[item['section']] = [item['sequence']]
+
+        # validate sequence unique characteristic
+        if not form:
+            if len(sequence_check) != len(set(sequence_check)):
+                raise serializers.ValidationError('Sequence must be unique.')
+
+    def validate_sub(self, value, key, parent=None):
+        unique_check = []
 
         for item in value:
             if key not in item.keys():
@@ -147,69 +193,9 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                     'Not allowed to use {} {}. {}'.format(key, item[key], e.detail[0]))
             unique_check.append(item[key])
 
-            if sequence:
-                # validate that mandatory field sequence is in payload and collect for later unique check
-                if 'sequence' not in item.keys():
-                    raise serializers.ValidationError('Sequence is required.')
-                if not isinstance(item['sequence'], int):
-                    raise serializers.ValidationError('Sequence field must be integer.')
-                sequence_check.append(item['sequence'])
-
-            if predecessors:
-                # predecessors are optional
-                if 'predecessors' in item.keys():
-                    if not isinstance(item['predecessors'], list):
-                        raise serializers.ValidationError('Predecessor not a valid array.')
-                    predecessors_check.append(item['predecessors'])
-                    # validate predecessors for string items
-                    for pred in item['predecessors']:
-                        if not isinstance(pred, str):
-                            raise serializers.ValidationError('Predecessors must be strings.')
-
-            if sequence and predecessors:
-                # check that all unique items except first have predecessors
-                if item['sequence'] != 0:
-                    if 'predecessors' not in item.keys():
-                        raise serializers.ValidationError('{}s after initial step need predecessors.'
-                                                          .format(key.capitalize()))
-                    # FO-191: unique items shall not self reference
-                    if item[key] in item['predecessors']:
-                        raise serializers.ValidationError('{} can not be self referenced in predecessors.'
-                                                          .format(key.capitalize()))
-
-            if sequence:
-                # check if item has sequence zero, if it may not have predecessors
-                # skip if sequence 0 was already checked
-                if not has_sequence_zero:
-                    if item['sequence'] == 0:
-                        has_sequence_zero = True
-                        # FO-196: treat [""] array as no predecessor unique
-                        if 'predecessors' in item.keys() and (item['predecessors'] and item['predecessors'][0] != ''):
-                            raise serializers.ValidationError('First {} can not have predecessors.'
-                                                              .format(key.capitalize()))
-
-        if sequence:
-            # raise error if no unique item was sequence 0
-            if not has_sequence_zero:
-                raise serializers.ValidationError('First {} without predecessors required.'.format(key))
-
-            # validate sequence unique characteristic
-            if len(sequence_check) != len(set(sequence_check)):
-                raise serializers.ValidationError('Sequence of {} must be unique.'.format(key))
-
         # validate key unique characteristic
         if len(unique_check) != len(set(unique_check)):
             raise serializers.ValidationError('{} must be unique.'.format(key.capitalize()))
-
-        if predecessors:
-            # validate predecessors
-            for item in predecessors_check:
-                for each in item:
-                    # FO-196: treat [""] array as no predecessor
-                    if each == '':
-                        continue
-                    if each not in unique_check:
-                        raise serializers.ValidationError('Predecessors must only contain valid {}s.'.format(key))
 
         if parent:
             self.sub_parents = unique_check
