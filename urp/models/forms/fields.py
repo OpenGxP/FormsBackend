@@ -78,19 +78,6 @@ class FormsFieldsLog(GlobalModelLog):
     # hashing
     HASH_SEQUENCE = LOG_HASH_SEQUENCE + ['section', 'field', 'instruction', 'mandatory', 'sequence', 'version']
 
-
-    """"# integrity check
-    def _verify_checksum(self, to_hash_payload):
-        to_hash = 'id:{};lifecycle_id:{};user:{};timestamp:{};action:{};comment:{};way:{};' \
-                  'section:{};field:{};instruction:{};mandatory:{};sequence:{};version:{};' \
-            .format(self.id, self.lifecycle_id, self.user, self.timestamp, self.action, self.comment, self.way,
-                    self.section, self.field, self.instruction, self.mandatory, self.sequence, self.version)
-        to_hash += '{}{}'.format(to_hash_payload, settings.SECRET_HASH_KEY)
-        try:
-            return HASH_ALGORITHM.verify(to_hash, self.checksum)
-        except ValueError:
-            return False"""
-
     valid_to = None
     valid_from = None
 
@@ -142,9 +129,3 @@ class FormsFields(GlobalModel):
 
     class Meta:
         abstract = True
-
-    # lookup fields
-    LOOKUP = {'section': {'model': FormsSections,
-                          'key': 'section',
-                          'multi': False,
-                          'method': 'select'}}

@@ -27,6 +27,7 @@ from jinja2 import Template
 # django imports
 from django.conf import settings
 from django.apps import apps
+from django.db.models.base import ModelBase
 from django.core.exceptions import ValidationError, ImproperlyConfigured
 
 
@@ -265,3 +266,23 @@ def str_list_change_single(data, target):
     # in case of false target raise error, only internal
     else:
         raise ValueError('Target must be of type "str" or "list".')
+
+
+def meta_lookup(data, model, f_name, sub=None):
+    if model.LOOKUP:
+        if f_name in model.LOOKUP:
+            if sub:
+                target = data['post'][sub][f_name]
+            else:
+                target = data['post'][f_name]
+            data_model = model.LOOKUP[f_name]['model']
+
+            if not isinstance(data_model, ModelBase):
+                target['lookup'] = {'data': data_model,
+                                    'multi': model.LOOKUP[f_name]['multi'],
+                                    'method': model.LOOKUP[f_name]['method']}
+            else:
+                target['lookup'] = {'data': getattr(data_model,
+                                    'objects').get_by_natural_key_productive_list(model.LOOKUP[f_name]['key']),
+                                    'multi': model.LOOKUP[f_name]['multi'],
+                                    'method': model.LOOKUP[f_name]['method']}

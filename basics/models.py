@@ -28,7 +28,7 @@ from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
 
 # app imports
-from .custom import HASH_ALGORITHM, generate_checksum, generate_to_hash, str_list_change
+from .custom import HASH_ALGORITHM, generate_checksum, generate_to_hash, str_list_change, meta_lookup
 
 
 ##########
@@ -117,6 +117,36 @@ class GlobalManager(models.Manager):
 
     # comments an electronic signatures
     COMMENT_SIGNATURE = ('com', 'sig_user', 'sig_pw',)
+
+    # generic method to add model specific meta information
+    def meta(self, data):
+        pass
+
+    def meta_sub(self, data):
+        sub_models = self.model.sub_tables()
+        for model in sub_models:
+            exclude = model.objects.POST_BASE_EXCLUDE + model.objects.POST_MODEL_EXCLUDE
+            fields = [i for i in model._meta.get_fields() if i.name not in exclude]
+            table_field = sub_models[model].replace('linked_', '')
+            data['post'][table_field] = {}
+            for f in fields:
+                data['post'][table_field][f.name] = {'verbose_name': f.verbose_name,
+                                                     'help_text': f.help_text,
+                                                     'max_length': f.max_length,
+                                                     'data_type': f.get_internal_type(),
+                                                     'required': not f.blank,
+                                                     'unique': f.unique,
+                                                     'lookup': None,
+                                                     'editable': True}
+
+                if f.name == model.UNIQUE:
+                    data['post'][table_field][f.name]['unique'] = True
+
+                # create lookup data
+                meta_lookup(data=data, model=model, f_name=f.name, sub=table_field)
+
+    def meta_field(self, data, f_name):
+        pass
 
     def get_previous_version(self, instance):
         try:
@@ -221,8 +251,8 @@ class GlobalModel(models.Model):
     HASH_SEQUENCE = []
     UNIQUE = None
 
-    @property
-    def sub_tables(self):
+    @staticmethod
+    def sub_tables():
         return {}
 
     def unique_id(self):
@@ -549,6 +579,15 @@ class SettingsManager(GlobalManager):
 
     # meta
     GET_MODEL_ORDER = SettingsLogManager.GET_MODEL_ORDER
+
+    def meta_field(self, data, f_name):
+        # settings non-editable field for better visualisation
+        if f_name == 'key':
+            data['post'][f_name]['editable'] = False
+            data['post'][f_name]['required'] = False
+        if f_name == 'default':
+            data['post'][f_name]['editable'] = False
+            data['post'][f_name]['required'] = False
 
     @property
     def auth_maxloginattempts(self):

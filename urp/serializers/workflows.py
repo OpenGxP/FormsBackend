@@ -77,7 +77,7 @@ class WorkflowsReadWriteSerializer(GlobalReadWriteSerializer):
         return value
 
     def create_specific(self, validated_data, obj):
-        for table, key in obj.sub_tables.items():
+        for table, key in obj.sub_tables().items():
             self.model.objects.create_sub_record(obj=obj, validated_data=validated_data, key=key,
                                                  sub_model=table)
         return validated_data, obj
@@ -101,7 +101,7 @@ class WorkflowsNewVersionStatusSerializer(GlobalReadWriteSerializer):
             model.objects.GET_BASE_CALCULATED + model.objects.COMMENT_SIGNATURE
 
     def create_specific(self, validated_data, obj):
-        for table, key in obj.sub_tables.items():
+        for table, key in obj.sub_tables().items():
             validated_data[key] = getattr(self.instance, '{}_values'.format(key))
             self.model.objects.create_sub_record(obj=obj, validated_data=validated_data, key=key,
                                                  sub_model=table, new_version=True, instance=self.instance)
@@ -115,7 +115,7 @@ class WorkflowsDeleteSerializer(GlobalReadWriteSerializer):
         fields = model.objects.COMMENT_SIGNATURE
 
     def delete_specific(self, fields):
-        for table, key in self.instance.sub_tables.items():
+        for table, key in self.instance.sub_tables().items():
             linked_records = getattr(self.instance, '{}_values'.format(key))
             for record in linked_records:
                 create_log_record(model=table, context=self.context, obj=self.instance, now=self.now,

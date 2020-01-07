@@ -224,7 +224,7 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         return value
 
     def update_sub(self, validated_data, instance):
-        for table, key in instance.sub_tables.items():
+        for table, key in instance.sub_tables().items():
             # new / updated items
             existing_items = []
             if key in validated_data:
@@ -371,8 +371,8 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 create_log_record(model=model, context=self.context, obj=obj, validated_data=validated_data,
                                   action=settings.DEFAULT_LOG_CREATE, signature=self.signature, now=self.now)
 
-                if obj.sub_tables:
-                    for table, key in obj.sub_tables.items():
+                if obj.sub_tables():
+                    for table, key in obj.sub_tables().items():
                         if key in validated_data:
                             for record in validated_data[key]:
                                 create_log_record(model=table, context=self.context, obj=obj, now=self.now,

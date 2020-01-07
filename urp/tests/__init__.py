@@ -327,11 +327,11 @@ def log_records(model, action, data, access_log=None, _status=True, sub_tables=T
         log_model = access_log
 
     # build query structure if sub_table
-    if model.sub_tables:
+    if model.sub_tables():
         dummy_obj = model()
         # parent table
         data_parent = data.copy()
-        for value in dummy_obj.sub_tables.values():
+        for value in dummy_obj.sub_tables().values():
             field = value.replace('linked_', '')
             del data_parent[field]
         try:
@@ -341,7 +341,7 @@ def log_records(model, action, data, access_log=None, _status=True, sub_tables=T
 
         # sub tables, not for status
         if sub_tables:
-            for table, key in dummy_obj.sub_tables.items():
+            for table, key in dummy_obj.sub_tables().items():
                 field = key.replace('linked_', '')
                 log_table = table.objects.LOG_TABLE
                 for record in data[field]:

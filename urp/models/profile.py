@@ -90,6 +90,11 @@ class ProfileManager(GlobalManager):
                        'value')
     POST_MODEL_EXCLUDE = ('default',)
 
+    def meta_field(self, data, f_name):
+        if f_name in ['key', 'username', 'default', 'human_readable']:
+            data['post'][f_name]['editable'] = False
+            data['post'][f_name]['required'] = False
+
     # generate profile
     def generate_profile(self, username, log_user=None):
         now = timezone.now()

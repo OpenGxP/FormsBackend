@@ -82,6 +82,9 @@ class WorkflowsManager(GlobalManager):
     GET_MODEL_ORDER = ('workflow',
                        'tag')
 
+    def meta(self, data):
+        self.meta_sub(data=data)
+
 
 # table
 class Workflows(GlobalModel):
@@ -168,8 +171,8 @@ class Workflows(GlobalModel):
         WorkflowsSteps.objects.filter(lifecycle_id=self.lifecycle_id, version=self.version).delete()
         self.delete()
 
-    @property
-    def sub_tables(self):
+    @staticmethod
+    def sub_tables():
         return {WorkflowsSteps: 'linked_steps'}
 
     # manager

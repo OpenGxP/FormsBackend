@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # django imports
 from django.db import models
 from django.contrib.auth.hashers import make_password, check_password
+from django.contrib.auth.password_validation import password_validators_help_texts
 
 # app imports
 from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, CHAR_MAX
@@ -49,6 +50,25 @@ class VaultManager(GlobalManager):
                           'answer_one',
                           'answer_two',
                           'answer_three',)
+
+    def meta(self, data):
+        # add calculated fields for manual password reset
+        data['post']['password_new'] = {'verbose_name': 'New password',
+                                        'help_text': '{}'.format(password_validators_help_texts()),
+                                        'max_length': CHAR_MAX,
+                                        'data_type': 'PasswordField',
+                                        'required': True,
+                                        'unique': False,
+                                        'lookup': None,
+                                        'editable': True}
+        data['post']['password_new_verification'] = {'verbose_name': 'New password verification',
+                                                     'help_text': '{}'.format(password_validators_help_texts()),
+                                                     'max_length': CHAR_MAX,
+                                                     'data_type': 'PasswordField',
+                                                     'required': True,
+                                                     'unique': False,
+                                                     'lookup': None,
+                                                     'editable': True}
 
 
 class Vault(GlobalModel):

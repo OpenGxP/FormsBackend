@@ -18,9 +18,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # app imports
 from urp.decorators import auth_required
-from basics.models import CHAR_MAX, Settings
-from basics.custom import get_model_by_string
-from urp.models.workflows.sub.steps import WorkflowsSteps
+from basics.models import Settings
+from basics.custom import get_model_by_string, meta_lookup
 
 # rest imports
 from rest_framework.response import Response
@@ -28,8 +27,6 @@ from rest_framework.decorators import api_view
 from rest_framework import status as http_status
 
 # django imports
-from django.contrib.auth.password_validation import password_validators_help_texts
-from django.db.models.base import ModelBase
 from django.core.exceptions import ValidationError
 from django.conf import settings
 
@@ -136,7 +133,7 @@ def meta_list(request, dialog):
 
         # add post information
         if dialog in ['users', 'roles', 'ldap', 'settings', 'sod', 'email', 'passwords', 'tags', 'spaces', 'lists',
-                      'workflows', 'profile', 'forms']:
+                      'workflows', 'profile', 'forms', 'execution']:
             exclude = model.objects.POST_BASE_EXCLUDE + model.objects.POST_MODEL_EXCLUDE
             fields = [i for i in model._meta.get_fields() if i.name not in exclude]
             for f in fields:
@@ -152,88 +149,17 @@ def meta_list(request, dialog):
                     data['post'][f.name]['data_type'] = 'PasswordField'
 
                 # create lookup data
-                if model.LOOKUP:
-                    if f.name in model.LOOKUP:
-                        data_model = model.LOOKUP[f.name]['model']
-                        if not isinstance(data_model, ModelBase):
-                            data['post'][f.name]['lookup'] = {
-                                'data': data_model,
-                                'multi': model.LOOKUP[f.name]['multi'],
-                                'method': model.LOOKUP[f.name]['method']}
-                        else:
-                            data['post'][f.name]['lookup'] = {
-                                'data': data_model.objects.get_by_natural_key_productive_list(
-                                    model.LOOKUP[f.name]['key']),
-                                'multi': model.LOOKUP[f.name]['multi'],
-                                'method': model.LOOKUP[f.name]['method']}
+                meta_lookup(data=data, model=model, f_name=f.name)
 
-                # settings non-editable field for better visualisation
-                if dialog == 'settings' and f.name == 'key':
-                    data['post'][f.name]['editable'] = False
-                    data['post'][f.name]['required'] = False
-                if dialog == 'settings' and f.name == 'default':
-                    data['post'][f.name]['editable'] = False
-                    data['post'][f.name]['required'] = False
-
-                # profile settings
-                if dialog == 'profile':
-                    if f.name in ['key', 'username', 'default', 'human_readable']:
-                        data['post'][f.name]['editable'] = False
-                        data['post'][f.name]['required'] = False
+                # model specific field properties
+                model.objects.meta_field(data, f.name)
 
                 # for unique fields that shall not be updated during life cycle editable must be false
                 if f.name == model.UNIQUE:
                     data['post'][f.name]['editable'] = False
 
-            if dialog == 'workflows':
-                exclude = WorkflowsSteps.objects.POST_BASE_EXCLUDE + WorkflowsSteps.objects.POST_MODEL_EXCLUDE
-                fields = [i for i in WorkflowsSteps._meta.get_fields() if i.name not in exclude]
-                data['post']['steps'] = {}
-                for f in fields:
-                    data['post']['steps'][f.name] = {'verbose_name': f.verbose_name,
-                                                     'help_text': f.help_text,
-                                                     'max_length': f.max_length,
-                                                     'data_type': f.get_internal_type(),
-                                                     'required': not f.blank,
-                                                     'unique': f.unique,
-                                                     'lookup': None,
-                                                     'editable': True}
-
-                    if f.name == 'role':
-                        data_model = WorkflowsSteps.LOOKUP[f.name]['model']
-                        data['post']['steps'][f.name]['lookup'] = {'data': data_model.objects.
-                            get_by_natural_key_productive_list(WorkflowsSteps.LOOKUP[f.name]['key']),
-                                                                   'multi': WorkflowsSteps.LOOKUP[f.name]['multi'],
-                                                                   'method': WorkflowsSteps.LOOKUP[f.name]['method']}
-
-            if dialog == 'users':
-                # add calculated field "password_verification"
-                data['post']['password_verification'] = {'verbose_name': 'Password verification',
-                                                         'help_text': '{}'.format(password_validators_help_texts()),
-                                                         'max_length': CHAR_MAX,
-                                                         'data_type': 'PasswordField',
-                                                         'required': True,
-                                                         'unique': False,
-                                                         'lookup': None,
-                                                         'editable': True}
-            if dialog == 'passwords':
-                # add calculated fields for manual password reset
-                data['post']['password_new'] = {'verbose_name': 'New password',
-                                                'help_text': '{}'.format(password_validators_help_texts()),
-                                                'max_length': CHAR_MAX,
-                                                'data_type': 'PasswordField',
-                                                'required': True,
-                                                'unique': False,
-                                                'lookup': None,
-                                                'editable': True}
-                data['post']['password_new_verification'] = {'verbose_name': 'New password verification',
-                                                             'help_text': '{}'.format(password_validators_help_texts()),
-                                                             'max_length': CHAR_MAX,
-                                                             'data_type': 'PasswordField',
-                                                             'required': True,
-                                                             'unique': False,
-                                                             'lookup': None,
-                                                             'editable': True}
+            # model specific fields and properties
+            model.objects.meta(data)
 
             # data regarding comment and signature settings
             if dialog not in ['profile']:

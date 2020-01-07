@@ -89,6 +89,9 @@ class FormsManager(GlobalManager):
                        'workflow',
                        'tag')
 
+    def meta(self, data):
+        self.meta_sub(data=data)
+
 
 # table
 class Forms(GlobalModel):
@@ -143,8 +146,8 @@ class Forms(GlobalModel):
         FormsBoolFields.objects.filter(lifecycle_id=self.lifecycle_id, version=self.version).delete()
         self.delete()
 
-    @property
-    def sub_tables(self):
+    @staticmethod
+    def sub_tables():
         return {FormsSections: 'linked_sections',
                 FormsTextFields: 'linked_fields_text',
                 FormsBoolFields: 'linked_fields_bool'}

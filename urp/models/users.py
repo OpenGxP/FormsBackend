@@ -121,6 +121,17 @@ class UsersManager(BaseUserManager, GlobalManager):
     GET_MODEL_ORDER_NO_PW = UsersLogManager.GET_MODEL_ORDER_NO_PW
     POST_MODEL_EXCLUDE = ('initial_password', 'is_active')
 
+    def meta(self, data):
+        # add calculated field "password_verification"
+        data['post']['password_verification'] = {'verbose_name': 'Password verification',
+                                                 'help_text': '{}'.format(password_validators_help_texts()),
+                                                 'max_length': CHAR_MAX,
+                                                 'data_type': 'PasswordField',
+                                                 'required': True,
+                                                 'unique': False,
+                                                 'lookup': None,
+                                                 'editable': True}
+
     @property
     def existing_users(self):
         return self.all().values_list('username', flat=True)

@@ -153,6 +153,6 @@ class Execution(GlobalModel):
     def delete_me(self):
         self.delete()
 
-    @property
-    def sub_tables(self):
+    @staticmethod
+    def sub_tables():
         return {}
