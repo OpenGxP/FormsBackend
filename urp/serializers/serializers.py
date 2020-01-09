@@ -137,11 +137,14 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
             if 'predecessors' in item.keys():
                 if not isinstance(item['predecessors'], list):
                     raise serializers.ValidationError('Predecessor not a valid array.')
-                predecessors_check.append(item['predecessors'])
+                if not item['predecessors']:
+                    del item['predecessors']
+                    continue
                 # validate predecessors for string items
                 for pred in item['predecessors']:
                     if not isinstance(pred, str):
                         raise serializers.ValidationError('Predecessors must be strings.')
+                predecessors_check.append(item['predecessors'])
 
                 # FO-191: unique items shall not self reference
                 if item[key] in item['predecessors']:
