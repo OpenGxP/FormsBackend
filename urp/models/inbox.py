@@ -76,11 +76,8 @@ class Inbox(GlobalModel):
     MODEL_CONTEXT = 'Inbox'
     perms = None
 
-    # unique field
-    UNIQUE = 'object'
-
     class Meta:
-        unique_together = ('context', 'object')
+        unique_together = ('context', 'object', 'version', 'users')
 
     # integrity check
     def verify_checksum(self):

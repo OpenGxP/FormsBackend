@@ -85,8 +85,8 @@ class Prerequisites(object):
         if response.status_code == status.HTTP_201_CREATED:
             return response.data
         else:
-            raise AssertionError('Error Code: {}, Can not create manual prerequisite record.'
-                                 .format(response.status_code))
+            raise AssertionError('Error Code: {}, Can not create manual prerequisite record.\n'
+                                 'Error Message: {}'.format(response.status_code, response.data))
 
     def create_record_manual_status(self, ext_client, data, path):
         # authenticate
@@ -96,14 +96,14 @@ class Prerequisites(object):
         # get API response
         response = ext_client.post(path, data=data, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
         if response.status_code != status.HTTP_201_CREATED:
-            raise AssertionError('Error Code: {}, Can not create manual prerequisite record.'
-                                 .format(response.status_code))
+            raise AssertionError('Error Code: {}, Can not create manual prerequisite record.\n'
+                                 'Error Message: {}'.format(response.status_code, response.data))
         # start circulation
         status_path = '{}/{}/1/circulation'.format(path, response.data['lifecycle_id'])
         response_circ = ext_client.patch(status_path, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
         if response_circ.status_code != status.HTTP_200_OK:
-            raise AssertionError('Error Code: {}, Can not circulate manual prerequisite record.'
-                                 .format(response.status_code))
+            raise AssertionError('Error Code: {}, Can not circulate manual prerequisite record.\n'
+                                 'Error Message: {}'.format(response.status_code, response.data))
         # auth other user and set productive
         self.auth_two(ext_client)
         # get csrf
@@ -111,8 +111,8 @@ class Prerequisites(object):
         status_path = '{}/{}/1/productive'.format(path, response.data['lifecycle_id'])
         response_prod = ext_client.patch(status_path, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
         if response_prod.status_code != status.HTTP_200_OK:
-            raise AssertionError('Error Code: {}, Can not approve manual prerequisite record.'
-                                 .format(response.status_code))
+            raise AssertionError('Error Code: {}, Can not approve manual prerequisite record.\n'
+                                 'Error Message: {}'.format(response.status_code, response.data))
         return response_prod.data
 
     def role_superuser(self):

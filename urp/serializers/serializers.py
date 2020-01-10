@@ -24,7 +24,7 @@ from rest_framework import serializers
 
 # custom imports
 from urp.models import Permissions, Users, Roles, AccessLog, PermissionsLog, LDAP, Vault
-from basics.custom import generate_checksum, generate_to_hash, value_to_int, str_list_change
+from basics.custom import generate_checksum, generate_to_hash, value_to_int
 from basics.models import Status, AVAILABLE_STATUS, StatusLog, CentralLog, Settings, CHAR_DEFAULT
 from urp.decorators import require_STATUS_CHANGE, require_POST, require_DELETE, require_PATCH, require_NONE, \
     require_NEW_VERSION, require_status, require_LDAP, require_USERS, require_NEW, require_SETTINGS, require_SOD, \
@@ -80,9 +80,9 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
     valid_to_local = serializers.SerializerMethodField()
 
     # comment and signatures
-    com = serializers.CharField(write_only=True, required=False)
-    sig_user = serializers.CharField(write_only=True, required=False)
-    sig_pw = serializers.CharField(write_only=True, required=False)
+    com = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    sig_user = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    sig_pw = serializers.CharField(write_only=True, required=False, allow_blank=True)
 
     @staticmethod
     def make_list_to_string(value):

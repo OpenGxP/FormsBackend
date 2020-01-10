@@ -90,7 +90,7 @@ class PostNewExecution(PostNew):
                                                     'field': 'boolfieldOne',
                                                     'mandatory': False,
                                                     'instruction': 'text',
-                                                    'sequence': 0}]},
+                                                    'sequence': 1}]},
                           'path': reverse('forms-list'),
                           'status': True}]
 
@@ -144,7 +144,7 @@ class GetOneExecution(GetOne):
                                                     'field': 'boolfieldOne',
                                                     'mandatory': False,
                                                     'instruction': 'text',
-                                                    'sequence': 0}]},
+                                                    'sequence': 1}]},
                           'path': reverse('forms-list'),
                           'status': True}]
 
@@ -193,7 +193,7 @@ class DeleteOneExecution(DeleteOne):
                                                     'field': 'boolfieldOne',
                                                     'mandatory': False,
                                                     'instruction': 'text',
-                                                    'sequence': 0}]},
+                                                    'sequence': 1}]},
                           'path': reverse('forms-list'),
                           'status': True}]
 
@@ -246,6 +246,6 @@ class PatchOneStatusExecution(PatchOneStatus):
                                                     'field': 'boolfieldOne',
                                                     'mandatory': False,
                                                     'instruction': 'text',
-                                                    'sequence': 0}]},
+                                                    'sequence': 1}]},
                           'path': reverse('forms-list'),
                           'status': True}]

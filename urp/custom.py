@@ -86,7 +86,7 @@ def create_log_record(model, context, action, validated_data, signature, obj=Non
         validated_data['comment'] = Settings.objects.core_devalue
     # if comment is provided and empty then devalue
     else:
-        if validated_data['comment'] == '':
+        if validated_data['comment'] == '' or not validated_data['comment']:
             validated_data['comment'] = Settings.objects.core_devalue
 
     # generate hash
@@ -159,7 +159,7 @@ def validate_comment(dialog, data, perm):
             if 'com' not in data:
                 raise serializers.ValidationError('Comment field is mandatory.')
             # validate if comment not empty
-            if data['com'] == '':
+            if data['com'] == '' or not data['com']:
                 raise serializers.ValidationError('Comment is mandatory.')
 
             # change "com" to "comment" for natural log record
@@ -180,6 +180,8 @@ def validate_signature(dialog, data, perm, now=None, logged_in_user=None):
             # validate for signature username and password field
             if 'sig_user' not in data or 'sig_pw' not in data:
                 raise serializers.ValidationError('Signature username and password fields are required.')
+            if data['sig_user'] == '' or not data['sig_user'] or data['sig_pw'] == '' or not data['sig_pw']:
+                raise serializers.ValidationError('Signature username and password are required.')
 
             if logged_in_user:
                 if data['sig_user'] != logged_in_user and settings.DEFAULT_SIGNATURE_USER_LOCK:

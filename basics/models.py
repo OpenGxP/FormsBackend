@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # python imports
 import uuid as python_uuid
+from passlib.hash import sha256_crypt
 
 # django imports
 from django.db import models
@@ -256,14 +257,11 @@ class GlobalModel(models.Model):
         return {}
 
     def unique_id(self):
-        if self.MODEL_ID == '30':
-            return
-        if self.lifecycle_id:
-            return '{}_{}'.format(self.lifecycle_id, self.version)
-        else:
-            if self.UNIQUE:
-                return getattr(self, self.UNIQUE)
-        return
+        if not self.UNIQUE:
+            return sha256_crypt.using(rounds=1000, salt='salt').hash(str(self.id))
+        if self.lifecycle_id and hasattr(self, 'version'):
+            return '{}_{}'.format(self.lifecycle_id, getattr(self, 'version'))
+        return getattr(self, self.UNIQUE)
 
     def _verify_checksum(self, to_hash_payload):
         if not self.lifecycle_id:
