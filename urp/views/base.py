@@ -174,6 +174,8 @@ class GET(object):
                     except IndexError:
                         pass
                     else:
+                        if not isinstance(cond, str) or not isinstance(value, str):
+                            continue
                         if param in ['timestamp', 'valid_from', 'valid_to'] and cond == 'exact':
                             continue
                         if param == 'status':
@@ -188,6 +190,12 @@ class GET(object):
                             q.add(Q(**{'{}__{}'.format(param, cond): value}), and_or)
                         if cond == 'notexact':
                             q.add(~Q(**{'{}__exact'.format(param): value}), and_or)
+                        if cond == 'wildcard':
+                            wild_q = Q()
+                            for x in value.split('*'):
+                                if x:
+                                    wild_q.add(Q(**{'{}__contains'.format(param): x}), Q.AND)
+                            q.add(wild_q, and_or)
 
                 g_q.add(q, g_and_or)
                 continue
