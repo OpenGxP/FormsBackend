@@ -152,6 +152,14 @@ class Forms(GlobalModel):
                 FormsTextFields: 'linked_fields_text',
                 FormsBoolFields: 'linked_fields_bool'}
 
+    def fields_execution(self):
+        data = list()
+        data.append(FormsTextFields.objects.filter(lifecycle_id=self.lifecycle_id,
+                                                   version=self.version).values('section', 'field'))
+        data.append(FormsBoolFields.objects.filter(lifecycle_id=self.lifecycle_id,
+                                                   version=self.version).values('section', 'field'))
+        return data
+
     # manager
     objects = FormsManager()
 

@@ -25,6 +25,8 @@ from urp.serializers import GlobalReadWriteSerializer
 from urp.models.forms.forms import Forms
 from urp.models.execution.execution import Execution, ExecutionLog
 from urp.decorators import require_status
+from urp.models.execution.fields import ExecutionFields
+from basics.custom import generate_checksum, generate_to_hash
 
 
 # read / add / edit
@@ -39,7 +41,9 @@ class ExecutionReadWriteSerializer(GlobalReadWriteSerializer):
     class Meta:
         model = Execution
         extra_kwargs = {'number': {'read_only': True},
-                        'tag': {'read_only': True}}
+                        'tag': {'read_only': True},
+                        'lifecycle_id': {'required': False},
+                        'version': {'required': False}}
         fields = model.objects.GET_MODEL_ORDER + ('status', ) + model.objects.GET_BASE_CALCULATED + \
             model.objects.COMMENT_SIGNATURE
 
@@ -55,11 +59,31 @@ class ExecutionReadWriteSerializer(GlobalReadWriteSerializer):
         raise serializers.ValidationError('Patch is not supported yet.')
 
     def create_specific(self, validated_data, obj):
+        number = Execution.objects.next_number
         validated_data['status_id'] = Status.objects.created
-        validated_data['number'] = Execution.objects.next_number
+        validated_data['number'] = number
 
         if self.form:
             validated_data['tag'] = self.form.tag
+            validated_data['lifecycle_id'] = self.form.lifecycle_id
+            setattr(obj, 'lifecycle_id', self.form.lifecycle_id)
+            validated_data['version'] = self.form.version
+
+        # ad fields execution records for values
+        for fields_set in self.form.fields_execution():
+            for data in fields_set:
+                data['number'] = number
+                value_obj = ExecutionFields()
+
+                hash_sequence = ExecutionFields.HASH_SEQUENCE
+
+                for attr in hash_sequence:
+                    if attr in data.keys():
+                        setattr(value_obj, attr, data[attr])
+                # generate hash
+                to_hash = generate_to_hash(fields=data, hash_sequence=hash_sequence, unique_id=value_obj.id)
+                value_obj.checksum = generate_checksum(to_hash)
+                value_obj.save()
 
         return validated_data, obj
 
@@ -72,7 +96,9 @@ class ExecutionStatusSerializer(GlobalReadWriteSerializer):
         model = Execution
         extra_kwargs = {'number': {'required': False},
                         'form': {'required': False},
-                        'tag': {'required': False}}
+                        'tag': {'required': False},
+                        'lifecycle_id': {'required': False},
+                        'version': {'required': False}}
         fields = model.objects.GET_MODEL_ORDER + ('status', ) + model.objects.GET_BASE_CALCULATED + \
             model.objects.COMMENT_SIGNATURE
 

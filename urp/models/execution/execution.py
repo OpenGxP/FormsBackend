@@ -21,8 +21,10 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 # app imports
-from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, Status, GlobalModelLog, LOG_HASH_SEQUENCE
+from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, Status, GlobalModelLog, LOG_HASH_SEQUENCE, \
+    FIELD_VERSION
 from urp.models.forms.forms import Forms
+from urp.models.execution.fields import ExecutionFields
 
 
 # log manager
@@ -35,8 +37,11 @@ class ExecutionLogManager(GlobalManager):
     # meta
     GET_MODEL_ORDER = ('number',
                        'form',
-                       'tag',)
-    GET_MODEL_NOT_RENDER = ('tag',)
+                       'tag',
+                       'lifecycle_id',
+                       'version',)
+    GET_MODEL_NOT_RENDER = ('tag',
+                            'version',)
 
 
 # log table
@@ -48,8 +53,9 @@ class ExecutionLog(GlobalModelLog):
     tag = models.CharField(_('Tag'), max_length=CHAR_DEFAULT, blank=True)
     # defaults
     status = models.ForeignKey(Status, on_delete=models.PROTECT)
+    version = FIELD_VERSION
 
-    lifecycle_id = None
+    lifecycle_id = models.UUIDField()
     valid_from = None
     valid_to = None
 
@@ -58,8 +64,8 @@ class ExecutionLog(GlobalModelLog):
 
     # integrity check
     def verify_checksum(self):
-        to_hash_payload = 'number:{};form:{};tag:{};status_id:{};'. \
-            format(self.number, self.form, self.tag, self.status_id,)
+        to_hash_payload = 'number:{};form:{};tag:{};status_id:{};version:{};'. \
+            format(self.number, self.form, self.tag, self.status_id, self.version)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
 
     @property
@@ -67,7 +73,7 @@ class ExecutionLog(GlobalModelLog):
         return self.status.status
 
     # hashing
-    HASH_SEQUENCE = LOG_HASH_SEQUENCE + ['number', 'form', 'tag', 'status_id']
+    HASH_SEQUENCE = LOG_HASH_SEQUENCE + ['number', 'form', 'tag', 'status_id', 'version']
 
     # permissions
     MODEL_ID = '41'
@@ -84,9 +90,12 @@ class ExecutionManager(GlobalManager):
     # meta
     GET_MODEL_ORDER = ('number',
                        'form',
-                       'tag',)
+                       'tag',
+                       'lifecycle_id',
+                       'version',)
 
-    GET_MODEL_NOT_RENDER = ('tag',)
+    GET_MODEL_NOT_RENDER = ('tag',
+                            'version',)
     POST_MODEL_EXCLUDE = ('number',
                           'tag',)
 
@@ -107,22 +116,23 @@ class Execution(GlobalModel):
     tag = models.CharField(_('Tag'), max_length=CHAR_DEFAULT, blank=True)
     # defaults
     status = models.ForeignKey(Status, on_delete=models.PROTECT)
+    version = FIELD_VERSION
 
-    lifecycle_id = None
+    lifecycle_id = models.UUIDField()
     valid_from = None
     valid_to = None
 
     # integrity check
     def verify_checksum(self):
-        to_hash_payload = 'number:{};form:{};tag:{};status_id:{};'. \
-            format(self.number, self.form, self.tag, self.status_id)
+        to_hash_payload = 'number:{};form:{};tag:{};status_id:{};version:{};'. \
+            format(self.number, self.form, self.tag, self.status_id, self.version)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
 
     # manager
     objects = ExecutionManager()
 
     # hashing
-    HASH_SEQUENCE = ['number', 'form', 'tag', 'status_id']
+    HASH_SEQUENCE = ['number', 'form', 'tag', 'status_id', 'version']
 
     # permissions
     MODEL_ID = '40'
@@ -135,6 +145,7 @@ class Execution(GlobalModel):
         '05': 'start',
         '06': 'cancel',
         '07': 'complete',
+        '08': 'correct'
     }
 
     # unique field
@@ -152,7 +163,3 @@ class Execution(GlobalModel):
 
     def delete_me(self):
         self.delete()
-
-    @staticmethod
-    def sub_tables():
-        return {}
