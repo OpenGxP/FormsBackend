@@ -26,6 +26,12 @@ import os
 # import base settings
 from .base import *
 
+##############
+# THROTTLING #
+##############
+
+anon = 20
+
 #################
 # LDAP SETTINGS #
 #################
@@ -128,7 +134,13 @@ REST_FRAMEWORK = {
     'NON_FIELD_ERRORS_KEY': 'validation_errors',
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.SessionAuthentication'
-    ]
+    ],
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle'
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '{}/min'.format(anon)
+    }
 }
 
 
