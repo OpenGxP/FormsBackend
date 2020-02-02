@@ -30,7 +30,7 @@ from .base import *
 # THROTTLING #
 ##############
 
-anon = 20
+anon = 100
 
 #################
 # LDAP SETTINGS #

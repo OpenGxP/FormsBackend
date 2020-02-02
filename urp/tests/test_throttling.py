@@ -40,7 +40,7 @@ class AnonRateThrottle(APITestCase):
 
     def test_429_throttling(self):
         data = {'username': self.prerequisites.username, 'password': self.prerequisites.password}
-        for x in range(20):
+        for x in range(100):
             # get API response
             response = self.client.post(self.path, data=data, content_type='application/json')
             self.assertEqual(response.status_code, status.HTTP_200_OK)
