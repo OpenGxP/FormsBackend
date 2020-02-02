@@ -161,5 +161,9 @@ class Execution(GlobalModel):
     def get_status(self):
         return self.status.status
 
+    @property
+    def linked_fields_values(self):
+        return ExecutionFields.objects.filter(number__exact=self.number).all()
+
     def delete_me(self):
         self.delete()

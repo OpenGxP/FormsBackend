@@ -191,6 +191,9 @@ def private_root_view(request):
                                                               'log': {'abs': reverse('execution-log-list',
                                                                                      request=request),
                                                                       'rel': 'logs/execution'},
+                                                              'log-values': {'abs': reverse('execution-values-log-list',
+                                                                                            request=request),
+                                                                             'rel': 'logs/execution_values'},
                                                               'post': True,
                                                               'patch': False,
                                                               'delete': True,
@@ -271,7 +274,12 @@ def private_root_view(request):
                                                  'execution': {'title': 'Execution',
                                                                'url': {'abs': reverse('execution-log-list',
                                                                                       request=request),
-                                                                       'rel': 'logs/execution'}}
+                                                                       'rel': 'logs/execution'}},
+                                                 'execution_values': {'title': 'Execution Values',
+                                                                      'url': {'abs': reverse(
+                                                                          'execution-values-log-list',
+                                                                          request=request),
+                                                                              'rel': 'logs/execution_values'}}
                                                  }}}}
 
     return Response(root)

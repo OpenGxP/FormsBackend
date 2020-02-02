@@ -568,6 +568,14 @@ class StatusView(BaseView):
 
 
 class RTDView(StatusView):
+    def __init__(self, ser_value, model_exec, model_exec_log, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # serializers
+        self.ser_value = ser_value
+        self.model_exec = model_exec
+        self.model_exec_log = model_exec_log
+
     def detail(self, request, number, lifecycle_id=None, version=None, tags=True):
         # permissions
         perm_read = '{}.01'.format(self.model.MODEL_ID)
@@ -656,3 +664,48 @@ class RTDView(StatusView):
             if status == 'complete':
                 return patch_complete(request)
             return patch_base(request)
+
+    def value(self, request, number, section, field):
+        # permissions
+        perm_patch = '{}.03'.format(self.model.MODEL_ID)
+        perm_correct = '{}.08'.format(self.model.MODEL_ID)
+
+        # serializer
+        ser_value = self.ser_value
+
+        @perm_required(perm_patch)
+        @csrf_protect
+        def patch(_request):
+            return update(request, ser_value, query)
+
+        @perm_required(perm_correct)
+        @perm_required(perm_patch)
+        @csrf_protect
+        def patch_correct(_request):
+            return update(request, ser_value, query)
+
+        try:
+            query = self.model_exec.objects.get(number__exact=number, section__exact=section, field__exact=field)
+        except self.model_exec.DoesNotExist:
+            return Response(status=http_status.HTTP_404_NOT_FOUND)
+        except ValidationError:
+            return Response(status=http_status.HTTP_400_BAD_REQUEST)
+
+        if request.method == 'PATCH':
+            if getattr(query, 'value'):
+                return patch_correct(request)
+            else:
+                return patch(request)
+
+    def list_log_value(self, request, tags=True, ext_filter=None):
+        log_model = self.model_exec.objects.LOG_TABLE
+        perm_read = '{}.01'.format(log_model.MODEL_ID)
+
+        @perm_required(perm_read)
+        def main(_request):
+            get = GET(log_model, request=request, serializer=self.model_exec_log, _filter=ext_filter)
+            if tags:
+                get.tags = True
+            return get.standard
+
+        return main(request)

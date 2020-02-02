@@ -25,8 +25,10 @@ from urp.serializers import GlobalReadWriteSerializer
 from urp.models.forms.forms import Forms
 from urp.models.execution.execution import Execution, ExecutionLog
 from urp.decorators import require_status
-from urp.models.execution.fields import ExecutionFields
+from urp.models.execution.fields import ExecutionFields, ExecutionFieldsLog
 from basics.custom import generate_checksum, generate_to_hash
+from urp.custom import validate_comment, validate_signature
+from urp.fields import ExecutionValuesField
 
 
 # read / add / edit
@@ -37,6 +39,7 @@ class ExecutionReadWriteSerializer(GlobalReadWriteSerializer):
 
     # status field
     status = serializers.CharField(source='get_status', read_only=True)
+    fields_values = ExecutionValuesField(source='linked_fields_values', read_only=True)
 
     class Meta:
         model = Execution
@@ -44,7 +47,7 @@ class ExecutionReadWriteSerializer(GlobalReadWriteSerializer):
                         'tag': {'read_only': True},
                         'lifecycle_id': {'required': False},
                         'version': {'required': False}}
-        fields = model.objects.GET_MODEL_ORDER + ('status', ) + model.objects.GET_BASE_CALCULATED + \
+        fields = model.objects.GET_MODEL_ORDER + ('status', 'fields_values', ) + model.objects.GET_BASE_CALCULATED + \
             model.objects.COMMENT_SIGNATURE
 
     def validate_form(self, value):
@@ -54,9 +57,6 @@ class ExecutionReadWriteSerializer(GlobalReadWriteSerializer):
                 raise serializers.ValidationError('Referenced form "{}" is not valid.'.format(value))
             self.form = form
         return value
-
-    def validate_patch_specific(self, data):
-        raise serializers.ValidationError('Patch is not supported yet.')
 
     def create_specific(self, validated_data, obj):
         number = Execution.objects.next_number
@@ -73,6 +73,7 @@ class ExecutionReadWriteSerializer(GlobalReadWriteSerializer):
         for fields_set in self.form.fields_execution():
             for data in fields_set:
                 data['number'] = number
+                data['tag'] = self.form.tag
                 value_obj = ExecutionFields()
 
                 hash_sequence = ExecutionFields.HASH_SEQUENCE
@@ -149,3 +150,32 @@ class ExecutionLogReadSerializer(GlobalReadWriteSerializer):
         model = ExecutionLog
         fields = model.objects.GET_MODEL_ORDER + ('status', ) + model.objects.GET_BASE_ORDER_LOG + \
             model.objects.GET_BASE_CALCULATED
+
+
+# fields execution
+class ExecutionFieldsWriteSerializer(GlobalReadWriteSerializer):
+    class Meta:
+        model = ExecutionFields
+        fields = ('value',) + model.objects.GET_BASE_CALCULATED + model.objects.COMMENT_SIGNATURE
+
+    def validate_patch_specific(self, data):
+        if Execution.objects.get(number__exact=self.instance.number).status.id != Status.objects.started:
+            raise serializers.ValidationError('Updates are only permitted in status started.')
+
+        if 'value' not in data:
+            raise serializers.ValidationError('Field value is required.')
+        if not isinstance(data['value'], str):
+            raise serializers.ValidationError('Value field must be string.')
+
+        # validate if record has value, then apply correction settings for sig and comment
+        if getattr(self.instance, 'value'):
+            dialog = self.model.MODEL_CONTEXT.lower()
+            validate_comment(dialog=dialog, data=data, perm='correct')
+            self.signature = validate_signature(logged_in_user=self.user, dialog=dialog, data=data, perm='correct')
+
+
+# read field logs
+class ExecutionFieldsLogReadSerializer(GlobalReadWriteSerializer):
+    class Meta:
+        model = ExecutionFieldsLog
+        fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_ORDER_LOG + model.objects.GET_BASE_CALCULATED

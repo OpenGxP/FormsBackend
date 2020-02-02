@@ -46,18 +46,19 @@ class ExecutionFieldsLog(GlobalModelLog):
     # static data
     section = models.CharField(_('Section'), max_length=CHAR_DEFAULT)
     field = models.CharField(_('Field'), max_length=CHAR_DEFAULT)
+    tag = models.CharField(_('Tag'), max_length=CHAR_DEFAULT, blank=True)
 
     # manager
     objects = ExecutionFieldsLogManager()
 
     # integrity check
     def verify_checksum(self):
-        to_hash_payload = 'number:{};section:{};field:{};value:{};'. \
-            format(self.number, self.section, self.field, self.value)
+        to_hash_payload = 'number:{};section:{};field:{};value:{};tag:{};'. \
+            format(self.number, self.section, self.field, self.value, self.tag)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
 
     # hashing
-    HASH_SEQUENCE = LOG_HASH_SEQUENCE + ['number', 'section', 'field', 'value']
+    HASH_SEQUENCE = LOG_HASH_SEQUENCE + ['number', 'section', 'field', 'value', 'tag']
 
     lifecycle_id = None
     valid_to = None
@@ -77,6 +78,7 @@ class ExecutionFieldsManager(GlobalManager):
     LOG_TABLE = ExecutionFieldsLog
     COM_SIG_SETTINGS = False
     NO_PERMISSIONS = True
+    IS_RT = True
 
     # meta
     GET_MODEL_ORDER = ('number',
@@ -93,14 +95,15 @@ class ExecutionFields(GlobalModel):
     # static data
     section = models.CharField(_('Section'), max_length=CHAR_DEFAULT)
     field = models.CharField(_('Field'), max_length=CHAR_DEFAULT)
+    tag = models.CharField(_('Tag'), max_length=CHAR_DEFAULT, blank=True)
 
     # manager
     objects = ExecutionFieldsManager()
 
     # integrity check
     def verify_checksum(self):
-        to_hash_payload = 'number:{};section:{};field:{};value:{};'. \
-            format(self.number, self.section, self.field, self.value)
+        to_hash_payload = 'number:{};section:{};field:{};value:{};tag:{};'. \
+            format(self.number, self.section, self.field, self.value, self.tag)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
 
     valid_to = None
@@ -108,10 +111,22 @@ class ExecutionFields(GlobalModel):
     lifecycle_id = None
 
     # hashing
-    HASH_SEQUENCE = ['number', 'section', 'field', 'value']
+    HASH_SEQUENCE = ['number', 'section', 'field', 'value', 'tag']
 
     # permissions
+    MODEL_ID = '40'
+    MODEL_CONTEXT = 'Execution'
     perms = None
 
     class Meta:
         unique_together = ('number', 'section', 'field')
+
+    @property
+    def user_correction(self):
+        query = ExecutionFieldsLog.objects.filter(number__exact=self.number, field__exact=self.field,
+                                                  section__exact=self.section).order_by('-timestamp').all()
+        if not query:
+            return '', False
+        if len(query) > 1:
+            return query[0].user, True
+        return query[0].user, False

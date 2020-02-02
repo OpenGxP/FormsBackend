@@ -23,13 +23,17 @@ from rest_framework.decorators import api_view
 from urp.views.views import auto_logout
 from urp.models.execution.execution import Execution
 from urp.serializers.execution import ExecutionReadWriteSerializer, ExecutionStatusSerializer, \
-    ExecutionLogReadSerializer, ExecutionDeleteSerializer
+    ExecutionLogReadSerializer, ExecutionDeleteSerializer, ExecutionFieldsWriteSerializer, \
+    ExecutionFieldsLogReadSerializer
 from urp.decorators import auth_required
 from urp.views.base import RTDView
+from urp.models.execution.fields import ExecutionFields
 
 
 view = RTDView(model=Execution, ser_rw=ExecutionReadWriteSerializer, ser_del=ExecutionDeleteSerializer,
-               ser_log=ExecutionLogReadSerializer, ser_st=ExecutionStatusSerializer)
+               ser_log=ExecutionLogReadSerializer, ser_st=ExecutionStatusSerializer,
+               ser_value=ExecutionFieldsWriteSerializer, model_exec=ExecutionFields,
+               model_exec_log=ExecutionFieldsLogReadSerializer)
 
 
 @api_view(['GET', 'POST'])
@@ -39,7 +43,7 @@ def execution_list(request):
     return view.list(request)
 
 
-@api_view(['GET', 'PATCH', 'DELETE'])
+@api_view(['GET', 'DELETE'])
 @auth_required()
 @auto_logout()
 def execution_detail(request, number):
@@ -53,8 +57,22 @@ def execution_status(request, number, status):
     return view.status(request, number, status)
 
 
+@api_view(['PATCH'])
+@auth_required()
+@auto_logout()
+def execution_value(request, number, section, field):
+    return view.value(request, number, section, field)
+
+
 @api_view(['GET'])
 @auth_required()
 @auto_logout()
 def execution_log_list(request):
     return view.list_log(request)
+
+
+@api_view(['GET'])
+@auth_required()
+@auto_logout()
+def list_log_value(request):
+    return view.list_log_value(request)

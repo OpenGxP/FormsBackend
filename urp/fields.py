@@ -64,6 +64,22 @@ class StepsField(serializers.Field):
         return data
 
 
+class ExecutionValuesField(serializers.Field):
+    def to_representation(self, value):
+        values = []
+        for record in value:
+            user, correction = record.user_correction
+            values.append({'section': record.section,
+                           'field': record.field,
+                           'value': record.value,
+                           'user': user,
+                           'correction': correction})
+        return values
+
+    def to_internal_value(self, data):
+        return data
+
+
 class SectionsField(serializers.Field):
     def to_representation(self, value):
         sections = []

@@ -28,7 +28,8 @@ from urp.views.private.forms import forms_list, forms_detail, forms_status, form
     forms_bool_fields_log_list, forms_text_fields_log_list
 from urp.views.private.workflows import workflows_steps_log_list
 from urp.views.private.logs.signatures import signatures_log_list
-from urp.views.private.execution import execution_list, execution_detail, execution_log_list, execution_status
+from urp.views.private.execution import execution_list, execution_detail, execution_log_list, execution_status, \
+    execution_value, list_log_value
 
 # app imports
 from urp.views import permissions_list, roles_list, roles_detail, status_list, \
@@ -91,6 +92,7 @@ urls_private = [
          name='forms-bool-fields-log-list'),
     path('{}logs/profile'.format(settings.BASE_URL), profile_log_list, name='profile-log-list'),
     path('{}logs/execution'.format(settings.BASE_URL), execution_log_list, name='execution-log-list'),
+    path('{}logs/execution_values'.format(settings.BASE_URL), list_log_value, name='execution-values-log-list'),
     # ldap
     path('{}admin/ldap'.format(settings.BASE_URL), ldap_list, name='ldap-list'),
     path('{}admin/ldap/<str:host>'.format(settings.BASE_URL), ldap_detail, name='ldap-detail'),
@@ -144,6 +146,8 @@ urls_private = [
     path('{}rtd/execution/<int:number>'.format(settings.BASE_URL), execution_detail),
     path('{}rtd/execution/<int:number>/<str:status>'.format(settings.BASE_URL), execution_status,
          name='forms-status'),
+    path('{}rtd/execution/<int:number>/<str:section>/<str:field>'.format(settings.BASE_URL),
+         execution_value, name='execution-value'),
     # audit trails
     path('{}at/<str:dialog>/<str:lifecycle_id>'.format(settings.BASE_URL), audit_trail_list, name='audit-trail-list'),
     # meta views

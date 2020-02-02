@@ -70,6 +70,10 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         self._signature = None
         self.now = timezone.now()
 
+        self.user = None
+        if 'user' in self.context.keys():
+            self.user = self.context['user']
+
     valid = serializers.BooleanField(source='verify_checksum', read_only=True)
     # unique attribute for frontend selection
     unique = serializers.CharField(source='unique_id', read_only=True)
