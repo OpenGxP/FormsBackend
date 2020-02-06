@@ -126,3 +126,7 @@ settings.json
 path.py
 start_dev_priv.sh
 /postfix
+
+# key files
+crypto_key.py
+secret_key.py
