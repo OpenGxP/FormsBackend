@@ -25,6 +25,7 @@ import os
 
 # import base settings
 from .base import *
+from basics.custom import value_to_int, value_to_bool, require_file
 
 ##############
 # THROTTLING #
@@ -86,19 +87,9 @@ LOG_DIR = os.path.join(BASE_DIR, 'logs')
 LDAP_CA_CERTS_DIR = SECURITY_DIR + '/ldap/'
 
 
-###########
-# SECRETS #
-###########
-
-# secret keys
-SECRET_KEY = require_file(path=SECURITY_DIR + '/keys/', file_name='SECRET_KEY')
-SECRET_HASH_KEY = require_file(path=SECURITY_DIR + '/keys/', file_name='SECRET')
-
-
 ##########################
 # APPS MODULES AND SO ON #
 ##########################
-
 
 # Application definition
 INSTALLED_APPS = [
@@ -240,7 +231,7 @@ DATABASES = {
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        'NAME': os.path.join(DATA_DIR, 'db.sqlite3'),
     }
 }
 

@@ -109,7 +109,6 @@ venv.bak/
 
 # custom
 private_test.py
-*/keys
 */credentials
 */ldap
 */email

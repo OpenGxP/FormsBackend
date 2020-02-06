@@ -268,7 +268,7 @@ class GlobalModel(models.Model):
             to_hash = 'id:{};'.format(self.id)
         else:
             to_hash = 'id:{};lifecycle_id:{};'.format(self.id, self.lifecycle_id)
-        to_hash += '{}{}'.format(to_hash_payload, settings.SECRET_HASH_KEY)
+        to_hash += '{}{}'.format(to_hash_payload, settings.SECRET_KEY)
         try:
             return HASH_ALGORITHM.verify(to_hash, self.checksum)
         except ValueError:

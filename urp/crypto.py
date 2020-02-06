@@ -23,23 +23,10 @@ from cryptography.fernet import Fernet
 from django.conf import settings
 
 
-CRYPTO_KEY = settings.SECURITY_DIR + '/keys/' + settings.CRYPTO_KEY
-
-
-def get_key():
-    with open(CRYPTO_KEY) as file:
-        key = file.read()
-    return key
-
-
 def encrypt(value):
-    # get key
-    key = get_key()
-
     # encode to bytes
     encoded = value.encode()
-
-    f = Fernet(key)
+    f = Fernet(settings.CRYPTO_KEY)
     encrypted = f.encrypt(encoded)
 
     # decode to string for storing in db
@@ -50,13 +37,10 @@ def encrypt(value):
 
 
 def decrypt(value):
-    # get key
-    key = get_key()
-
     # encode to bytes before decryption
     encoded = value.encode()
 
-    f = Fernet(key)
+    f = Fernet(settings.CRYPTO_KEY)
     decrypted = f.decrypt(encoded)
 
     # decode to string

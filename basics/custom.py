@@ -70,7 +70,7 @@ def generate_to_hash(fields, hash_sequence, unique_id, lifecycle_id=None):
             else:
                 to_hash += '{}:;'.format(attr)
     # some pepper for the soup
-    to_hash += settings.SECRET_HASH_KEY
+    to_hash += settings.SECRET_KEY
     return to_hash
 
 
@@ -186,18 +186,6 @@ def require_json_file(path, file_name):
                 raise ImproperlyConfigured('File "{}" is empty.'.format(file_name))
     except FileNotFoundError:
         raise
-
-
-def encrypt(value):
-    cipher = AES.new(settings.CRYPT_KEY, AES.MODE_CFB, settings.IV)
-    _crypt = cipher.encrypt(value)
-    return str(base64.b64encode(_crypt), 'utf-8')
-
-
-def decrypt(value):
-    cipher = AES.new(settings.CRYPT_KEY, AES.MODE_CFB, settings.IV)
-    _crypt = base64.b64decode(value)
-    return cipher.decrypt(_crypt).decode('utf-8')
 
 
 def unique_items(compare_list):

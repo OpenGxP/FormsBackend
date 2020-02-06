@@ -19,12 +19,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # python imports
 import os
 from pytz import common_timezones
-
-# basic imports
-from basics.custom import value_to_int, value_to_bool, require_file
+from stat import S_IRUSR
 
 # django imports
 from django.utils.translation import gettext_lazy as _
+from django.core.management.utils import get_random_secret_key
+
+# crypto imports
+from cryptography.fernet import Fernet
 
 #########
 # PATHS #
@@ -36,6 +38,36 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fil
 EMAIL_DIR = os.path.join(BASE_DIR, 'templates')
 # security directory for storing secrets in permission controlled files
 SECURITY_DIR = os.path.join(BASE_DIR, 'security')
+# directory for persistent data storage
+DATA_DIR = os.path.join(BASE_DIR, 'data')
+
+###############
+# SECRET KEYS #
+###############
+
+# secret key
+SECRET_KEY_FILE = os.path.join(BASE_DIR, 'forms') + '/keys/secret_key.py'
+
+try:
+    from ..keys.secret_key import SECRET_KEY
+except ImportError:
+    SECRET_KEY = get_random_secret_key()
+    with open(SECRET_KEY_FILE, 'w') as file:
+        file.write('SECRET_KEY = "{}"'.format(SECRET_KEY))
+    os.chmod(SECRET_KEY_FILE, S_IRUSR)
+
+# crypto key
+CRYPTO_KEY_FILE = os.path.join(BASE_DIR, 'forms') + '/keys/crypto_key.py'
+
+try:
+    from ..keys.crypto_key import CRYPTO_KEY
+    CRYPTO_KEY = CRYPTO_KEY.encode('utf-8')
+except ImportError:
+    CRYPTO_KEY = Fernet.generate_key()
+    with open(CRYPTO_KEY_FILE, 'w') as file:
+        str_key = str(CRYPTO_KEY, 'utf-8')
+        file.write('CRYPTO_KEY = "{}"'.format(str_key))
+    os.chmod(CRYPTO_KEY_FILE, S_IRUSR)
 
 
 ###############
@@ -52,7 +84,6 @@ DEFAULT_LOG_CONFIRMATIONS = [DEFAULT_LOG_LOGGING,
                              DEFAULT_LOG_VERIFICATION]
 DEFAULT_LOG_QUESTIONS = 'questions'
 DEFAULT_SIGNATURE_USER_LOCK = True
-CRYPTO_KEY = 'CRYPTO_KEY'
 DEFAULT_LOG_WF_CIRCULATION = 'circulation'
 DEFAULT_LOG_WF_REJECT = 'reject'
 DEFAULT_LOG_WF_WORKFLOW = 'workflow'
