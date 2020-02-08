@@ -87,8 +87,6 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fil
 SECURITY_DIR = os.path.join(BASE_DIR, 'security')
 # log directory
 LOG_DIR = os.path.join(BASE_DIR, 'logs')
-# directory for ldap certificate file
-LDAP_CA_CERTS_DIR = SECURITY_DIR + '/ldap/'
 
 
 ###########

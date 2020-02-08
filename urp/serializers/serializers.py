@@ -27,10 +27,9 @@ from urp.models import Permissions, Users, Roles, AccessLog, PermissionsLog, LDA
 from basics.custom import generate_checksum, generate_to_hash, value_to_int
 from basics.models import Status, AVAILABLE_STATUS, StatusLog, CentralLog, Settings, CHAR_DEFAULT
 from urp.decorators import require_STATUS_CHANGE, require_POST, require_DELETE, require_PATCH, require_NONE, \
-    require_NEW_VERSION, require_status, require_LDAP, require_USERS, require_NEW, require_SETTINGS, require_SOD, \
+    require_NEW_VERSION, require_status, require_USERS, require_NEW, require_SETTINGS, require_SOD, \
     require_EMAIL, require_ROLES, require_PROFILE
 from urp.custom import create_log_record, validate_comment, validate_signature
-from urp.backends.ldap import server_check
 from urp.backends.Email import MyEmailBackend
 from urp.vault import validate_password_input
 from urp.models.profile import Profile
@@ -827,11 +826,6 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                                                                     data=data, perm='edit')
 
             @require_NONE
-            @require_LDAP
-            def validate_server_check_ldap(self):
-                server_check(data)
-
-            @require_NONE
             @require_EMAIL
             def validate_server_check_email(self):
                 try:
@@ -993,11 +987,6 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 if self.instance.role == Settings.objects.core_initial_role:
                     raise serializers.ValidationError('No new version of initial role {} can be changed.'
                                                       .format(self.instance.role))
-
-            @require_NEW
-            @require_LDAP
-            def validate_server_check_ldap(self):
-                server_check(data)
 
             @require_NEW
             @require_EMAIL

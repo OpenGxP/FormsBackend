@@ -18,6 +18,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # python imports
 import ssl
+import os
+from stat import S_IWRITE, S_IRUSR
 
 # django imports
 from django.core.exceptions import ValidationError
@@ -33,12 +35,18 @@ from ldap3.utils.log import set_library_log_detail_level
 set_library_log_detail_level(settings.LDAP_LOG_LEVEL)
 
 
-def init_server(host, port, use_ssl):
+def init_server(host, port, use_ssl, certificate=None):
+    # write certificate to server
+    cert_file = '{}/{}_ca_certs_file.pem'.format(settings.DATA_DIR, host)
+    if certificate:
+        with open(cert_file, 'w') as file:
+            file.write(certificate)
+        os.chmod(cert_file, S_IWRITE | S_IRUSR)
     try:
         if use_ssl:
             # generate tls object
             tls = Tls(validate=ssl.CERT_REQUIRED,
-                      ca_certs_file='{}ca_certs_file.pem'.format(settings.LDAP_CA_CERTS_DIR),
+                      ca_certs_file='{}/{}_ca_certs_file.pem'.format(settings.DATA_DIR, host),
                       version=ssl.PROTOCOL_TLS)
 
             return Server(host=host,
@@ -91,7 +99,11 @@ def search(con, base, ldap_filter, attributes):
 
 
 def server_check(data):
-    server = init_server(host=data['host'], port=data['port'], use_ssl=data['ssl_tls'])
+    try:
+        server = init_server(host=data['host'], port=data['port'], use_ssl=data['ssl_tls'],
+                             certificate=data['certificate'])
+    except KeyError:
+        server = init_server(host=data['host'], port=data['port'], use_ssl=data['ssl_tls'])
     if not server.check_availability():
         raise ValidationError('LDAP server <{}> not available at port <{}>.'.format(data['host'], data['port']))
 

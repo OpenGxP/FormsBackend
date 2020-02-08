@@ -83,8 +83,6 @@ DEFAULT_DIALOG_COMMENT = 'none'
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # log directory
 LOG_DIR = os.path.join(BASE_DIR, 'logs')
-# directory for ldap certificate file
-LDAP_CA_CERTS_DIR = SECURITY_DIR + '/ldap/'
 
 
 ##########################

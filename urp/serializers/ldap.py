@@ -16,18 +16,31 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+# rest imports
+from rest_framework import serializers
+
 # app imports
 from urp.crypto import encrypt
 from urp.models.ldap import LDAP, LDAPLog
 from urp.serializers import GlobalReadWriteSerializer
+from urp.backends.ldap import server_check
 
 
 # read / add / edit
 class LDAPReadWriteSerializer(GlobalReadWriteSerializer):
+    certificate = serializers.CharField(write_only=True, required=False, allow_blank=True)
+
     class Meta:
         model = LDAP
         extra_kwargs = {'password': {'write_only': True}}
-        fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_CALCULATED + model.objects.COMMENT_SIGNATURE
+        fields = model.objects.GET_MODEL_ORDER + ('certificate',) + model.objects.GET_BASE_CALCULATED + \
+            model.objects.COMMENT_SIGNATURE
+
+    def validate_post_specific(self, data):
+        server_check(data)
+
+    def validate_patch_specific(self, data):
+        server_check(data)
 
     def create_specific(self, validated_data, obj):
         raw_pw = validated_data['password']

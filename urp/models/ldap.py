@@ -109,6 +109,17 @@ class LDAPManager(GlobalManager):
                        'attr_forename',
                        'priority',)
 
+    def meta(self, data):
+        # add field for certificate
+        data['post']['certificate'] = {'verbose_name': 'Certificate',
+                                       'help_text': 'For ssl/tls connections add a certificate file in PEM format.',
+                                       'max_length': None,
+                                       'data_type': 'CharField',
+                                       'required': False,
+                                       'unique': False,
+                                       'lookup': None,
+                                       'editable': True}
+
     def _server(self):
         query = self.order_by('-priority').all()
         if not query:

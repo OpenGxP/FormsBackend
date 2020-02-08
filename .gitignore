@@ -130,3 +130,4 @@ start_dev_priv.sh
 # key files
 crypto_key.py
 secret_key.py
+*.pem
