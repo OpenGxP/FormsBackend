@@ -23,4 +23,4 @@ python manage.py create-role --name ${ROLE}
 # create initial user
 python manage.py create-superuser --username ${USERNAME} --password ${PASSWORD} --role ${ROLE} --email ${EMAIL}
 # start server
-python manage.py runserver
+python manage.py runserver 0.0.0.0:8000
