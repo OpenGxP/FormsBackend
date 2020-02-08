@@ -23,4 +23,4 @@ python manage.py create-role --name ${ROLE}
 # create initial user
 python manage.py create-superuser --username ${USERNAME} --password ${PASSWORD} --role ${ROLE} --email ${EMAIL}
 # start server
-/usr/local/bin/gunicorn forms.wsgi:application -c /data/web/gunicorn_config.py
+python manage.py runserver

@@ -28,6 +28,10 @@ from django.core.management.utils import get_random_secret_key
 # crypto imports
 from cryptography.fernet import Fernet
 
+# ldap imports
+from ldap3 import SIMPLE, AUTO_BIND_TLS_BEFORE_BIND, SUBTREE
+
+
 #########
 # PATHS #
 #########
@@ -40,6 +44,8 @@ EMAIL_DIR = os.path.join(BASE_DIR, 'templates')
 SECURITY_DIR = os.path.join(BASE_DIR, 'security')
 # directory for persistent data storage
 DATA_DIR = os.path.join(BASE_DIR, 'data')
+# log directory
+LOG_DIR = os.path.join(BASE_DIR, 'logs')
 
 ###############
 # SECRET KEYS #
@@ -89,6 +95,28 @@ DEFAULT_LOG_WF_REJECT = 'reject'
 DEFAULT_LOG_WF_WORKFLOW = 'workflow'
 DEFAULT_RT_NUMBER_RANGE = 0
 DEFAULT_PERMISSIONS_PAGINATION_LIMIT = 500
+DEFAULT_SYSTEM_USER = 'system'
+DEFAULT_SYSTEM_DEVALUE = '--'
+DEFAULT_LOG_CREATE = 'create'
+DEFAULT_LOG_UPDATE = 'update'
+DEFAULT_LOG_DELETE = 'delete'
+DEFAULT_LOG_STATUS = 'status'
+DEFAULT_LOG_ATTEMPT = 'attempt'
+DEFAULT_LOG_LOGIN = 'login'
+DEFAULT_LOG_LOGOUT = 'logout'
+DEFAULT_FRONT_TIMESTAMP = '%d-%b-%Y %H:%M:%S %Z'
+DEFAULT_INITIAL_ROLE = 'all'
+DEFAULT_PAGINATION_MAX = 100
+DEFAULT_DIALOG_SIGNATURE = DEFAULT_LOG_LOGGING
+DEFAULT_DIALOG_COMMENT = 'none'
+
+####################
+# FLAGS AND VALUES #
+####################
+
+CONN_MAX_AGE = None
+APPEND_SLASH = False
+SILENCED_SYSTEM_CHECKS = ['auth.W004']  # disable warning that username is not unique
 
 ####################
 # PROFILE DEFAULTS #
@@ -123,3 +151,219 @@ PROFILE_DATA = [{'key': 'loc.timezone',
                  'default': PROFILE_DEFAULT_PAGINATION_LIMIT,
                  'human_readable': _('Pagination limit'),
                  'value': PROFILE_DEFAULT_PAGINATION_LIMIT}]
+
+#################
+# LDAP SETTINGS #
+#################
+
+LDAP_SERVER_CONNECTION_TIMEOUT = 5
+LDAP_CON_VERSION = 3
+LDAP_CON_AUTHENTICATE = SIMPLE
+LDAP_CON_READ_ONLY = True
+LDAP_CON_AUTO_BIN = AUTO_BIND_TLS_BEFORE_BIND
+LDAP_SEARCH_SCOPE = SUBTREE
+
+#########
+# EMAIL #
+#########
+
+EMAIL_SERVER_CONNECTION_TIMEOUT = 5
+DEFAULT_EMAIL_SENDER = 'noreply@opengxp.com'
+EMAIL_BACKEND = 'urp.backends.Email.MyEmailBackend'
+
+##########################
+# APPS MODULES AND SO ON #
+##########################
+
+AUTHENTICATION_BACKENDS = [
+    'urp.backends.User.MyModelBackend',
+]
+
+AUTH_USER_MODEL = 'urp.Users'
+LOGIN_URL = '/login'
+
+PASSWORD_HASHERS = [
+    'django.contrib.auth.hashers.Argon2PasswordHasher',
+    'django.contrib.auth.hashers.PBKDF2PasswordHasher',
+    'django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher',
+    'django.contrib.auth.hashers.BCryptSHA256PasswordHasher',
+    'django.contrib.auth.hashers.BCryptPasswordHasher',
+]
+
+ROOT_URLCONF = 'forms.urls'
+
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
+]
+
+# Password validation
+AUTH_PASSWORD_VALIDATORS = [
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator', },
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator', },
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator', },
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator', },
+]
+
+
+WSGI_APPLICATION = 'forms.wsgi.application'
+
+# Static files (CSS, JavaScript, Images)
+STATIC_URL = '/static/'
+
+#####################
+# LANGUAGE AND TIME #
+#####################
+
+LANGUAGE_CODE = 'en-us'
+TIME_ZONE = 'UTC'
+USE_I18N = True
+USE_L10N = True
+USE_TZ = True
+
+###########
+# LOGGING #
+###########
+
+# logging settings
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'standard': {
+            'format': '%(asctime)s [%(levelname)s] %(name)s: %(message)s'
+        },
+    },
+    'handlers': {
+        'default': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': LOG_DIR + '/default.log',
+            'maxBytes': 1024*1024*5,  # 5 MB
+            'backupCount': 5,
+            'formatter': 'standard'
+        },
+        'request': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': LOG_DIR + '/request.log',
+            'maxBytes': 1024*1024*5,  # 5 MB
+            'backupCount': 5,
+            'formatter': 'standard'
+        },
+        'server': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': LOG_DIR + '/server.log',
+            'maxBytes': 1024*1024*5,  # 5 MB
+            'backupCount': 5,
+            'formatter': 'standard'
+        },
+        'template': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': LOG_DIR + '/template.log',
+            'maxBytes': 1024*1024*5,  # 5 MB
+            'backupCount': 5,
+            'formatter': 'standard'
+        },
+        'db.backends': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': LOG_DIR + '/db_backends.log',
+            'maxBytes': 1024*1024*5,  # 5 MB
+            'backupCount': 5,
+            'formatter': 'standard'
+        },
+        'backends': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': LOG_DIR + '/backends.log',
+            'maxBytes': 1024 * 1024 * 5,  # 5 MB
+            'backupCount': 5,
+            'formatter': 'standard'
+        },
+        'security': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': LOG_DIR + '/security.log',
+            'maxBytes': 1024*1024*5,  # 5 MB
+            'backupCount': 5,
+            'formatter': 'standard'
+        },
+        'db.backends.schema': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': LOG_DIR + '/schema.log',
+            'maxBytes': 1024*1024*5,  # 5 MB
+            'backupCount': 5,
+            'formatter': 'standard'
+        },
+        'ldap': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': LOG_DIR + '/ldap.log',
+            'maxBytes': 1024 * 1024 * 5,  # 5 MB
+            'backupCount': 5,
+            'formatter': 'standard'
+        },
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+            'formatter': 'standard'
+        },
+    },
+    'loggers': {
+        'urp.backends': {
+            'handlers': ['backends'],
+            'level': 'DEBUG',
+            'propagate': True
+        },
+        'ldap3': {
+            'handlers': ['ldap'],
+            'level': 'DEBUG',
+            'propagate': False
+        },
+        'django.request': {
+            'handlers': ['request'],
+            'level': 'DEBUG',
+            'propagate': False
+        },
+        'django.template': {
+            'handlers': ['template'],
+            'level': 'DEBUG',
+            'propagate': False
+        },
+        'django.server': {
+            'handlers': ['server'],
+            'level': 'DEBUG',
+            'propagate': False
+        },
+        'django.db.backends': {
+            'handlers': ['db.backends'],
+            'level': 'DEBUG',
+            'propagate': False
+        },
+        'django.security.*': {
+            'handlers': ['security'],
+            'level': 'DEBUG',
+            'propagate': False
+        },
+        'django.db.backends.schema': {
+            'handlers': ['db.backends.schema'],
+            'level': 'DEBUG',
+            'propagate': False
+        }
+    }
+}
