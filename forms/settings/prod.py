@@ -188,3 +188,130 @@ INITIALIZE_SETTINGS = {'auth.max_login_attempts': MAX_LOGIN_ATTEMPTS,
                        'core.initial_role': DEFAULT_INITIAL_ROLE,
                        'profile.default.timezone': PROFILE_DEFAULT_TIMEZONE,
                        'rtd.number_range': DEFAULT_RT_NUMBER_RANGE}
+
+###########
+# LOGGING #
+###########
+
+# logging settings
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'standard': {
+            'format': '%(asctime)s [%(levelname)s] %(name)s: %(message)s'
+        },
+    },
+    'handlers': {
+        'default': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'filename': LOG_DIR + '/default.log',
+            'when': 'midnight',
+            'formatter': 'standard'
+        },
+        'request': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'filename': LOG_DIR + '/request.log',
+            'when': 'midnight',
+            'formatter': 'standard'
+        },
+        'server': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'filename': LOG_DIR + '/server.log',
+            'when': 'midnight',
+            'formatter': 'standard'
+        },
+        'template': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'filename': LOG_DIR + '/template.log',
+            'when': 'midnight',
+            'formatter': 'standard'
+        },
+        'db.backends': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'filename': LOG_DIR + '/db_backends.log',
+            'when': 'midnight',
+            'formatter': 'standard'
+        },
+        'backends': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'filename': LOG_DIR + '/backends.log',
+            'when': 'midnight',
+            'formatter': 'standard'
+        },
+        'security': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'filename': LOG_DIR + '/security.log',
+            'when': 'midnight',
+            'formatter': 'standard'
+        },
+        'db.backends.schema': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'filename': LOG_DIR + '/schema.log',
+            'when': 'midnight',
+            'formatter': 'standard'
+        },
+        'ldap': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'filename': LOG_DIR + '/ldap.log',
+            'when': 'midnight',
+            'formatter': 'standard'
+        },
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+            'formatter': 'standard'
+        },
+    },
+    'loggers': {
+        'urp.backends': {
+            'handlers': ['backends'],
+            'level': 'DEBUG',
+            'propagate': True
+        },
+        'ldap3': {
+            'handlers': ['ldap'],
+            'level': 'DEBUG',
+            'propagate': False
+        },
+        'django.request': {
+            'handlers': ['request'],
+            'level': 'DEBUG',
+            'propagate': False
+        },
+        'django.template': {
+            'handlers': ['template'],
+            'level': 'DEBUG',
+            'propagate': False
+        },
+        'django.server': {
+            'handlers': ['server'],
+            'level': 'DEBUG',
+            'propagate': False
+        },
+        'django.db.backends': {
+            'handlers': ['db.backends'],
+            'level': 'DEBUG',
+            'propagate': False
+        },
+        'django.security.*': {
+            'handlers': ['security'],
+            'level': 'DEBUG',
+            'propagate': False
+        },
+        'django.db.backends.schema': {
+            'handlers': ['db.backends.schema'],
+            'level': 'DEBUG',
+            'propagate': False
+        }
+    }
+}
