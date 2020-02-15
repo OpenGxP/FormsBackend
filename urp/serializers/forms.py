@@ -95,13 +95,12 @@ class FormsReadWriteSerializer(GlobalReadWriteSerializer):
         allowed_roles = Roles.objects.get_by_natural_key_productive_list('role')
 
         for item in value:
-            # validate role field
-            if 'role' not in item.keys():
-                raise serializers.ValidationError('Role ist required.')
-            if not isinstance(item['role'], str):
-                raise serializers.ValidationError('Role field must be string.')
-            if item['role'] not in allowed_roles:
-                raise serializers.ValidationError('Not allowed to use "{}".'.format(item['role']))
+            # validate role field, but is optional
+            if 'role' in item.keys():
+                if not isinstance(item['role'], str):
+                    raise serializers.ValidationError('Role field must be string.')
+                if item['role'] not in allowed_roles:
+                    raise serializers.ValidationError('Not allowed to use "{}".'.format(item['role']))
 
             # validate confirmation field
             if 'confirmation' not in item.keys():

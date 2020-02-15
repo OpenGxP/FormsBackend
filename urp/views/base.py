@@ -252,7 +252,8 @@ def post(request, ser_rw):
     request.data['version'] = 1
     serializer = ser_rw(data=request.data, context={'method': 'POST',
                                                     'function': 'new',
-                                                    'user': request.user.username})
+                                                    'user': request.user.username,
+                                                    'request': request})
     if serializer.is_valid():
         serializer.save()
         return Response(serializer.data, status=http_status.HTTP_201_CREATED)
@@ -261,7 +262,8 @@ def post(request, ser_rw):
 
 def update(request, ser_rw, query):
     serializer = ser_rw(query, data=request.data, context={'method': 'PATCH', 'function': '',
-                                                           'user': request.user.username})
+                                                           'user': request.user.username,
+                                                           'request': request})
     if serializer.is_valid():
         serializer.save()
         return Response(serializer.data)
@@ -270,7 +272,8 @@ def update(request, ser_rw, query):
 
 def delete(request, ser_del, query):
     serializer = ser_del(query, data=request.data, context={'method': 'DELETE', 'function': '',
-                                                            'user': request.user.username})
+                                                            'user': request.user.username,
+                                                            'request': request})
     if serializer.is_valid():
         serializer.delete()
         return Response(status=http_status.HTTP_204_NO_CONTENT)
@@ -447,7 +450,8 @@ class StatusView(BaseView):
         @csrf_protect
         def new_version_base(_request, nv):
             serializer = ser_st(query, data=request.data, context={'method': 'POST', 'function': 'new_version',
-                                                                   'user': request.user.username, 'nv': nv})
+                                                                   'user': request.user.username, 'nv': nv,
+                                                                   'request': request})
             if serializer.is_valid():
                 serializer.create(validated_data=serializer.validated_data)
                 return Response(serializer.data, status=http_status.HTTP_201_CREATED)

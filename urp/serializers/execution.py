@@ -23,6 +23,7 @@ from rest_framework import serializers
 from basics.models import Status
 from urp.serializers import GlobalReadWriteSerializer
 from urp.models.forms.forms import Forms
+from urp.models.forms.sub.sections import FormsSections
 from urp.models.execution.execution import Execution, ExecutionLog
 from urp.decorators import require_status
 from urp.models.execution.fields import ExecutionFields, ExecutionFieldsLog
@@ -159,13 +160,20 @@ class ExecutionFieldsWriteSerializer(GlobalReadWriteSerializer):
         fields = ('value',) + model.objects.GET_BASE_CALCULATED + model.objects.COMMENT_SIGNATURE
 
     def validate_patch_specific(self, data):
-        if Execution.objects.get(number__exact=self.instance.number).status.id != Status.objects.started:
+        if Execution.objects.get(number=self.instance.number).status.id != Status.objects.started:
             raise serializers.ValidationError('Updates are only permitted in status started.')
 
         if 'value' not in data:
             raise serializers.ValidationError('Field value is required.')
         if not isinstance(data['value'], str):
             raise serializers.ValidationError('Value field must be string.')
+
+        # validate if allowed to update value
+        exec_obj = Execution.objects.get(number=self.instance.number)
+        allowed_role = FormsSections.objects.get(lifecycle_id=exec_obj.lifecycle_id, version=exec_obj.version,
+                                                 section=self.instance.section).role
+        if allowed_role and not self.context['request'].user.has_role(allowed_role):
+            raise serializers.ValidationError('You are not allowed to update that value.')
 
         # validate if record has value, then apply correction settings for sig and comment
         if getattr(self.instance, 'value'):
