@@ -147,11 +147,10 @@ class Command(BaseCommand):
                 user = {self.UserModel.USERNAME_FIELD: username}
                 self.UserModel.objects.filter(**user).filter(Q(status=Status.objects.circulation) |
                                                              Q(status=Status.objects.productive)).get()
-                self.stderr.write('Error: User "{}" already exists.'.format(username))
             except self.UserModel.DoesNotExist:
                 user = self.UserModel.objects.create_superuser(**user_data)
                 if user:
-                    self.stdout.write(self.style.SUCCESS('Superuser "{}" created successfully.'.format(username)))
+                    self.stdout.write(self.style.SUCCESS('User "{}" created.'.format(username)))
 
     def clean_input(self, field, value):
         """

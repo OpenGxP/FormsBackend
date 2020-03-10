@@ -21,7 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from urp.serializers import PermissionsReadWriteSerializer
 
 # django imports
-from django.core.management.base import BaseCommand, CommandError
+from django.core.management.base import BaseCommand
 from django.apps import apps
 from django.conf import settings
 
@@ -37,8 +37,12 @@ class Command(BaseCommand):
         serializer = PermissionsReadWriteSerializer(data=data, context={'method': 'POST', 'function': 'init'})
         if serializer.is_valid():
             serializer.save()
+            self.stdout.write(self.style.SUCCESS('Added permission "global.all".'))
         else:
-            raise CommandError('Data is not valid ({}). Error: {}.'.format(data, serializer.errors))
+            for error in serializer.errors:
+                if serializer.errors[error][0].code != 'unique':
+                    self.stderr.write(self.style.ERROR('Data: "{}", error: "{}".'
+                                                       .format(data, serializer.errors[error][0])))
         models = apps.all_models['urp']
         models.update(apps.all_models['basics'])
         for model in models:
@@ -54,6 +58,10 @@ class Command(BaseCommand):
                 serializer = PermissionsReadWriteSerializer(data=data, context={'method': 'POST', 'function': 'init'})
                 if serializer.is_valid():
                     serializer.save()
+                    self.stdout.write(self.style.SUCCESS('Added permission "{}.{}".'.format(data['model'],
+                                                                                            data['permission'])))
                 else:
-                    raise CommandError('Data is not valid ({}). Error: {}.'.format(data, serializer.errors))
-        self.stdout.write(self.style.SUCCESS('Successfully collected all permissions.'))
+                    for error in serializer.errors:
+                        if serializer.errors[error][0].code != 'unique':
+                            self.stderr.write(self.style.ERROR('Data: "{}", error: "{}".'
+                                                               .format(data, serializer.errors[error][0])))

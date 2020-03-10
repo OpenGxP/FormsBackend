@@ -34,7 +34,9 @@ class Command(BaseCommand):
             serializer = StatusReadWriteSerializer(data=data, context={'method': 'POST', 'function': 'init'})
             if serializer.is_valid():
                 serializer.save()
-                self.stdout.write(self.style.SUCCESS('Successfully added status "{}".'.format(item)))
+                self.stdout.write(self.style.SUCCESS('Added status "{}".'.format(item)))
             else:
                 for error in serializer.errors:
-                    self.stderr.write('Error: {}'.format(serializer.errors[error][0]))
+                    if serializer.errors[error][0].code != 'unique':
+                        self.stderr.write(self.style.ERROR('Data: "{}", error: "{}".'
+                                                           .format(data, serializer.errors[error][0])))

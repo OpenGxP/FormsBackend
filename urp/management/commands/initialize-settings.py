@@ -30,11 +30,13 @@ def add_setting(self, data):
     serializer = SettingsInitialWriteSerializer(data=data, context={'method': 'POST', 'function': 'init'})
     if serializer.is_valid():
         serializer.save()
-        self.stdout.write(self.style.SUCCESS('Successfully added setting key: "{}", value: "{}".'
+        self.stdout.write(self.style.SUCCESS('Added setting key: "{}", value: "{}".'
                                              .format(data['key'], data['value'])))
     else:
         for error in serializer.errors:
-            self.stderr.write('Error: {}'.format(serializer.errors[error][0]))
+            if serializer.errors[error][0].code != 'unique':
+                self.stderr.write(self.style.ERROR('Data: "{}", error: "{}".'
+                                                   .format(data, serializer.errors[error][0])))
 
 
 class Command(BaseCommand):
