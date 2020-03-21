@@ -16,6 +16,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+# app imports
+from basics.models import AVAILABLE_STATUS
 
 # python imports
 from io import StringIO
@@ -24,34 +26,47 @@ from io import StringIO
 from django.core.management import call_command
 from django.test import TestCase
 from django.conf import settings
+from django.apps import apps
 
 
 class InitializeStatus(TestCase):
     def test_OK(self):
-        out = StringIO()
-        call_command('initialize-status', stdout=out)
-        self.assertIn('Successfully added status "draft".', out.getvalue())
-        self.assertIn('Successfully added status "circulation".', out.getvalue())
-        self.assertIn('Successfully added status "productive".', out.getvalue())
-        self.assertIn('Successfully added status "blocked".', out.getvalue())
-        self.assertIn('Successfully added status "inactive".', out.getvalue())
-        self.assertIn('Successfully added status "archived".', out.getvalue())
+        stderr = StringIO()
+        stdout = StringIO()
+        call_command('initialize-status', stdout=stdout, stderr=stderr)
+        for item in AVAILABLE_STATUS:
+            self.assertIn('Added status "{}".'.format(item), stdout.getvalue())
+        self.assertTrue(stderr.getvalue() == '')
 
 
 class InitializeSettings(TestCase):
     def test_OK(self):
-        out = StringIO()
-        call_command('initialize-settings', stdout=out)
+        stderr = StringIO()
+        stdout = StringIO()
+        call_command('initialize-settings', stderr=stderr, stdout=stdout)
         for key, value in settings.INITIALIZE_SETTINGS.items():
-            self.assertIn('Successfully added setting key: "{}", value: "{}".'
-                          .format(key, value), out.getvalue())
+            self.assertIn('Added setting key: "{}", value: "{}".'
+                          .format(key, value), stdout.getvalue())
+        self.assertTrue(stderr.getvalue() == '')
 
 
 class CollectPermissionsTest(TestCase):
     def test_OK(self):
-        out = StringIO()
-        call_command('collect-permissions', stdout=out)
-        self.assertIn('Successfully collected all permissions.', out.getvalue())
+        stderr = StringIO()
+        stdout = StringIO()
+        call_command('collect-permissions', stdout=stdout, stderr=stderr)
+        self.assertIn('Added permission "global.all".', stdout.getvalue())
+        models = apps.all_models['urp']
+        models.update(apps.all_models['basics'])
+        for model in models:
+            if models[model].objects.NO_PERMISSIONS:
+                continue
+            for key, value in models[model].perms.items():
+                _model = model
+                if model == 'vault':
+                    _model = 'passwords'
+                self.assertIn('Added permission "{}.{}".'.format(_model, value), stdout.getvalue())
+        self.assertTrue(stderr.getvalue() == '')
 
 
 class CreateRole(TestCase):
@@ -60,22 +75,26 @@ class CreateRole(TestCase):
         call_command('initialize-settings')
 
     def test_OK(self):
-        out = StringIO()
-        call_command('create-role', name='all', stdout=out)
-        self.assertIn('Role "all" created successfully in status "draft".', out.getvalue())
-        self.assertIn('Role "all" successfully changed to status "circulation".', out.getvalue())
-        self.assertIn('Role "all" successfully changed to status "productive".', out.getvalue())
+        stderr = StringIO()
+        stdout = StringIO()
+        call_command('create-role', name='all', stdout=stdout, stderr=stderr)
+        self.assertIn('Role "all" created in status "draft".', stdout.getvalue())
+        self.assertIn('Role "all" changed to status "circulation".', stdout.getvalue())
+        self.assertIn('Role "all" changed to status "productive".', stdout.getvalue())
+        self.assertTrue(stderr.getvalue() == '')
 
     def test_NOK(self):
-        out = StringIO()
-        err = StringIO()
-        call_command('create-role', name='all', stdout=out)
-        self.assertIn('Role "all" created successfully in status "draft".', out.getvalue())
-        self.assertIn('Role "all" successfully changed to status "circulation".', out.getvalue())
-        self.assertIn('Role "all" successfully changed to status "productive".', out.getvalue())
+        stderr = StringIO()
+        stdout = StringIO()
+        call_command('create-role', name='all', stdout=stdout)
+        self.assertIn('Role "all" created in status "draft".', stdout.getvalue())
+        self.assertIn('Role "all" changed to status "circulation".', stdout.getvalue())
+        self.assertIn('Role "all" changed to status "productive".', stdout.getvalue())
+        new_out = StringIO()
         # FO-131: second call to verify that not a second can be created in status draft
-        call_command('create-role', name='all', stdout=out, stderr=err)
-        self.assertIn('Error: Role "all" already exists.', err.getvalue())
+        call_command('create-role', name='all', stdout=new_out, stderr=stderr)
+        self.assertTrue(stderr.getvalue() == '')
+        self.assertTrue(new_out.getvalue() == '')
 
 
 class CreateSuperuser(TestCase):
@@ -84,25 +103,27 @@ class CreateSuperuser(TestCase):
         call_command('initialize-settings')
 
     def test_OK(self):
-        out = StringIO()
+        stderr = StringIO()
+        stdout = StringIO()
         call_command('create-role', name='all')
         call_command('create-superuser', role='all', username='admin', email='test@opengxp.org',
-                     password='FAH2a28djakd2', stdout=out)
-        self.assertIn('Superuser "admin" created successfully.', out.getvalue())
+                     password='FAH2a28djakd2', stdout=stdout, stderr=stderr)
+        self.assertIn('User "admin" created.', stdout.getvalue())
+        self.assertTrue(stderr.getvalue() == '')
 
     def test_NOK_no_prod_role(self):
-        out = StringIO()
-        err = StringIO()
+        stderr = StringIO()
+        stdout = StringIO()
         call_command('create-superuser', role='all', username='admin', email='test@opengxp.org',
-                     password='FAH2a28djakd2', stdout=out, stderr=err)
-        self.assertNotIn('Superuser "admin" created successfully.', out.getvalue())
-        self.assertIn('Error: Selected role "all" does not exist in status "productive".', err.getvalue())
+                     password='FAH2a28djakd2', stdout=stdout, stderr=stderr)
+        self.assertNotIn('User "admin" created.', stdout.getvalue())
+        self.assertIn('Error: Selected role "all" does not exist in status "productive".', stderr.getvalue())
 
     def test_NOK_exist(self):
         self.test_OK()
-        out = StringIO()
-        err = StringIO()
+        stderr = StringIO()
+        stdout = StringIO()
         call_command('create-superuser', role='all', username='admin', email='test@opengxp.org',
-                     password='FAH2a28djakd2', stdout=out, stderr=err)
-        self.assertNotIn('Superuser "admin" created successfully.', out.getvalue())
-        self.assertIn('Error: User "admin" already exists.', err.getvalue())
+                     password='FAH2a28djakd2', stdout=stdout, stderr=stderr)
+        self.assertTrue(stdout.getvalue() == '')
+        self.assertTrue(stderr.getvalue() == '')
