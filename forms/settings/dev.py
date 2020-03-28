@@ -20,7 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from basics.custom import value_to_int, value_to_bool, require_file, require_env
 
 # ldap imports
-from ldap3.utils.log import EXTENDED
+from ldap3.utils.log import BASIC
 
 # python imports
 import os
@@ -38,7 +38,7 @@ anon = 100
 # LDAP SETTINGS #
 #################
 
-LDAP_LOG_LEVEL = EXTENDED
+LDAP_LOG_LEVEL = BASIC
 
 ###############
 # APP DEFAULT #

@@ -325,7 +325,7 @@ class GlobalModelLog(GlobalModel):
         else:
             to_hash = 'id:{};lifecycle_id:{};user:{};timestamp:{};action:{};comment:{};way:{};' \
                 .format(self.id, self.lifecycle_id, self.user, self.timestamp, self.action, self.comment, self.way)
-        to_hash += '{}{}'.format(to_hash_payload, settings.SECRET_HASH_KEY)
+        to_hash += '{}{}'.format(to_hash_payload, settings.SECRET_KEY)
         try:
             return HASH_ALGORITHM.verify(to_hash, self.checksum)
         except ValueError:
