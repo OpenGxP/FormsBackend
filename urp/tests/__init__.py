@@ -2158,6 +2158,8 @@ class PatchOneStatus(APITestCase):
             # get API response
             self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), content_type='application/json',
                               HTTP_X_CSRFTOKEN=csrf_token)
+            self.client.patch('{}/core.initial_role'.format(reverse('settings-list')), data={'value': '--'},
+                              content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
             # perform sod protected status change with same user
             response = self.client.patch('{}/{}'.format(self.ok_path, 'productive'), content_type='application/json',
                                          HTTP_X_CSRFTOKEN=csrf_token)

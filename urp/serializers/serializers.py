@@ -612,7 +612,8 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 if self.context['status'] == 'productive':
                     perm = 'productive'
                     # SoD
-                    if 'disable-sod' not in self.context.keys() and not self.model.objects.WF_MGMT:
+                    if 'disable-sod' not in self.context.keys() and not self.model.objects.WF_MGMT \
+                            and not self.context['request'].user.has_role(Settings.objects.core_initial_role):
                         log = self.model.objects.LOG_TABLE
                         previous_user = log.objects.get_circulation_user_for_sod(self.instance)
                         if previous_user == self.context['user']:
