@@ -45,8 +45,9 @@ class RolesReadWriteSerializer(GlobalReadWriteSerializer):
         if self.instance.ldap:
             if getattr(self.instance, self.model.UNIQUE) != data[self.model.UNIQUE]:
                 raise serializers.ValidationError('Role name can not be changed if LDAP.')
-        if self.instance.ldap != data['ldap']:
-            raise serializers.ValidationError('LDAP attribute can not be changed.')
+        if 'ldap' in data:
+            if self.instance.ldap != data['ldap']:
+                raise serializers.ValidationError('LDAP attribute can not be changed.')
 
 
 # new version / status
