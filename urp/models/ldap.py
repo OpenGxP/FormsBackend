@@ -41,9 +41,11 @@ class LDAPLogManager(GlobalManager):
                        'port',
                        'ssl_tls',
                        'bindDN',
-                       'base',
-                       'filter',
+                       'base_user',
+                       'filter_user',
+                       'filter_group',
                        'attr_username',
+                       'attr_group',
                        'attr_email',
                        'attr_surname',
                        'attr_forename',
@@ -57,9 +59,12 @@ class LDAPLog(GlobalModelLog):
     port = models.IntegerField(_('Port'))
     ssl_tls = models.BooleanField(_('SSL'))
     bindDN = models.CharField(_('BindDN'), max_length=CHAR_DEFAULT)
-    base = models.CharField(_('Base'), max_length=CHAR_DEFAULT)
-    filter = models.CharField(_('Filter'), max_length=CHAR_DEFAULT)
+    base_user = models.CharField(_('Base User'), max_length=CHAR_DEFAULT)
+    base_group = models.CharField(_('Base Group'), max_length=CHAR_DEFAULT, blank=True)
+    filter_user = models.CharField(_('Filter User'), max_length=CHAR_DEFAULT)
+    filter_group = models.CharField(_('Filter Groups'), max_length=CHAR_DEFAULT, blank=True)
     attr_username = models.CharField(_('Attr Username'), max_length=CHAR_DEFAULT)
+    attr_group = models.CharField(_('Attr Group'), max_length=CHAR_DEFAULT, blank=True)
     attr_email = models.CharField(_('Attr Email'), max_length=CHAR_DEFAULT, blank=True)
     attr_surname = models.CharField(_('Attr Surname'), max_length=CHAR_DEFAULT, blank=True)
     attr_forename = models.CharField(_('Attr Forename'), max_length=CHAR_DEFAULT, blank=True)
@@ -70,10 +75,12 @@ class LDAPLog(GlobalModelLog):
 
     # integrity check
     def verify_checksum(self):
-        to_hash_payload = 'host:{};port:{};ssl_tls:{};bindDN:{};base:{};filter:{};attr_username:{};' \
-                          'attr_email:{};attr_surname:{};attr_forename:{};priority:{};'. \
-            format(self.host, self.port, self.ssl_tls, self.bindDN, self.base, self.filter,
-                   self.attr_username, self.attr_email, self.attr_surname, self.attr_forename, self.priority)
+        to_hash_payload = 'host:{};port:{};ssl_tls:{};bindDN:{};base_user:{};base_group:{};filter_user:{};' \
+                          'filter_group:{};attr_username:{};attr_group:{};attr_email:{};attr_surname:{};' \
+                          'attr_forename:{};priority:{};'. \
+            format(self.host, self.port, self.ssl_tls, self.bindDN, self.base_user, self.base_group, self.filter_user,
+                   self.filter_group, self.attr_username, self.attr_group, self.attr_email, self.attr_surname,
+                   self.attr_forename, self.priority)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
 
     valid_from = None
@@ -81,8 +88,9 @@ class LDAPLog(GlobalModelLog):
     lifecycle_id = None
 
     # hashing
-    HASH_SEQUENCE = LOG_HASH_SEQUENCE + ['host', 'port', 'ssl_tls', 'bindDN', 'base', 'filter', 'attr_username',
-                                         'attr_email', 'attr_surname', 'attr_forename', 'priority']
+    HASH_SEQUENCE = LOG_HASH_SEQUENCE + ['host', 'port', 'ssl_tls', 'bindDN', 'base_user', 'base_group', 'filter_user',
+                                         'filter_group', 'attr_username', 'attr_group', 'attr_email', 'attr_surname',
+                                         'attr_forename', 'priority']
 
     # permissions
     MODEL_ID = '12'
@@ -101,9 +109,12 @@ class LDAPManager(GlobalManager):
                        'ssl_tls',
                        'bindDN',
                        'password',
-                       'base',
-                       'filter',
+                       'base_user',
+                       'base_group',
+                       'filter_user',
+                       'filter_group',
                        'attr_username',
+                       'attr_group',
                        'attr_email',
                        'attr_surname',
                        'attr_forename',
@@ -126,7 +137,7 @@ class LDAPManager(GlobalManager):
             raise ValidationError('No LDAP server configured.')
         return query
 
-    def search(self, data):
+    def search_user(self, data):
         query = self._server()
         error = dict()
         for server in query:
@@ -149,9 +160,9 @@ class LDAPManager(GlobalManager):
                         if server.attr_forename:
                             attributes.append(server.attr_forename)
                         # build filter
-                        ldap_filter = '(&{}({}={}))'.format(server.filter, server.attr_username, data['username'])
+                        ldap_filter = '(&{}({}={}))'.format(server.filter_user, server.attr_username, data['username'])
                         try:
-                            search(con=con, base=server.base, attributes=attributes, ldap_filter=ldap_filter)
+                            search(con=con, base=server.base_user, attributes=attributes, ldap_filter=ldap_filter)
                         except ValidationError as e:
                             error[server.host] = e
                         else:
@@ -179,7 +190,7 @@ class LDAPManager(GlobalManager):
         query = self._server()
         for server in query:
             ser = init_server(host=server.host, port=server.port, use_ssl=server.ssl_tls)
-            bind_dn = '{}={},{}'.format(server.attr_username, username, server.base)
+            bind_dn = '{}={},{}'.format(server.attr_username, username, server.base_user)
             # auto bind using tls is active, therefore no additional manual bind required
             try:
                 connect(server=ser, bind_dn=bind_dn, password=password)
@@ -187,59 +198,59 @@ class LDAPManager(GlobalManager):
                 return False
             return True
 
+    def search_groups(self):
+        # lowest priority ldap server is used for groups
+        priority_min = self.all().aggregate(models.Min('priority'))
+        try:
+            server = self.filter(priority=priority_min['priority__min']).get()
+        except self.model.DoesNotExist:
+            raise ValidationError('No LDAP server configured.')
+        groups = []
+        # connect to server
+        _server = init_server(host=server.host, port=server.port, use_ssl=server.ssl_tls)
+        if _server.check_availability():
+            # decrypt password before usage
+            password = decrypt(server.password)
+            con = connect(server=_server, bind_dn=server.bindDN, password=password)
+            if con.bind():
+                search(con=con, base=server.base_group, attributes=[server.attr_group], ldap_filter=server.filter_group)
+                # check if search was successful as specified in RFC4511
+                if con.response and con.result['description'] == 'success':
+                    for x in con.response:
+                        groups.append(x['attributes'][server.attr_group][0])
+                    return groups
+
 
 # table
 class LDAP(GlobalModel):
     # custom fields
-    host = models.CharField(
-        _('Host'),
-        max_length=CHAR_DEFAULT,
-        unique=True)
-    port = models.IntegerField(
-        _('Port'))
-    ssl_tls = models.BooleanField(
-        _('SSL'))
-    bindDN = models.CharField(
-        _('BindDN'),
-        max_length=CHAR_DEFAULT)
-    password = models.CharField(
-        _('Password'),
-        max_length=CHAR_MAX)
-    base = models.CharField(
-        _('Base'),
-        max_length=CHAR_DEFAULT)
-    filter = models.CharField(
-        _('Filter'),
-        max_length=CHAR_DEFAULT)
-    attr_username = models.CharField(
-        _('Attr Username'),
-        max_length=CHAR_DEFAULT)
-    attr_email = models.CharField(
-        _('Attr Email'),
-        max_length=CHAR_DEFAULT,
-        blank=True)
-    attr_surname = models.CharField(
-        _('Attr Surname'),
-        max_length=CHAR_DEFAULT,
-        blank=True)
-    attr_forename = models.CharField(
-        _('Attr Forename'),
-        max_length=CHAR_DEFAULT,
-        blank=True)
-    priority = models.IntegerField(
-        _('Priority'),
-        validators=[validate_only_positive_numbers],
-        unique=True)
+    host = models.CharField(_('Host'), max_length=CHAR_DEFAULT, unique=True)
+    port = models.IntegerField(_('Port'))
+    ssl_tls = models.BooleanField(_('SSL'))
+    bindDN = models.CharField(_('BindDN'), max_length=CHAR_DEFAULT)
+    password = models.CharField(_('Password'), max_length=CHAR_MAX)
+    base_user = models.CharField(_('Base User'), max_length=CHAR_DEFAULT)
+    base_group = models.CharField(_('Base Group'), max_length=CHAR_DEFAULT, blank=True)
+    filter_user = models.CharField(_('Filter User'), max_length=CHAR_DEFAULT)
+    filter_group = models.CharField(_('Filter Groups'), max_length=CHAR_DEFAULT, blank=True)
+    attr_username = models.CharField(_('Attr Username'), max_length=CHAR_DEFAULT)
+    attr_group = models.CharField(_('Attr Group'), max_length=CHAR_DEFAULT, blank=True)
+    attr_email = models.CharField(_('Attr Email'), max_length=CHAR_DEFAULT, blank=True)
+    attr_surname = models.CharField(_('Attr Surname'), max_length=CHAR_DEFAULT, blank=True)
+    attr_forename = models.CharField(_('Attr Forename'), max_length=CHAR_DEFAULT, blank=True)
+    priority = models.IntegerField(_('Priority'), validators=[validate_only_positive_numbers], unique=True)
 
     # manager
     objects = LDAPManager()
 
     # integrity check
     def verify_checksum(self):
-        to_hash_payload = 'host:{};port:{};ssl_tls:{};bindDN:{};password:{};base:{};filter:{};attr_username:{};' \
-                          'attr_email:{};attr_surname:{};attr_forename:{};priority:{};'. \
-            format(self.host, self.port, self.ssl_tls, self.bindDN, self.password, self.base, self.filter,
-                   self.attr_username, self.attr_email, self.attr_surname, self.attr_forename, self.priority)
+        to_hash_payload = 'host:{};port:{};ssl_tls:{};bindDN:{};password:{};base_user:{};base_group:{};' \
+                          'filter_user:{};filter_group:{};attr_username:{};attr_group:{};attr_email:{};' \
+                          'attr_surname:{};attr_forename:{};priority:{};'. \
+            format(self.host, self.port, self.ssl_tls, self.bindDN, self.password, self.base_user, self.base_group,
+                   self.filter_user, self.filter_group, self.attr_username, self.attr_group, self.attr_email,
+                   self.attr_surname, self.attr_forename, self.priority)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
 
     valid_from = None
@@ -247,8 +258,9 @@ class LDAP(GlobalModel):
     lifecycle_id = None
 
     # hashing
-    HASH_SEQUENCE = ['host', 'port', 'ssl_tls', 'bindDN', 'password', 'base', 'filter', 'attr_username',
-                     'attr_email', 'attr_surname', 'attr_forename', 'priority']
+    HASH_SEQUENCE = ['host', 'port', 'ssl_tls', 'bindDN', 'password', 'base_user', 'base_group', 'filter_user',
+                     'filter_group', 'attr_username', 'attr_group', 'attr_email', 'attr_surname', 'attr_forename',
+                     'priority']
 
     # permissions
     MODEL_ID = '11'

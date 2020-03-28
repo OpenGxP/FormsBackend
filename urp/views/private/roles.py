@@ -18,14 +18,21 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # rest imports
 from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status as http_status
 
 # app imports
+from urp.models.ldap import LDAP
 from urp.views.views import auto_logout
 from urp.models.roles import Roles
 from urp.serializers.roles import RolesReadWriteSerializer, RolesLogReadSerializer, RolesDeleteSerializer, \
     RolesNewVersionStatusSerializer
-from urp.decorators import auth_required
+from urp.decorators import auth_required, perm_required
 from urp.views.base import StatusView
+from urp.custom import validate_comment, validate_signature
+
+# django imports
+from django.utils import timezone
 
 
 view = StatusView(model=Roles, ser_rw=RolesReadWriteSerializer, ser_del=RolesDeleteSerializer,
@@ -58,3 +65,28 @@ def roles_status(request, lifecycle_id, version, status):
 @auto_logout()
 def roles_log_list(request):
     return view.list_log(request, tags=False)
+
+
+@api_view(['GET'])
+@auth_required()
+@perm_required('{}.13'.format(Roles.MODEL_ID))
+@auto_logout()
+def roles_ldap(request):
+    now = timezone.now()
+    validate_comment(dialog='roles', data=request.data, perm='ldap')
+    signature = validate_signature(logged_in_user=request.user.username, dialog='roles', data=request.data, perm='ldap',
+                                   now=now)
+
+    groups = LDAP.objects.search_groups()
+    for grp in groups:
+        data = {'role': grp,
+                'version': 1}
+        serializer = RolesReadWriteSerializer(data=data, context={'method': 'POST',
+                                                                  'function': 'new',
+                                                                  'user': request.user.username,
+                                                                  'request': request,
+                                                                  'now': now,
+                                                                  'signature': signature})
+        if serializer.is_valid():
+            serializer.save()
+    return Response(status=http_status.HTTP_200_OK)

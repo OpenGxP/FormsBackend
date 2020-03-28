@@ -39,6 +39,7 @@ class RolesLogManager(GlobalManager):
 
     # meta
     GET_MODEL_ORDER = ('role',
+                       'ldap',
                        'permissions')
 
 
@@ -47,6 +48,7 @@ class RolesLog(GlobalModelLog):
     # custom fields
     role = models.CharField(_('Role'), max_length=CHAR_DEFAULT)
     permissions = models.CharField(_('Permissions'), max_length=CHAR_BIG, blank=True)
+    ldap = models.BooleanField(_('Ldap'))
     # defaults
     status = models.ForeignKey(Status, on_delete=models.PROTECT)
     version = FIELD_VERSION
@@ -56,8 +58,8 @@ class RolesLog(GlobalModelLog):
 
     # integrity check
     def verify_checksum(self):
-        to_hash_payload = 'role:{};status_id:{};version:{};valid_from:{};valid_to:{};permissions:{};'. \
-            format(self.role, self.status_id, self.version, self.valid_from, self.valid_to, self.permissions)
+        to_hash_payload = 'role:{};status_id:{};version:{};valid_from:{};valid_to:{};permissions:{};ldap:{};'. \
+            format(self.role, self.status_id, self.version, self.valid_from, self.valid_to, self.permissions, self.ldap)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
 
     @property
@@ -65,7 +67,8 @@ class RolesLog(GlobalModelLog):
         return self.status.status
 
     # hashing
-    HASH_SEQUENCE = LOG_HASH_SEQUENCE + ['role', 'status_id', 'version', 'valid_from', 'valid_to', 'permissions']
+    HASH_SEQUENCE = LOG_HASH_SEQUENCE + ['role', 'status_id', 'version', 'valid_from', 'valid_to', 'permissions',
+                                         'ldap']
 
     # permissions
     MODEL_ID = '09'
@@ -82,8 +85,12 @@ class RolesManager(GlobalManager):
 
     # meta
     GET_MODEL_ORDER = RolesLogManager.GET_MODEL_ORDER
-
     GET_MODEL_NOT_RENDER = ('permissions',)
+
+    def meta_field(self, data, f_name):
+        if f_name == 'ldap':
+            data['post'][f_name]['editable'] = False
+            data['post'][f_name]['required'] = False
 
     def find_permission_in_roles(self, roles, permission):
         for role in roles.split(','):
@@ -146,28 +153,22 @@ class RolesManager(GlobalManager):
 # table
 class Roles(GlobalModel):
     # custom fields
-    role = models.CharField(
-        _('Role'),
-        max_length=CHAR_DEFAULT,
-        help_text=_('Special characters "{}" are not permitted. No whitespaces and numbers.'
-                    .format(SPECIALS_REDUCED)),
-        validators=[validate_no_specials_reduced,
-                    validate_no_space,
-                    validate_no_numbers,
-                    validate_only_ascii])
-    permissions = models.CharField(
-        _('Permissions'),
-        help_text='Provide comma separated permission keys.',
-        max_length=CHAR_BIG,
-        blank=True)
+    role = models.CharField(_('Role'), max_length=CHAR_DEFAULT, help_text=_('Special characters "{}" are not '
+                                                                            'permitted. No whitespaces and numbers.'
+                                                                            .format(SPECIALS_REDUCED)),
+                            validators=[validate_no_specials_reduced, validate_no_space, validate_no_numbers,
+                                        validate_only_ascii])
+    permissions = models.CharField(_('Permissions'), help_text='Provide comma separated permission keys.',
+                                   max_length=CHAR_BIG, blank=True)
+    ldap = models.BooleanField(_('Ldap'))
     # defaults
     status = models.ForeignKey(Status, on_delete=models.PROTECT)
     version = FIELD_VERSION
 
     # integrity check
     def verify_checksum(self):
-        to_hash_payload = 'role:{};status_id:{};version:{};valid_from:{};valid_to:{};permissions:{};'. \
-            format(self.role, self.status_id, self.version, self.valid_from, self.valid_to, self.permissions)
+        to_hash_payload = 'role:{};status_id:{};version:{};valid_from:{};valid_to:{};permissions:{};ldap:{};'. \
+            format(self.role, self.status_id, self.version, self.valid_from, self.valid_to, self.permissions, self.ldap)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
 
     @property
@@ -178,11 +179,26 @@ class Roles(GlobalModel):
     objects = RolesManager()
 
     # hashing
-    HASH_SEQUENCE = ['role', 'status_id', 'version', 'valid_from', 'valid_to', 'permissions']
+    HASH_SEQUENCE = ['role', 'status_id', 'version', 'valid_from', 'valid_to', 'permissions', 'ldap']
 
     # permissions
     MODEL_ID = '03'
     MODEL_CONTEXT = 'Roles'
+    perms = {
+        '01': 'read',
+        '02': 'add',
+        '03': 'edit',
+        '04': 'delete',
+        '05': 'circulation',
+        '06': 'reject',
+        '07': 'productive',
+        '08': 'block',
+        '09': 'archive',
+        '10': 'inactivate',
+        '11': 'version',
+        '12': 'version_archived',
+        '13': 'ldap'
+    }
 
     # unique field
     UNIQUE = 'role'

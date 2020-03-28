@@ -30,11 +30,12 @@ from urp.views.private.workflows import workflows_steps_log_list
 from urp.views.private.logs.signatures import signatures_log_list
 from urp.views.private.execution import execution_list, execution_detail, execution_log_list, execution_status, \
     execution_value, list_log_value
+from urp.views.private.roles import roles_list, roles_detail, roles_ldap, roles_log_list, roles_status
 
 # app imports
-from urp.views import permissions_list, roles_list, roles_detail, status_list, \
-    roles_status, users_list, users_detail, users_status, access_log_list, central_log_list, \
-    permissions_log_list, users_log_list, roles_log_list, audit_trail_list, status_log_list, \
+from urp.views import permissions_list, status_list, \
+    users_list, users_detail, users_status, access_log_list, central_log_list, \
+    permissions_log_list, users_log_list, audit_trail_list, status_log_list, \
     ldap_list, ldap_detail, ldap_log_list, logout_view, meta_list, get_csrf_token, settings_list, \
     settings_detail, settings_log_list, logout_auto_view, sod_list, sod_detail, sod_log_list, sod_status, \
     users_password_list, change_password_view, user_change_password_view, user_change_questions_view, \
@@ -110,6 +111,7 @@ urls_private = [
     path('{}admin/settings/<str:key>'.format(settings.BASE_URL), settings_detail, name='settings-detail'),
     # roles
     path('{}admin/roles'.format(settings.BASE_URL), roles_list, name='roles-list'),
+    path('{}admin/roles/ldap'.format(settings.BASE_URL), roles_ldap, name='roles-ldap'),
     path('{}admin/roles/<str:lifecycle_id>/<int:version>'.format(settings.BASE_URL), roles_detail),
     path('{}admin/roles/<str:lifecycle_id>/<int:version>/<str:status>'.format(settings.BASE_URL), roles_status,
          name='roles-status'),

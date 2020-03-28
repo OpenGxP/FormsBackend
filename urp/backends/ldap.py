@@ -116,6 +116,12 @@ def server_check(data):
         attributes.append(data['attr_username'])
     if 'attr_forename' in data:
         attributes.append(data['attr_forename'])
-    search(con=con, base=data['base'], ldap_filter=data['filter'], attributes=attributes)
+    search(con=con, base=data['base_user'], ldap_filter=data['filter_user'], attributes=attributes)
     if not con.response and con.result['description'] == 'success':
-        raise ValidationError('LDAP search failed. False base or filter')
+        raise ValidationError('LDAP search failed. False base_user or filter_user')
+
+    if 'base_group' in data:
+        if data['base_group']:
+            search(con=con, base=data['base_group'], ldap_filter=data['filter_group'], attributes=[data['attr_group']])
+            if not con.response and con.result['description'] == 'success':
+                raise ValidationError('LDAP search failed. False base_group or filter_group')

@@ -67,7 +67,12 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         self.global_sequence_check = {}
 
         self._signature = None
+        if 'signature' in self.context.keys():
+            self.signature = self.context['signature']
+
         self.now = timezone.now()
+        if 'now' in self.context.keys():
+            self.now = self.context['now']
 
         self.user = None
         if 'user' in self.context.keys():
@@ -839,7 +844,7 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 if data['ldap']:
                     # in case a password was passed, set to none
                     data['password'] = ''
-                    LDAP.objects.search(data)
+                    LDAP.objects.search_user(data)
                 else:
                     # check if previous record was ldap managed
                     if self.instance.ldap:
@@ -1002,7 +1007,7 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 if data['ldap']:
                     # in case a password was passed, set to none
                     data['password'] = ''
-                    LDAP.objects.search(data)
+                    LDAP.objects.search_user(data)
 
             @require_NEW
             @require_USERS

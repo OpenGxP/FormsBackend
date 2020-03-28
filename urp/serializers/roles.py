@@ -30,9 +30,23 @@ class RolesReadWriteSerializer(GlobalReadWriteSerializer):
 
     class Meta:
         model = Roles
-        extra_kwargs = {'version': {'required': False}}
+        extra_kwargs = {'version': {'required': False},
+                        'ldap': {'required': False}}
         fields = Roles.objects.GET_MODEL_ORDER + Roles.objects.GET_BASE_ORDER_STATUS_MANAGED + \
             Roles.objects.GET_BASE_CALCULATED + model.objects.COMMENT_SIGNATURE
+
+    def validate_post_specific(self, data):
+        if self.context['request'].get_full_path().endswith('ldap'):
+            data['ldap'] = True
+        else:
+            data['ldap'] = False
+
+    def validate_patch_specific(self, data):
+        if self.instance.ldap:
+            if getattr(self.instance, self.model.UNIQUE) != data[self.model.UNIQUE]:
+                raise serializers.ValidationError('Role name can not be changed if LDAP.')
+        if self.instance.ldap != data['ldap']:
+            raise serializers.ValidationError('LDAP attribute can not be changed.')
 
 
 # new version / status
@@ -42,7 +56,8 @@ class RolesNewVersionStatusSerializer(GlobalReadWriteSerializer):
     class Meta:
         model = Roles
         extra_kwargs = {'version': {'required': False},
-                        'role': {'required': False}}
+                        'role': {'required': False},
+                        'ldap': {'required': False}}
         fields = Roles.objects.GET_MODEL_ORDER + Roles.objects.GET_BASE_ORDER_STATUS_MANAGED + \
             Roles.objects.GET_BASE_CALCULATED + model.objects.COMMENT_SIGNATURE
 

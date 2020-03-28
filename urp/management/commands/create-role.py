@@ -77,7 +77,8 @@ class Command(BaseCommand):
             'version': version,
             'role': role,
             'permissions': permissions,
-            'valid_from': valid_from
+            'valid_from': valid_from,
+            'ldap': False
         }
         serializer = RolesReadWriteSerializer(data=data, context={'method': 'POST', 'function': 'init',
                                               'user': settings.DEFAULT_SYSTEM_USER})
