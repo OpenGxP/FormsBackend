@@ -117,6 +117,7 @@ status.json
 permissions.json
 roles.json
 settings.json
+test_master.py
 
 # private backup
 .tresorit
