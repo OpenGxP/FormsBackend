@@ -27,12 +27,9 @@ from urp.views.views import auto_logout
 from urp.models.roles import Roles
 from urp.serializers.roles import RolesReadWriteSerializer, RolesLogReadSerializer, RolesDeleteSerializer, \
     RolesNewVersionStatusSerializer
-from urp.decorators import auth_required, perm_required
+from urp.decorators import auth_perm_required, auth_required
 from urp.views.base import StatusView
 from urp.custom import validate_comment, validate_signature
-
-# django imports
-from django.utils import timezone
 
 
 view = StatusView(model=Roles, ser_rw=RolesReadWriteSerializer, ser_del=RolesDeleteSerializer,
@@ -68,16 +65,14 @@ def roles_log_list(request):
 
 
 @api_view(['GET'])
-@auth_required()
-@perm_required('{}.13'.format(Roles.MODEL_ID))
+@auth_perm_required(permission='{}.13'.format(Roles.MODEL_ID))
 @auto_logout()
 def roles_ldap(request):
-    now = timezone.now()
     validate_comment(dialog='roles', data=request.data, perm='ldap')
     signature = validate_signature(logged_in_user=request.user.username, dialog='roles', data=request.data, perm='ldap',
-                                   now=now)
+                                   request=request)
 
-    groups = LDAP.objects.search_groups()
+    groups = LDAP.objects.search_groups
     for grp in groups:
         data = {'role': grp,
                 'version': 1}
@@ -85,7 +80,6 @@ def roles_ldap(request):
                                                                   'function': 'new',
                                                                   'user': request.user.username,
                                                                   'request': request,
-                                                                  'now': now,
                                                                   'signature': signature})
         if serializer.is_valid():
             serializer.save()

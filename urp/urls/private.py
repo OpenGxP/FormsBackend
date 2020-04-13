@@ -35,7 +35,7 @@ from urp.views.private.roles import roles_list, roles_detail, roles_ldap, roles_
 # app imports
 from urp.views import permissions_list, status_list, \
     users_list, users_detail, users_status, access_log_list, central_log_list, \
-    permissions_log_list, users_log_list, audit_trail_list, status_log_list, \
+    permissions_log_list, users_log_list, status_log_list, \
     ldap_list, ldap_detail, ldap_log_list, logout_view, meta_list, get_csrf_token, settings_list, \
     settings_detail, settings_log_list, logout_auto_view, sod_list, sod_detail, sod_log_list, sod_status, \
     users_password_list, change_password_view, user_change_password_view, user_change_questions_view, \
@@ -150,8 +150,6 @@ urls_private = [
          name='forms-status'),
     path('{}rtd/execution/<int:number>/<str:section>/<str:field>'.format(settings.BASE_URL),
          execution_value, name='execution-value'),
-    # audit trails
-    path('{}at/<str:dialog>/<str:lifecycle_id>'.format(settings.BASE_URL), audit_trail_list, name='audit-trail-list'),
     # meta views
     path('{}meta/<str:dialog>'.format(settings.BASE_URL), meta_list, name='meta-list')
 ]

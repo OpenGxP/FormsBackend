@@ -38,7 +38,9 @@ class UsersReadWriteSerializer(GlobalReadWriteSerializer):
         extra_kwargs = {'version': {'required': False},
                         'initial_password': {'read_only': True},
                         'password': {'write_only': True,
-                                     'required': False}}
+                                     'required': False},
+                        'external': {'required': False},
+                        'roles': {'required': True}}
         fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_ORDER_STATUS_MANAGED + \
             model.objects.GET_BASE_CALCULATED + ('password_verification',) + model.objects.COMMENT_SIGNATURE
 
@@ -49,6 +51,14 @@ class UsersReadWriteSerializer(GlobalReadWriteSerializer):
             if item not in allowed:
                 raise serializers.ValidationError('Not allowed to use "{}".'.format(item))
         return value
+
+    def validate_post_specific(self, data):
+        data['external'] = False
+
+    def validate_patch_specific(self, data):
+        if 'external' in data:
+            if self.instance.external != data['external']:
+                raise serializers.ValidationError('External attribute can not be changed.')
 
     def create_specific(self, validated_data, obj):
         if self.context['function'] == 'new_version':
@@ -113,7 +123,8 @@ class UsersNewVersionStatusSerializer(GlobalReadWriteSerializer):
                         'initial_password': {'required': False},
                         'roles': {'required': False},
                         'valid_from': {'required': False},
-                        'ldap': {'required': False}}
+                        'ldap': {'required': False},
+                        'external': {'required': False}}
         fields = Users.objects.GET_MODEL_ORDER_NO_PW + Users.objects.GET_BASE_ORDER_STATUS_MANAGED + \
             Users.objects.GET_BASE_CALCULATED + model.objects.COMMENT_SIGNATURE
 

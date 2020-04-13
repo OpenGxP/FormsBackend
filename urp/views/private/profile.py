@@ -59,7 +59,7 @@ def profile_log_list(request):
 
 # PATCH timezone
 @api_view(['PATCH'])
-@auth_required(initial_password_check=True)
+@auth_required()
 @auto_logout()
 @csrf_protect
 def set_timezone_view(request):

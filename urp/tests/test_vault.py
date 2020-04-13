@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from django.urls import reverse
 from django.test import Client
 from django.utils import timezone
+from django.http import HttpRequest
 
 # rest framework imports
 from rest_framework import status
@@ -203,7 +204,8 @@ class UserChangePassword(APITestCase):
 
     def test_401_initial_password(self):
         # authenticate
-        login_response = self.client.login(**self.login_data)
+        login_response = self.client.login(**self.login_data, initial_password_check=False, request=HttpRequest(),
+                                           public=True)
         assert login_response is True
         # save last touch now timestamp to session to prevent auto logout error
         session = self.client.session
@@ -222,7 +224,8 @@ class UserChangePassword(APITestCase):
 
     def test_400(self):
         # authenticate
-        login_response = self.client.login(**self.login_data)
+        login_response = self.client.login(**self.login_data, initial_password_check=False, request=HttpRequest(),
+                                           public=True)
         assert login_response is True
         # save last touch now timestamp to session to prevent auto logout error
         session = self.client.session
@@ -247,7 +250,8 @@ class UserChangePassword(APITestCase):
 
     def test_200(self):
         # authenticate
-        login_response = self.client.login(**self.login_data)
+        login_response = self.client.login(**self.login_data, initial_password_check=False, request=HttpRequest(),
+                                           public=True)
         assert login_response is True
         # save last touch now timestamp to session to prevent auto logout error
         session = self.client.session

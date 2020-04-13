@@ -21,16 +21,15 @@ from rest_framework.decorators import api_view
 
 # custom imports
 from urp.serializers.logs.central import CentralLogReadWriteSerializer
-from urp.decorators import perm_required, auth_required
+from urp.decorators import auth_perm_required
 from basics.models import CentralLog
 from urp.views.base import auto_logout, GET
 
 
 # GET list
 @api_view(['GET'])
-@auth_required()
+@auth_perm_required(permission='{}.01'.format(CentralLog.MODEL_ID))
 @auto_logout()
-@perm_required('{}.01'.format(CentralLog.MODEL_ID))
 def central_log_list(request):
     get = GET(model=CentralLog, request=request, serializer=CentralLogReadWriteSerializer)
     return get.standard

@@ -174,7 +174,7 @@ def validate_comment(dialog, data, perm):
                 del data['com']
 
 
-def validate_signature(dialog, data, perm, now=None, logged_in_user=None):
+def validate_signature(request, dialog, data, perm, logged_in_user=None):
     if dialog not in ['accesslog', 'profile']:
         if Settings.objects.dialog_signature(dialog=dialog, perm=perm):
             # validate for signature username and password field
@@ -188,7 +188,7 @@ def validate_signature(dialog, data, perm, now=None, logged_in_user=None):
                     raise serializers.ValidationError('Signature user must be logged in user.')
 
             # auth check
-            authenticate(request=None, username=data['sig_user'], password=data['sig_pw'], signature=True, now=now)
+            authenticate(request=request, username=data['sig_user'], password=data['sig_pw'], signature=True)
 
             # return true for success
             return True

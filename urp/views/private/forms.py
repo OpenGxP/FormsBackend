@@ -25,7 +25,7 @@ from urp.models.forms.forms import Forms
 from urp.serializers.forms import FormsReadWriteSerializer, FormsNewVersionStatusSerializer, \
     FormsLogReadSerializer, FormsDeleteSerializer, FormsSectionsLogReadSerializer, FormsTextFieldsLogReadSerializer, \
     FormsBoolFieldsLogReadSerializer
-from urp.decorators import auth_required, perm_required
+from urp.decorators import auth_required, auth_perm_required
 from urp.views.base import StatusView
 from urp.models.forms.sub.sections import FormsSectionsLog
 from urp.models.forms.sub.text_fields import FormsTextFieldsLog
@@ -66,9 +66,8 @@ def forms_log_list(request):
 
 # sections log
 @api_view(['GET'])
-@auth_required()
+@auth_perm_required(permission='{}.01'.format(Forms.MODEL_ID))
 @auto_logout()
-@perm_required('{}.01'.format(Forms.MODEL_ID))
 def forms_sections_log_list(request):
     get = GET(model=FormsSectionsLog, request=request, serializer=FormsSectionsLogReadSerializer)
     return get.standard
@@ -76,9 +75,8 @@ def forms_sections_log_list(request):
 
 # tex fields log
 @api_view(['GET'])
-@auth_required()
+@auth_perm_required(permission='{}.01'.format(Forms.MODEL_ID))
 @auto_logout()
-@perm_required('{}.01'.format(Forms.MODEL_ID))
 def forms_text_fields_log_list(request):
     get = GET(model=FormsTextFieldsLog, request=request, serializer=FormsTextFieldsLogReadSerializer)
     return get.standard
@@ -86,9 +84,8 @@ def forms_text_fields_log_list(request):
 
 # bool fields log
 @api_view(['GET'])
-@auth_required()
+@auth_perm_required(permission='{}.01'.format(Forms.MODEL_ID))
 @auto_logout()
-@perm_required('{}.01'.format(Forms.MODEL_ID))
 def forms_bool_fields_log_list(request):
     get = GET(model=FormsBoolFieldsLog, request=request, serializer=FormsBoolFieldsLogReadSerializer)
     return get.standard

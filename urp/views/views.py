@@ -24,12 +24,11 @@ from rest_framework import serializers
 
 # custom imports
 from urp.models import Roles, Permissions, PermissionsLog, RolesLog, Vault
-from urp.serializers import StatusReadWriteSerializer, PermissionsReadWriteSerializer, \
-    CentralLogReadWriteSerializer, StatusLogReadSerializer, \
-    PermissionsLogReadSerializer, AUDIT_TRAIL_SERIALIZERS, UserProfile
-from urp.decorators import perm_required, auth_required
-from basics.models import Status, StatusLog, CentralLog
-from basics.custom import get_model_by_string, unique_items
+from urp.serializers import StatusReadWriteSerializer, PermissionsReadWriteSerializer, StatusLogReadSerializer, \
+    PermissionsLogReadSerializer, UserProfile
+from urp.decorators import auth_required, auth_perm_required
+from basics.models import Status, StatusLog
+from basics.custom import unique_items
 from urp.vault import create_update_vault
 from urp.views.base import auto_logout, GET
 
@@ -51,7 +50,7 @@ from django.contrib.auth.hashers import make_password
 @auth_required()
 @auto_logout()
 def user_permissions_view(request):
-    data = Roles.objects.permissions(request.user.roles.split(','))
+    data = Roles.objects.permissions(getattr(request.user, 'roles', '').split(','))
     return Response(data=data, status=http_status.HTTP_200_OK)
 
 
@@ -108,8 +107,8 @@ def user_change_questions_view(request):
         data[answer] = make_password(request.data[answer])
 
     # check if provided password is correct
-    now = timezone.now()
-    authenticate(request=request, username=request.user.username, password=request.data['password'], now=now,
+    now = getattr(request, settings.ATTR_NOW, timezone.now())
+    authenticate(request=request, username=request.user.username, password=request.data['password'],
                  self_question_change=True)
 
     create_update_vault(data=data, instance=vault, action=settings.DEFAULT_LOG_QUESTIONS, user=request.user.username,
@@ -135,9 +134,8 @@ def get_csrf_token(request):
 
 # GET list
 @api_view(['GET'])
-@auth_required()
+@auth_perm_required(permission='{}.01'.format(Status.MODEL_ID))
 @auto_logout()
-@perm_required('{}.01'.format(Status.MODEL_ID))
 def status_list(request):
     get = GET(model=Status, request=request, serializer=StatusReadWriteSerializer)
     return get.standard
@@ -149,9 +147,8 @@ def status_list(request):
 
 # GET list
 @api_view(['GET'])
-@auth_required()
+@auth_perm_required(permission='{}.01'.format(StatusLog.MODEL_ID))
 @auto_logout()
-@perm_required('{}.01'.format(StatusLog.MODEL_ID))
 def status_log_list(request):
     get = GET(model=StatusLog, request=request, serializer=StatusLogReadSerializer)
     return get.standard
@@ -163,9 +160,8 @@ def status_log_list(request):
 
 # GET list
 @api_view(['GET'])
-@auth_required()
+@auth_perm_required(permission='{}.01'.format(Roles.MODEL_ID))
 @auto_logout()
-@perm_required('{}.01'.format(Roles.MODEL_ID))
 def permissions_list(request):
     get = GET(model=Permissions, request=request, serializer=PermissionsReadWriteSerializer)
     return get.standard
@@ -177,51 +173,11 @@ def permissions_list(request):
 
 # GET list
 @api_view(['GET'])
-@auth_required()
+@auth_perm_required(permission='{}.01'.format(RolesLog.MODEL_ID))
 @auto_logout()
-@perm_required('{}.01'.format(RolesLog.MODEL_ID))
 def permissions_log_list(request):
     get = GET(model=PermissionsLog, request=request, serializer=PermissionsLogReadSerializer)
     return get.standard
-
-
-###############
-# AUDIT_TRAIL #
-###############
-
-# GET list
-@api_view(['GET'])
-@auth_required()
-@auto_logout()
-def audit_trail_list(request, dialog, lifecycle_id):
-    # lower all inputs for dialog
-    dialog = dialog.lower()
-    # determine the model instance from string parameter
-    try:
-        model = get_model_by_string(dialog).objects.LOG_TABLE
-    except ValidationError:
-        return Response(status=http_status.HTTP_400_BAD_REQUEST)
-
-    @perm_required('{}.01'.format(model.MODEL_ID))
-    def get(_request):
-        # check if at least one record exists
-        try:
-            record = model.objects.filter(lifecycle_id=lifecycle_id).get()
-            serializer = AUDIT_TRAIL_SERIALIZERS[dialog](record)
-        # no record exists for that lifecycle_id
-        except model.DoesNotExist:
-            return Response(status=http_status.HTTP_404_NOT_FOUND)
-        # not a valid lifecycle_id
-        except ValidationError:
-            return Response(status=http_status.HTTP_400_BAD_REQUEST)
-        # lifecycle_id ok and multiple records, no error
-        except model.MultipleObjectsReturned:
-            records = model.objects.filter(lifecycle_id=lifecycle_id).all()
-            serializer = AUDIT_TRAIL_SERIALIZERS[dialog](records, many=True)
-        return Response(serializer.data)
-
-    if request.method == 'GET':
-        return get(request)
 
 
 ################

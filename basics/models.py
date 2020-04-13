@@ -156,9 +156,12 @@ class GlobalManager(models.Manager):
         except self.model.DoesNotExist:
             return None
 
-    def get_by_natural_key_productive(self, key):
+    def get_by_natural_key_productive(self, key, opt_filter=None):
+        if not opt_filter:
+            opt_filter = {}
         status_effective_id = Status.objects.productive
-        query = self.filter(status__id=status_effective_id).filter(**{self.model.UNIQUE: key}).all()
+        query = self.filter(status__id=status_effective_id).filter(**{self.model.UNIQUE: key}).filter(**opt_filter) \
+            .all()
         if not query:
             raise self.model.DoesNotExist
         else:
@@ -186,7 +189,7 @@ class GlobalManager(models.Manager):
         if not query:
             return
         for record in query:
-            if record.verify_validity_range:
+            if record.verify_validity_range():
                 return record
         return
 
@@ -201,14 +204,40 @@ class GlobalManager(models.Manager):
             return None
 
     # FO-121: new method to determine status and validity at the same time
-    def verify_prod_valid(self, key):
+    def verify_prod_valid(self, key, opt_filter=None, now=None):
         try:
-            query = self.get_by_natural_key_productive(key=key)
+            query = self.get_by_natural_key_productive(key=key, opt_filter=opt_filter)
         except self.model.DoesNotExist:
             return
         for record in query:
-            if record.verify_validity_range:
+            if record.verify_validity_range(now=now):
                 return record
+
+    def prod_val_with_errors(self, key, opt_filter=None, now=None):
+        # add filter is passed from outside
+        if not opt_filter:
+            opt_filter = {}
+
+        # get all records despite of status or validity range
+        all_records = self.filter(**{self.model.UNIQUE: key}).filter(**opt_filter).all()
+        # if no records at all, return None and error message
+        if not all_records:
+            return None, settings.ERROR_NO_RECORD
+
+        # if records exist filter them for status productive
+        status_effective_id = Status.objects.productive
+        prod_records = self.filter(status__id=status_effective_id).filter(**{self.model.UNIQUE: key}) \
+            .filter(**opt_filter).all()
+        # if no record in status productive exist, return None and error message
+        if not prod_records:
+            return None, settings.ERROR_NO_RECORD_PROD
+
+        # loop over productive records to identify a valid record
+        for item in prod_records:
+            if item.verify_validity_range(now=now):
+                return item, None
+        # if no valid record was found, return None and error message
+        return None, settings.ERROR_NO_RECORD_PROD_VALID
 
     def last_record(self, filter_dict=None, order_str=None):
         if not filter_dict and not order_str:
@@ -219,13 +248,14 @@ class GlobalManager(models.Manager):
             return self.filter(**filter_dict).last()
         return self.filter(**filter_dict).order_by(order_str).last()
 
-    @property
-    def get_prod_valid_list(self):
+    def get_prod_valid_list(self, opt_filter=None, now=None):
+        if not opt_filter:
+            opt_filter = {}
         prod_valid_records = []
         status_effective_id = Status.objects.productive
-        query = self.filter(status__id=status_effective_id).all()
+        query = self.filter(status__id=status_effective_id).filter(**opt_filter).all()
         for record in query:
-            if record.verify_validity_range:
+            if record.verify_validity_range(now=now):
                 prod_valid_records.append(record)
         return prod_valid_records
 
@@ -274,9 +304,9 @@ class GlobalModel(models.Model):
         except ValueError:
             return False
 
-    @property
-    def verify_validity_range(self):
-        now = timezone.now()
+    def verify_validity_range(self, now=None):
+        if not now:
+            now = timezone.now()
         if self.valid_from < now:
             if now > self.valid_from and self.valid_to is None:
                 return True

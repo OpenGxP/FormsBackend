@@ -24,7 +24,7 @@ from rest_framework.decorators import api_view
 
 # custom imports
 from urp.serializers.passwords import UsersPassword
-from urp.decorators import auth_required, perm_required
+from urp.decorators import auth_required, auth_perm_required
 from urp.models.vault import Vault
 from urp.models.users import Users
 from urp.views.base import auto_logout, BaseView
@@ -45,7 +45,7 @@ view = BaseView(model=Vault, ser_rw=UsersPassword)
 
 
 @api_view(['GET'])
-@auth_required()
+@auth_perm_required(permission='{}.01'.format(Vault.MODEL_ID))
 @auto_logout()
 @ensure_csrf_cookie
 def users_password_list(request):
@@ -57,8 +57,7 @@ def users_password_list(request):
 ###################
 
 @api_view(['PATCH'])
-@auth_required()
-@perm_required('{}.13'.format(Vault.MODEL_ID))
+@auth_perm_required(permission='{}.13'.format(Vault.MODEL_ID))
 @auto_logout()
 @csrf_protect
 def change_password_view(request, username):
@@ -73,9 +72,9 @@ def change_password_view(request, username):
 
     validate_password_input(request.data, instance=vault)
 
-    now = timezone.now()
-    signature = validate_signature(dialog='passwords', data=request.data, perm='change_password', now=now,
-                                   logged_in_user=request.user.username)
+    now = getattr(request, settings.ATTR_NOW, timezone.now())
+    signature = validate_signature(dialog='passwords', data=request.data, perm='change_password',
+                                   logged_in_user=request.user.username, request=request)
 
     create_update_vault(data=request.data, instance=vault, action=settings.DEFAULT_LOG_PASSWORD,
                         user=request.user.username, signature=signature, now=now)
@@ -112,9 +111,9 @@ def user_change_password_view(request):
         return Response(status=http_status.HTTP_400_BAD_REQUEST)
 
     # check if provided password is correct
-    now = timezone.now()
+    now = getattr(request, settings.ATTR_NOW, timezone.now())
     authenticate(request=request, username=request.user.username, password=request.data['password'],
-                 self_password_change=True, now=now)
+                 self_password_change=True)
 
     validate_password_input(request.data, instance=vault)
 

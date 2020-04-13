@@ -31,6 +31,13 @@ from cryptography.fernet import Fernet
 # ldap imports
 from ldap3 import SIMPLE, AUTO_BIND_TLS_BEFORE_BIND, SUBTREE
 
+###############
+# ERROR CODES #
+###############
+
+ERROR_NO_RECORD = 0
+ERROR_NO_RECORD_PROD = 1
+ERROR_NO_RECORD_PROD_VALID = 2
 
 #########
 # PATHS #
@@ -110,6 +117,21 @@ DEFAULT_PAGINATION_MAX = 100
 DEFAULT_DIALOG_SIGNATURE = DEFAULT_LOG_LOGGING
 DEFAULT_DIALOG_COMMENT = 'none'
 
+######################
+# REQUEST ATTRIBUTES #
+######################
+
+# for check function
+ATTR_AUTH = 'CHECK_AUTH'
+ATTR_USER = 'CHECK_USER'
+ATTR_INITIAL_PW = 'CHECK_INITIAL_PW'
+ATTR_ROLES = 'CHECK_ROLES'
+ATTR_PERMISSION = 'CHECK_PERM'
+ATTR_SOD = 'CHECK_SOD'
+# others
+ATTR_NOW = 'NOW'
+ATTR_CASL = 'CASL'
+
 ####################
 # FLAGS AND VALUES #
 ####################
@@ -176,7 +198,9 @@ EMAIL_BACKEND = 'urp.backends.Email.MyEmailBackend'
 ##########################
 
 AUTHENTICATION_BACKENDS = [
-    'urp.backends.User.MyModelBackend',
+    'urp.backends.users.external_ldap.MyExternalLDAPUserModelBackend',
+    'urp.backends.users.internal_ldap.MyInternalLDAPUserModelBackend',
+    'urp.backends.users.internal.MyInternalUserModelBackend',
 ]
 
 AUTH_USER_MODEL = 'urp.Users'

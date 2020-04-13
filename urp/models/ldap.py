@@ -26,7 +26,6 @@ from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, LOG_HASH_SEQ
 from urp.backends.ldap import init_server, connect, search
 from urp.crypto import decrypt
 from urp.validators import validate_only_positive_numbers
-from urp.models.users import Users
 
 
 # log manager
@@ -131,94 +130,122 @@ class LDAPManager(GlobalManager):
                                        'lookup': None,
                                        'editable': True}
 
+    @property
     def _server(self):
         query = self.order_by('-priority').all()
         if not query:
             raise ValidationError('No LDAP server configured.')
         return query
 
-    def search_user(self, data):
-        query = self._server()
-        error = dict()
+    @property
+    def _cache_server_con(self):
+        server, con = self._base_server_con()
+        return server, con
+
+    @property
+    def _cache_server(self):
+        # try to get from cache
+        server, _server = self._base_server_con(only_server=True)
+        return server, _server
+
+    def _base_server_con(self, only_server=None):
+        query = self._server
+        error = {}
         for server in query:
-            # try to connect to server
             try:
-                ser = init_server(host=server.host, port=server.port, use_ssl=server.ssl_tls)
+                _server = init_server(host=server.host, port=server.port, use_ssl=server.ssl_tls)
             except ValidationError as e:
                 error[server.host] = e
             else:
-                if ser.check_availability():
+                if _server.check_availability():
+                    if only_server:
+                        return server, _server
                     # decrypt password before usage
                     password = decrypt(server.password)
-                    con = connect(server=ser, bind_dn=server.bindDN, password=password)
-                    if con.bind():
-                        attributes = [server.attr_username]
-                        if server.attr_email:
-                            attributes.append(server.attr_email)
-                        if server.attr_surname:
-                            attributes.append(server.attr_surname)
-                        if server.attr_forename:
-                            attributes.append(server.attr_forename)
-                        # build filter
-                        ldap_filter = '(&{}({}={}))'.format(server.filter_user, server.attr_username, data['username'])
-                        try:
-                            search(con=con, base=server.base_user, attributes=attributes, ldap_filter=ldap_filter)
-                        except ValidationError as e:
-                            error[server.host] = e
-                        else:
-                            # check if search was successful as specified in RFC4511
-                            if con.response and con.result['description'] == 'success':
-                                response_attributes = con.response[0]['attributes']
-                                for attr in response_attributes:
-                                    if attr == server.attr_email:
-                                        data[Users.EMAIL_FIELD] = response_attributes[attr][0]
-                                    if attr == server.attr_forename:
-                                        data['first_name'] = response_attributes[attr][0]
-                                    if attr == server.attr_surname:
-                                        data['last_name'] = response_attributes[attr][0]
-                                return
-                            else:
-                                error[server.host] = ('Username "{}" does not exist on LDAP host "{}".'
-                                                      .format(data['username'], server.host))
+                    # auto bind using tls is active, therefore no additional manual bind required
+                    try:
+                        con = connect(server=_server, bind_dn=server.bindDN, password=password)
+                    except ValidationError as e:
+                        error[server.host] = e
                     else:
-                        error[server.host] = 'LDAP connection failed. False credentials and / or false bind.'
-                else:
-                    error[server.host] = 'LDAP server <{}> not available at port <{}>.'.format(server.host, server.port)
+                        return server, con
+                error[server.host] = 'LDAP server <{}> not available at port <{}>.'.format(server.host, server.port)
         raise ValidationError(error)
 
-    def bind(self, username, password):
-        query = self._server()
-        for server in query:
-            ser = init_server(host=server.host, port=server.port, use_ssl=server.ssl_tls)
-            bind_dn = '{}={},{}'.format(server.attr_username, username, server.base_user)
-            # auto bind using tls is active, therefore no additional manual bind required
-            try:
-                connect(server=ser, bind_dn=bind_dn, password=password)
-            except ValidationError:
-                return False
+    def base_search_user(self, username):
+        # get server and connection
+        server, con = self._cache_server_con
+        # build filter
+        ldap_filter = '(&{}({}={}))'.format(server.filter_user, server.attr_username, username)
+        search(con=con, base=server.base_user, ldap_filter=ldap_filter, attributes=server.attr_username)
+        # check if search was successful as specified in RFC4511
+        if con.response and con.result['description'] == 'success':
             return True
+        return False
 
-    def search_groups(self):
-        # lowest priority ldap server is used for groups
-        priority_min = self.all().aggregate(models.Min('priority'))
+    def search_user(self, data):
+        # get server and connection
+        server, con = self._cache_server_con
+        # build filter
+        attributes = [server.attr_username]
+        if server.attr_email:
+            attributes.append(server.attr_email)
+        if server.attr_surname:
+            attributes.append(server.attr_surname)
+        if server.attr_forename:
+            attributes.append(server.attr_forename)
+        # build filter
+        ldap_filter = '(&{}({}={}))'.format(server.filter_user, server.attr_username, data['username'])
+        search(con=con, base=server.base_user, attributes=attributes, ldap_filter=ldap_filter)
+        if con.response and con.result['description'] == 'success':
+            response_attributes = con.response[0]['attributes']
+            for attr in response_attributes:
+                if attr == server.attr_email:
+                    data['email'] = response_attributes[attr][0]
+                if attr == server.attr_forename:
+                    data['first_name'] = response_attributes[attr][0]
+                if attr == server.attr_surname:
+                    data['last_name'] = response_attributes[attr][0]
+
+    def bind(self, username, password):
+        # get server
+        server, _server = self._cache_server
+        bind_dn = '{}={},{}'.format(server.attr_username, username, server.base_user)
+        # auto bind using tls is active, therefore no additional manual bind required
         try:
-            server = self.filter(priority=priority_min['priority__min']).get()
-        except self.model.DoesNotExist:
-            raise ValidationError('No LDAP server configured.')
+            con = connect(server=_server, bind_dn=bind_dn, password=password)
+        except ValidationError:
+            return False
+        else:
+            # immediately unbind again to close connection
+            con.unbind()
+        return True
+
+    @property
+    def search_groups(self):
+        # get server and connection
+        server, con = self._cache_server_con
         groups = []
-        # connect to server
-        _server = init_server(host=server.host, port=server.port, use_ssl=server.ssl_tls)
-        if _server.check_availability():
-            # decrypt password before usage
-            password = decrypt(server.password)
-            con = connect(server=_server, bind_dn=server.bindDN, password=password)
-            if con.bind():
-                search(con=con, base=server.base_group, attributes=[server.attr_group], ldap_filter=server.filter_group)
-                # check if search was successful as specified in RFC4511
-                if con.response and con.result['description'] == 'success':
-                    for x in con.response:
-                        groups.append(x['attributes'][server.attr_group][0])
-                    return groups
+        search(con=con, base=server.base_group, attributes=[server.attr_group], ldap_filter=server.filter_group)
+        # check if search was successful as specified in RFC4511
+        if con.response and con.result['description'] == 'success':
+            for item in con.response:
+                groups.append(item['attributes'][server.attr_group][0])
+        return groups
+
+    def get_group_membership(self, username):
+        groups = []
+        # get server and connection
+        server, con = self._cache_server_con
+        # build filter
+        ldap_filter = '(&{}(memberUid={}))'.format(server.filter_group, username)
+        search(con=con, base=server.base_group, ldap_filter=ldap_filter, attributes=server.attr_group)
+        # check if search was successful as specified in RFC4511
+        if con.response and con.result['description'] == 'success':
+            for item in con.response:
+                groups.append(item['attributes'][server.attr_group][0])
+            return groups
+        return groups
 
 
 # table

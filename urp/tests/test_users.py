@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # django imports
 from django.urls import reverse
 from django.test import Client
+from django.http import HttpRequest
 
 # rest framework imports
 from rest_framework import status
@@ -275,7 +276,8 @@ class UsersMiscellaneous(APITestCase):
 
         # login with new user
         self.client.logout()
-        response = self.client.login(username=self.username, password=self.password)
+        response = self.client.login(username=self.username, password=self.password, initial_password_check=False,
+                                     request=HttpRequest(), public=True)
         self.assertTrue(response)
 
     def test_400_edit_version_two(self):
@@ -366,5 +368,6 @@ class UsersMiscellaneous(APITestCase):
 
         # login with new user
         self.client.logout()
-        response = self.client.login(username=self.username, password=new_password)
+        response = self.client.login(username=self.username, password=new_password, initial_password_check=False,
+                                     request=HttpRequest(), public=True)
         self.assertTrue(response)

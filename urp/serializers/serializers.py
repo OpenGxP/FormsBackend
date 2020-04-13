@@ -54,6 +54,12 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
     def __init__(self, *args, **kwargs):
         serializers.ModelSerializer.__init__(self, *args, **kwargs)
 
+        # request
+        if 'request' in self.context:
+            self.request = self.context['request']
+        else:
+            self.request = None
+
         # flags
         self.new_version = False
         self.status_change = False
@@ -70,7 +76,7 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         if 'signature' in self.context.keys():
             self.signature = self.context['signature']
 
-        self.now = timezone.now()
+        self.now = getattr(self.request, settings.ATTR_NOW, timezone.now())
         if 'now' in self.context.keys():
             self.now = self.context['now']
 
@@ -513,6 +519,7 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         def __init__(self, validate_method):
             self.model = getattr(getattr(validate_method, 'Meta', None), 'model', None)
             self.context = validate_method.context
+            self.request = validate_method.request
             self.instance = validate_method.instance
             self.function = validate_method.context['function']
             self.validate_method = validate_method
@@ -596,8 +603,7 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 dialog = self.model.MODEL_CONTEXT.lower()
                 validate_comment(dialog=dialog, data=data, perm='circulation')
                 self.validate_method.signature = validate_signature(logged_in_user=self.user, dialog=dialog,
-                                                                    data=data, perm='circulation',
-                                                                    now=self.validate_method.now)
+                                                                    data=data, perm='circulation', request=self.request)
 
             @require_STATUS_CHANGE
             @require_circulation
@@ -613,7 +619,7 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                     perm = 'productive'
                     # SoD
                     if 'disable-sod' not in self.context.keys() and not self.model.objects.WF_MGMT \
-                            and not self.context['request'].user.has_role(Settings.objects.core_initial_role):
+                            and not self.request.user.has_role(Settings.objects.core_initial_role):
                         log = self.model.objects.LOG_TABLE
                         previous_user = log.objects.get_circulation_user_for_sod(self.instance)
                         if previous_user == self.context['user']:
@@ -643,7 +649,7 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                         for step in steps:
                             if step.sequence == 0 and not step.predecessors:
                                 # validate if current user is in role of first step
-                                if not self.context['request'].user.has_role(step.role):
+                                if not self.request.user.has_role(step.role):
                                     raise serializers.ValidationError('You are not allowed to perform '
                                                                       'that workflow step.')
                                 if self.context['status'] == 'productive':
@@ -688,7 +694,7 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                         flag_in = False
                         for step in next_steps:
                             # validate if current user is in role of next step
-                            if self.context['request'].user.has_role(step.role):
+                            if self.request.user.has_role(step.role):
                                 flag_in = True
                                 if self.context['status'] == 'productive':
                                     self.context['workflow']['step'] = step.step
@@ -712,8 +718,7 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 dialog = self.model.MODEL_CONTEXT.lower()
                 validate_comment(dialog=dialog, data=data, perm=perm)
                 self.validate_method.signature = validate_signature(logged_in_user=self.user, dialog=dialog,
-                                                                    data=data, perm=perm,
-                                                                    now=self.validate_method.now)
+                                                                    data=data, perm=perm, request=self.request)
 
             @require_STATUS_CHANGE
             @require_USERS
@@ -741,17 +746,18 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                     # validate comment
                     validate_comment(dialog=dialog, data=data, perm='block')
                     self.validate_method.signature = validate_signature(logged_in_user=self.user, dialog=dialog,
-                                                                        data=data, perm='block')
+                                                                        data=data, perm='block', request=self.request)
                 if self.context['status'] == 'inactive':
                     # validate comment
                     validate_comment(dialog=dialog, data=data, perm='inactivate')
                     self.validate_method.signature = validate_signature(logged_in_user=self.user, dialog=dialog,
-                                                                        data=data, perm='inactivate')
+                                                                        data=data, perm='inactivate',
+                                                                        request=self.request)
                 if self.context['status'] == 'archived':
                     # validate comment
                     validate_comment(dialog=dialog, data=data, perm='archive')
                     self.validate_method.signature = validate_signature(logged_in_user=self.user, dialog=dialog,
-                                                                        data=data, perm='archive')
+                                                                        data=data, perm='archive', request=self.request)
 
             @require_STATUS_CHANGE
             @require_ROLES
@@ -772,7 +778,7 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 dialog = self.model.MODEL_CONTEXT.lower()
                 validate_comment(dialog=dialog, data=data, perm='productive')
                 self.validate_method.signature = validate_signature(logged_in_user=self.user, dialog=dialog,
-                                                                    data=data, perm='productive')
+                                                                    data=data, perm='productive', request=self.request)
 
             @require_STATUS_CHANGE
             @require_inactive
@@ -784,7 +790,7 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 dialog = self.model.MODEL_CONTEXT.lower()
                 validate_comment(dialog=dialog, data=data, perm='block')
                 self.validate_method.signature = validate_signature(logged_in_user=self.user, dialog=dialog,
-                                                                    data=data, perm='block')
+                                                                    data=data, perm='block', request=self.request)
 
             @require_STATUS_CHANGE
             @require_archived
@@ -829,7 +835,7 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 dialog = self.model.MODEL_CONTEXT.lower()
                 validate_comment(dialog=dialog, data=data, perm='edit')
                 self.validate_method.signature = validate_signature(logged_in_user=self.user, dialog=dialog,
-                                                                    data=data, perm='edit')
+                                                                    data=data, perm='edit', request=self.request)
 
             @require_NONE
             @require_EMAIL
@@ -959,8 +965,7 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 dialog = self.model.MODEL_CONTEXT.lower()
                 validate_comment(dialog=dialog, data=data, perm='add')
                 self.validate_method.signature = validate_signature(logged_in_user=self.user, dialog=dialog,
-                                                                    data=data, perm='add',
-                                                                    now=self.validate_method.now)
+                                                                    data=data, perm='add', request=self.request)
 
             @require_NEW_VERSION
             def validate_only_draft_or_circulation(self):
@@ -981,11 +986,12 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 if self.context['nv'] == 'regular':
                     validate_comment(dialog=dialog, data=data, perm='version')
                     self.validate_method.signature = validate_signature(logged_in_user=self.user, dialog=dialog,
-                                                                        data=data, perm='version')
+                                                                        data=data, perm='version', request=self.request)
                 if self.context['nv'] == 'archived':
                     validate_comment(dialog=dialog, data=data, perm='version_archived')
                     self.validate_method.signature = validate_signature(logged_in_user=self.user, dialog=dialog,
-                                                                        data=data, perm='version_archived')
+                                                                        data=data, perm='version_archived',
+                                                                        request=self.request)
 
             @require_NEW_VERSION
             @require_ROLES
@@ -1049,7 +1055,7 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 dialog = self.model.MODEL_CONTEXT.lower()
                 validate_comment(dialog=dialog, data=data, perm='delete')
                 self.validate_method.signature = validate_signature(logged_in_user=self.user, dialog=dialog,
-                                                                    data=data, perm='delete')
+                                                                    data=data, perm='delete', request=self.request)
 
         Patch(self)
         Post(self)

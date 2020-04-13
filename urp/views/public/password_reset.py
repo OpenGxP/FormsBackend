@@ -27,7 +27,7 @@ from rest_framework import status as http_status
 
 # app imports
 from urp.models import Tokens, Users, Vault
-from urp.backends.User import activate_user
+from urp.backends.users import activate_user
 from basics.custom import render_email_from_template
 from basics.models import Status
 from urp.vault import validate_password_input, create_update_vault
@@ -129,7 +129,7 @@ def password_reset_email_view(request, token):
         # update vault with new password
         now = timezone.now()
         create_update_vault(data=request.data, instance=vault, action=settings.DEFAULT_LOG_PASSWORD,
-                            user=vault.username, now=now, self_pw=True)
+                            user=vault.username, now=now, self_pw=True, signature=False)
 
         # in case user is in status blocked, set effective
         user = Users.objects.get_valid_by_key(vault.username)

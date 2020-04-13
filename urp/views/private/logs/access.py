@@ -21,16 +21,15 @@ from rest_framework.decorators import api_view
 
 # custom imports
 from urp.serializers.logs.access import AccessLogReadWriteSerializer
-from urp.decorators import perm_required, auth_required
+from urp.decorators import auth_perm_required
 from urp.models.access import AccessLog
 from urp.views.base import auto_logout, GET
 
 
 # GET list
 @api_view(['GET'])
-@auth_required()
+@auth_perm_required(permission='{}.01'.format(AccessLog.MODEL_ID))
 @auto_logout()
-@perm_required('{}.01'.format(AccessLog.MODEL_ID))
 def access_log_list(request):
     get = GET(model=AccessLog, request=request, serializer=AccessLogReadWriteSerializer)
     return get.standard

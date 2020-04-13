@@ -18,13 +18,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # python import
 import string
-import itertools
 
 # django imports
 from django.db import models
 from django.utils import timezone
 from django.conf import settings
-from django.db.models import Q
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
@@ -38,7 +36,6 @@ from urp.custom import create_log_record
 from basics.custom import generate_checksum, generate_to_hash
 from urp.models.vault import Vault
 from urp.models.roles import Roles
-from urp.models.sod import SoD
 from urp.fields import LookupField
 from urp.models.profile import Profile
 
@@ -58,13 +55,15 @@ class UsersLogManager(GlobalManager):
                        'password',
                        'email',
                        'roles',
-                       'ldap')
+                       'ldap',
+                       'external')
     GET_MODEL_ORDER_NO_PW = ('username',
                              'first_name',
                              'last_name',
                              'email',
                              'roles',
-                             'ldap')
+                             'ldap',
+                             'external')
 
 
 # log table
@@ -76,7 +75,8 @@ class UsersLog(GlobalModelLog):
     last_name = models.CharField(_('Last name'), max_length=CHAR_DEFAULT, blank=True)
     initial_password = models.BooleanField(_('Initial password'))
     ldap = models.BooleanField(_('Ldap'))
-    roles = models.CharField(_('Roles'), max_length=CHAR_BIG)
+    external = models.BooleanField(_('External'))
+    roles = models.CharField(_('Roles'), max_length=CHAR_BIG, blank=True)
     is_active = models.BooleanField(_('Is_active'))
     # defaults
     status = models.ForeignKey(Status, on_delete=models.PROTECT)
@@ -88,9 +88,9 @@ class UsersLog(GlobalModelLog):
     # integrity check
     def verify_checksum(self):
         to_hash_payload = 'username:{};email:{};first_name:{};last_name:{};is_active:{};initial_password:{};' \
-                          'status_id:{};version:{};valid_from:{};valid_to:{};ldap:{};roles:{};' \
+                          'status_id:{};version:{};valid_from:{};valid_to:{};ldap:{};external:{};roles:{};' \
             .format(self.username, self.email, self.first_name, self.last_name, self.is_active, self.initial_password,
-                    self.status_id, self.version, self.valid_from, self.valid_to, self.ldap, self.roles)
+                    self.status_id, self.version, self.valid_from, self.valid_to, self.ldap, self.external, self.roles)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
 
     @property
@@ -100,7 +100,7 @@ class UsersLog(GlobalModelLog):
     # hashing
     HASH_SEQUENCE = LOG_HASH_SEQUENCE + ['username', 'email', 'first_name', 'last_name', 'is_active',
                                          'initial_password', 'status_id', 'version', 'valid_from', 'valid_to', 'ldap',
-                                         'roles']
+                                         'external', 'roles']
 
     # permissions
     MODEL_ID = '10'
@@ -119,7 +119,7 @@ class UsersManager(BaseUserManager, GlobalManager):
     GET_MODEL_EXCLUDE = ('is_active', 'password')
     GET_MODEL_ORDER = UsersLogManager.GET_MODEL_ORDER
     GET_MODEL_ORDER_NO_PW = UsersLogManager.GET_MODEL_ORDER_NO_PW
-    POST_MODEL_EXCLUDE = ('initial_password', 'is_active')
+    POST_MODEL_EXCLUDE = ('initial_password', 'is_active', 'external')
 
     def meta(self, data):
         # add calculated field "password_verification"
@@ -138,7 +138,7 @@ class UsersManager(BaseUserManager, GlobalManager):
 
     def get_all_by_role(self, role):
         users = []
-        prod_valid_users = self.get_prod_valid_list
+        prod_valid_users = self.get_prod_valid_list()
         if not prod_valid_users:
             return users
         for record in prod_valid_users:
@@ -159,6 +159,40 @@ class UsersManager(BaseUserManager, GlobalManager):
                 return record
         return
 
+    def create_ldap_external_user(self, username, now):
+        status_id = Status.objects.productive
+        fields = {'username': username,
+                  'first_name': '',
+                  'last_name': '',
+                  'version': 1,
+                  'is_active': True,
+                  'valid_from': now,
+                  'email': 'test@opengxp.org',
+                  'status_id': status_id,
+                  'ldap': True,
+                  'external': True}
+        user = self.model(**fields)
+        # build string with row id to generate hash for user
+        to_hash = generate_to_hash(fields, hash_sequence=user.HASH_SEQUENCE, unique_id=user.id,
+                                   lifecycle_id=user.lifecycle_id)
+        user.checksum = generate_checksum(to_hash)
+
+        try:
+            user.save()
+        except ValidationError:
+            raise
+        # log record
+        context = dict()
+        context['function'] = 'init'
+        fields['initial_password'] = False
+        create_log_record(model=self.model, context=context, obj=user, signature=False,
+                          validated_data=fields, action=settings.DEFAULT_LOG_CREATE)
+
+        # create profile
+        Profile.objects.generate_profile(username=username)
+
+        return user
+
     # superuser function for createsuperuser
     def create_superuser(self, username, password, role, email, initial_password=True):
         # initial status "Effective" to immediately user superuser
@@ -173,6 +207,7 @@ class UsersManager(BaseUserManager, GlobalManager):
                   'email': email,
                   'status_id': status_id,
                   'ldap': False,
+                  'external': False,
                   'roles': [role]}
         user = self.model(**fields)
         # set random password for user object because required
@@ -252,11 +287,15 @@ class Users(AbstractBaseUser, GlobalModel):
         blank=True)
     ldap = models.BooleanField(
         _('LDAP'),
-        help_text=_('Specify if user is manually or LDAP manged.'))
+        help_text=_('Specify if user login is internal or LDAP.'))
+    external = models.BooleanField(
+        _('External'),
+        help_text=_('Specify if user is internally or externally manged.'))
     roles = LookupField(
         _('Roles'),
         help_text='Select role(s).',
-        max_length=CHAR_BIG)
+        max_length=CHAR_BIG,
+        blank=True)
     password = models.CharField(
         _('Password'),
         help_text='{}'.format(password_validators_help_texts()),
@@ -272,9 +311,9 @@ class Users(AbstractBaseUser, GlobalModel):
     # integrity check
     def verify_checksum(self):
         to_hash_payload = 'username:{};email:{};first_name:{};last_name:{};is_active:{};' \
-                          'status_id:{};version:{};valid_from:{};valid_to:{};ldap:{};roles:{};'\
+                          'status_id:{};version:{};valid_from:{};valid_to:{};ldap:{};external:{};roles:{};'\
             .format(self.username, self.email, self.first_name, self.last_name, self.is_active,
-                    self.status_id, self.version, self.valid_from, self.valid_to, self.ldap, self.roles)
+                    self.status_id, self.version, self.valid_from, self.valid_to, self.ldap, self.external, self.roles)
         user = self._verify_checksum(to_hash_payload=to_hash_payload)
         if not self.ldap:
             vault = Vault.objects.filter(username=self.username).get()
@@ -288,48 +327,13 @@ class Users(AbstractBaseUser, GlobalModel):
     def get_status(self):
         return self.status.status
 
-    def permission(self, value):
-        return Roles.objects.find_permission_in_roles(roles=self.roles, permission=value)
-
-    # FO-123: new check to verify is any assigned role is productive and valid
-    @property
-    def verify_valid_roles(self):
-        # determine assigned roles by splitting string
-        assigned_roles = self.roles.split(',')
-        # parse roles
-        for assigned_role in assigned_roles:
-            # try to get productive versions of each role
-            try:
-                productive_roles = Roles.objects.get_by_natural_key_productive(assigned_role)
-            # in case no productive roles, do nothing
-            except Roles.DoesNotExist:
-                pass
-            # if productive role exists, parse if any of them is valid
-            else:
-                for role in productive_roles:
-                    if role.verify_validity_range:
-                        return True
-        # if no assigned roles is prod and valid, return none
-
     def has_role(self, role):
         if role in self.roles.split(','):
             return True
 
     @property
-    def verify_sod(self):
-        # determine pairs of assigned roles
-        combinations = itertools.combinations(self.roles.split(','), 2)
-        status_effective_id = Status.objects.productive
-        # parse combinations
-        for a, b in combinations:
-            # look for productive sod records
-            query = SoD.objects.filter(Q(base=a, conflict=b, status__id=status_effective_id) |
-                                       Q(base=b, conflict=a, status__id=status_effective_id)).all()
-            # check if records are valid
-            for record in query:
-                if record.verify_validity_range:
-                    return False
-        return True
+    def roles_list(self):
+        return self.roles.split(',')
 
     # references
     EMAIL_FIELD = 'email'
@@ -345,7 +349,7 @@ class Users(AbstractBaseUser, GlobalModel):
 
     # hashing
     HASH_SEQUENCE = ['username', 'email', 'first_name', 'last_name', 'is_active',
-                     'status_id', 'version', 'valid_from', 'valid_to', 'ldap', 'roles']
+                     'status_id', 'version', 'valid_from', 'valid_to', 'ldap', 'external', 'roles']
 
     # permissions
     MODEL_ID = '04'

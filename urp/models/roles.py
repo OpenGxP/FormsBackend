@@ -18,8 +18,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # django imports
 from django.db import models
-from django.db.models import Q
-from django.conf import settings
 from django.utils.translation import gettext_lazy as _
 
 # app imports
@@ -27,7 +25,6 @@ from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, Status, LOG_
     CHAR_BIG, GlobalModelLog
 from urp.validators import validate_no_space, validate_no_specials_reduced, SPECIALS_REDUCED, \
     validate_no_numbers, validate_only_ascii
-from urp.models.permissions import Permissions
 
 
 # log manager
@@ -86,68 +83,12 @@ class RolesManager(GlobalManager):
     # meta
     GET_MODEL_ORDER = RolesLogManager.GET_MODEL_ORDER
     GET_MODEL_NOT_RENDER = ('permissions',)
+    POST_MODEL_EXCLUDE = ('ldap',)
 
     def meta_field(self, data, f_name):
         if f_name == 'ldap':
             data['post'][f_name]['editable'] = False
             data['post'][f_name]['required'] = False
-
-    def find_permission_in_roles(self, roles, permission):
-        for role in roles.split(','):
-            # query all versions of each role that is in status "productive" or "inactive"
-            query = self.filter(role=role).filter(Q(status=Status.objects.productive) |
-                                                  Q(status=Status.objects.inactive)).all()
-            for obj in query:
-                # get the valid role (only one version of all returned versions can be valid!)
-                if obj.verify_validity_range:
-                    # check each role for the requested permission
-                    if any(perm in obj.permissions.split(',') for perm in [permission, settings.ALL_PERMISSIONS]):
-                        return True
-
-    def casl(self, roles):
-        permissions = list()
-        # check all roles of valid user
-        for role in roles:
-            # get all productive versions of each role
-            prod_roles = self.get_by_natural_key_productive(role)
-            # catch the valid version
-            for valid_prod_role in prod_roles:
-                if valid_prod_role.verify_validity_range:
-                    # merge permissions of valid role into permission list
-                    permissions = list(set(permissions + valid_prod_role.permissions.split(',')))
-        casl = list()
-        # iterate merges permissions to build casl response
-        for perm in permissions:
-            # FO-149: skip empty permissions
-
-            try:
-                perm_obj = Permissions.objects.filter(key=perm).get()
-            except Permissions.DoesNotExist:
-                continue
-            append = None
-            # check if subject exists and add if yes
-            for item in casl:
-                if item['subject'][0] == perm_obj.model:
-                    item['actions'].append(perm_obj.permission)
-                    append = True
-            if not append:
-                # append permission to new subject
-                casl.append({'subject': [perm_obj.model],
-                             'actions': [perm_obj.permission]})
-        return casl
-
-    def permissions(self, roles):
-        permissions = []
-        # check all roles of valid user
-        for role in roles:
-            # get all productive versions of each role
-            prod_roles = self.get_by_natural_key_productive(role)
-            # catch the valid version
-            for valid_prod_role in prod_roles:
-                if valid_prod_role.verify_validity_range:
-                    # merge permissions of valid role into permission list
-                    permissions = list(set(permissions + valid_prod_role.permissions.split(',')))
-        return permissions
 
 
 # table

@@ -25,7 +25,7 @@ from urp.models.workflows.workflows import Workflows
 from urp.models.workflows.sub.steps import WorkflowsStepsLog
 from urp.serializers.workflows import WorkflowsReadWriteSerializer, WorkflowsNewVersionStatusSerializer, \
     WorkflowsLogReadSerializer, WorkflowsDeleteSerializer, WorkflowsStepsLogReadSerializer
-from urp.decorators import auth_required, perm_required
+from urp.decorators import auth_required, auth_perm_required
 from urp.views.base import StatusView
 
 
@@ -63,9 +63,8 @@ def workflows_log_list(request):
 
 # steps log
 @api_view(['GET'])
-@auth_required()
+@auth_perm_required(permission='{}.01'.format(Workflows.MODEL_ID))
 @auto_logout()
-@perm_required('{}.01'.format(Workflows.MODEL_ID))
 def workflows_steps_log_list(request):
     get = GET(model=WorkflowsStepsLog, request=request, serializer=WorkflowsStepsLogReadSerializer)
     return get.standard

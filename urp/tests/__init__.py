@@ -23,6 +23,7 @@ from django.core.management import call_command
 from django.test import Client
 from django.urls import reverse
 from django.utils import timezone
+from django.http import HttpRequest
 
 # rest framework imports
 from rest_framework import status
@@ -176,7 +177,8 @@ class Prerequisites(object):
 
     def auth(self, ext_client):
         ext_client.logout()
-        response = ext_client.login(username=self.username, password=self.password)
+        response = ext_client.login(username=self.username, password=self.password, request=HttpRequest(),
+                                    public=True)
         assert response is True
         # save last touch now timestamp to session to prevent auto logout error
         session = ext_client.session
@@ -185,7 +187,8 @@ class Prerequisites(object):
 
     def auth_two(self, ext_client):
         ext_client.logout()
-        response = ext_client.login(username=self.username_two, password=self.password_two)
+        response = ext_client.login(username=self.username_two, password=self.password_two, request=HttpRequest(),
+                                    public=True)
         assert response is True
         # save last touch now timestamp to session to prevent auto logout error
         session = ext_client.session
@@ -194,7 +197,8 @@ class Prerequisites(object):
 
     def auth_three(self, ext_client):
         ext_client.logout()
-        response = ext_client.login(username=self.username_three, password=self.password_three)
+        response = ext_client.login(username=self.username_three, password=self.password_three, request=HttpRequest(),
+                                    public=True)
         assert response is True
         # save last touch now timestamp to session to prevent auto logout error
         session = ext_client.session
@@ -203,7 +207,8 @@ class Prerequisites(object):
 
     def auth_no_perms(self, ext_client):
         ext_client.logout()
-        response = ext_client.login(username=self.username_no_perm, password=self.password)
+        response = ext_client.login(username=self.username_no_perm, password=self.password, request=HttpRequest(),
+                                    public=True)
         assert response is True
         # save last touch now timestamp to session to prevent auto logout error
         session = ext_client.session
@@ -212,7 +217,8 @@ class Prerequisites(object):
 
     def auth_not_valid_roles(self, ext_client):
         ext_client.logout()
-        response = ext_client.login(username=self.username_valid_from, password=self.password)
+        response = ext_client.login(username=self.username_valid_from, password=self.password, request=HttpRequest(),
+                                    public=True)
         assert response is True
         # save last touch now timestamp to session to prevent auto logout error
         session = ext_client.session
@@ -221,7 +227,8 @@ class Prerequisites(object):
 
     def auth_no_write_perms(self, ext_client):
         ext_client.logout()
-        response = ext_client.login(username=self.username_no_write_perm, password=self.password)
+        response = ext_client.login(username=self.username_no_write_perm, password=self.password, request=HttpRequest(),
+                                    public=True)
         assert response is True
         # save last touch now timestamp to session to prevent auto logout error
         session = ext_client.session
@@ -230,7 +237,8 @@ class Prerequisites(object):
 
     def auth_no_version_archived(self, ext_client):
         ext_client.logout()
-        response = ext_client.login(username=self.username_no_version_archived, password=self.password)
+        response = ext_client.login(username=self.username_no_version_archived, password=self.password,
+                                    request=HttpRequest(), public=True)
         assert response is True
         # save last touch now timestamp to session to prevent auto logout error
         session = ext_client.session
@@ -359,6 +367,8 @@ def log_records(model, action, data, access_log=None, _status=True, sub_tables=T
         return True
 
     try:
+        if model.MODEL_ID == '40':
+            del data['fields_values']
         query = log_model.objects.filter(**data).all()[0]
     except model.DoesNotExist or IndexError:
         assert 'No log record found for "{}".'.format(data)

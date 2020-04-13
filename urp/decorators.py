@@ -16,18 +16,17 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-
 # python imports
 from functools import wraps
 
 # rest imports
 from rest_framework.response import Response
-from rest_framework import status
 
 # app imports
 from .models import Roles, LDAP, Users, SoD, Email
 from urp.models.profile import Profile
 from basics.models import Settings
+from urp.checks import Check
 
 
 def auth_required(initial_password_check=True):
@@ -35,27 +34,56 @@ def auth_required(initial_password_check=True):
     def decorator(view_func):
         @wraps(view_func)
         def wrapper(request, *args, **kwargs):
-            # FO-121: add second requirement, user must be prod and valid
-            if request.user.is_authenticated and Users.objects.verify_prod_valid(key=request.user.username) \
-                    and request.user.verify_sod:
-                # do not allow to access resources if initial password is still true
-                if initial_password_check:
-                    if request.user.initial_password:
-                        return Response(status=status.HTTP_401_UNAUTHORIZED)
+            # external users
+            if getattr(request.user, 'external', False):
+                check = Check(request=request, username=request.user.username, opt_filter_user={'external': True},
+                              initial_password_check=False, ext=True)
+                if not check.verify_overall():
+                    return Response(status=check.http_status)
                 return view_func(request, *args, **kwargs)
-            return Response(status=status.HTTP_401_UNAUTHORIZED)
+            # internal users
+            else:
+                check = Check(request=request, username=request.user.username, opt_filter_user={'external': False},
+                              initial_password_check=initial_password_check)
+                if not check.verify_overall():
+                    return Response(status=check.http_status)
+                return view_func(request, *args, **kwargs)
         return wrapper
     return decorator
 
 
 def perm_required(permission):
-    """Permission decorator to validate user permissions."""
+    """Authorisation decorator to validate permission of authenticated user."""
     def decorator(view_func):
         @wraps(view_func)
         def wrapper(request, *args, **kwargs):
-            if request.user.permission(permission):
+            check = Check(request=request)
+            if not check.verify_permission(permission=permission):
+                return Response(status=check.http_status)
+            return view_func(request, *args, **kwargs)
+        return wrapper
+    return decorator
+
+
+def auth_perm_required(permission, initial_password_check=True):
+    """Authentication and permission decorator"""
+    def decorator(view_func):
+        @wraps(view_func)
+        def wrapper(request, *args, **kwargs):
+            # external users
+            if getattr(request.user, 'external', False):
+                check = Check(request=request, username=request.user.username, opt_filter_user={'external': True},
+                              initial_password_check=False, ext=True)
+                if not check.verify_overall(permission=permission):
+                    return Response(status=check.http_status)
                 return view_func(request, *args, **kwargs)
-            return Response(status=status.HTTP_403_FORBIDDEN)
+            # internal users
+            else:
+                check = Check(request=request, username=request.user.username, opt_filter_user={'external': False},
+                              initial_password_check=initial_password_check)
+                if not check.verify_overall(permission=permission):
+                    return Response(status=check.http_status)
+                return view_func(request, *args, **kwargs)
         return wrapper
     return decorator
 

@@ -23,11 +23,12 @@ from rest_framework.decorators import api_view
 from rest_framework import status as http_status
 
 # app imports
-from urp.models import Roles, Users
+from urp.models import Users
 from urp.models.profile import Profile
 
 # django imports
 from django.utils import timezone
+from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import authenticate, login
 
@@ -44,7 +45,8 @@ def login_view(request):
             raise serializers.ValidationError('Fields "{}" and "password" must be strings.'
                                               .format(Users.USERNAME_FIELD))
         # authenticate user
-        user = authenticate(request=request, username=request.data['username'], password=request.data['password'])
+        user = authenticate(request=request, username=request.data['username'], password=request.data['password'],
+                            initial_password_check=False, public=True)
     else:
         # FO-137: raise serializer validation error (including 400 response)
         raise serializers.ValidationError('Fields "{}" and "password" are required.'.format(Users.USERNAME_FIELD))
@@ -56,8 +58,7 @@ def login_view(request):
         # get initial password fag of user
         data['initial_password'] = user.initial_password
         data['initial_timezone'] = Profile.objects.initial_timezone(user.username)
-        casl = Roles.objects.casl(user.roles.split(','))
-        data['casl'] = casl
+        data['casl'] = getattr(request, settings.ATTR_CASL, [])
         return Response(data=data, status=http_status.HTTP_200_OK)
     else:
         return Response(status=http_status.HTTP_400_BAD_REQUEST)
