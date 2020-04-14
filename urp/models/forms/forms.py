@@ -52,7 +52,7 @@ class FormsLog(GlobalModelLog):
     workflow = models.CharField(_('Workflow'), max_length=CHAR_DEFAULT)
     tag = models.CharField(_('Tag'), max_length=CHAR_DEFAULT, blank=True)
     # defaults
-    status = models.ForeignKey(Status, on_delete=models.PROTECT)
+    status = models.ForeignKey(Status, on_delete=models.PROTECT, verbose_name=_('Status'))
     version = FIELD_VERSION
 
     # manager
@@ -107,7 +107,7 @@ class Forms(GlobalModel):
     workflow = models.CharField(_('Workflow'), max_length=CHAR_DEFAULT, help_text=_('Select workflow.'))
     tag = models.CharField(_('Tag'), max_length=CHAR_DEFAULT, blank=True, help_text=_('Select tag.'))
     # defaults
-    status = models.ForeignKey(Status, on_delete=models.PROTECT)
+    status = models.ForeignKey(Status, on_delete=models.PROTECT, verbose_name=_('Status'))
     version = FIELD_VERSION
 
     # integrity check

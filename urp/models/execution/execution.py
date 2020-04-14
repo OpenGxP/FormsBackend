@@ -52,7 +52,7 @@ class ExecutionLog(GlobalModelLog):
     form = models.CharField(_('Form'), max_length=CHAR_DEFAULT)
     tag = models.CharField(_('Tag'), max_length=CHAR_DEFAULT, blank=True)
     # defaults
-    status = models.ForeignKey(Status, on_delete=models.PROTECT)
+    status = models.ForeignKey(Status, on_delete=models.PROTECT, verbose_name=_('Status'))
     version = FIELD_VERSION
 
     lifecycle_id = models.UUIDField()
@@ -115,7 +115,7 @@ class Execution(GlobalModel):
     form = models.CharField(_('Form'), max_length=CHAR_DEFAULT, help_text=_('Select form.'))
     tag = models.CharField(_('Tag'), max_length=CHAR_DEFAULT, blank=True)
     # defaults
-    status = models.ForeignKey(Status, on_delete=models.PROTECT)
+    status = models.ForeignKey(Status, on_delete=models.PROTECT, verbose_name=_('Status'))
     # FO-215: changed version verbose name to indicate version belongs to form, not execution object
     version = models.IntegerField(_('Form version'))
 

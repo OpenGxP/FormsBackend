@@ -52,7 +52,7 @@ class ListsLog(GlobalModelLog):
     tag = models.CharField(_('Tag'), max_length=CHAR_DEFAULT, blank=True)
     elements = models.CharField(_('Elements'), max_length=CHAR_BIG)
     # defaults
-    status = models.ForeignKey(Status, on_delete=models.PROTECT)
+    status = models.ForeignKey(Status, on_delete=models.PROTECT, verbose_name=_('Status'))
     version = FIELD_VERSION
 
     # manager
@@ -102,7 +102,7 @@ class Lists(GlobalModel):
     tag = models.CharField(_('Tag'), max_length=CHAR_DEFAULT, blank=True, help_text=_('Select tag.'))
     elements = LookupField(_('Elements'), max_length=CHAR_BIG, help_text=_('Provide elements of this list.'))
     # defaults
-    status = models.ForeignKey(Status, on_delete=models.PROTECT)
+    status = models.ForeignKey(Status, on_delete=models.PROTECT, verbose_name=_('Status'))
     version = FIELD_VERSION
 
     # manager

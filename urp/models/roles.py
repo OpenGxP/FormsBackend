@@ -47,7 +47,7 @@ class RolesLog(GlobalModelLog):
     permissions = models.CharField(_('Permissions'), max_length=CHAR_BIG, blank=True)
     ldap = models.BooleanField(_('Ldap'))
     # defaults
-    status = models.ForeignKey(Status, on_delete=models.PROTECT)
+    status = models.ForeignKey(Status, on_delete=models.PROTECT, verbose_name=_('Status'))
     version = FIELD_VERSION
 
     # manager
@@ -103,7 +103,7 @@ class Roles(GlobalModel):
                                    max_length=CHAR_BIG, blank=True)
     ldap = models.BooleanField(_('Ldap'))
     # defaults
-    status = models.ForeignKey(Status, on_delete=models.PROTECT)
+    status = models.ForeignKey(Status, on_delete=models.PROTECT, verbose_name=_('Status'))
     version = FIELD_VERSION
 
     # integrity check

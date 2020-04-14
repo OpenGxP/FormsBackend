@@ -44,7 +44,7 @@ class SoDLog(GlobalModelLog):
     base = models.CharField(_('Base'), max_length=CHAR_DEFAULT)
     conflict = models.CharField(_('Conflict'), max_length=CHAR_DEFAULT)
     # defaults
-    status = models.ForeignKey(Status, on_delete=models.PROTECT)
+    status = models.ForeignKey(Status, on_delete=models.PROTECT, verbose_name=_('Status'))
     version = FIELD_VERSION
 
     # manager
@@ -92,7 +92,7 @@ class SoD(GlobalModel):
         help_text=_('Select one conflict role.'),
         max_length=CHAR_DEFAULT)
     # defaults
-    status = models.ForeignKey(Status, on_delete=models.PROTECT)
+    status = models.ForeignKey(Status, on_delete=models.PROTECT, verbose_name=_('Status'))
     version = FIELD_VERSION
 
     # integrity check

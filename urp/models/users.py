@@ -79,7 +79,7 @@ class UsersLog(GlobalModelLog):
     roles = models.CharField(_('Roles'), max_length=CHAR_BIG, blank=True)
     is_active = models.BooleanField(_('Is_active'))
     # defaults
-    status = models.ForeignKey(Status, on_delete=models.PROTECT)
+    status = models.ForeignKey(Status, on_delete=models.PROTECT, verbose_name=_('Status'))
     version = FIELD_VERSION
 
     # manager
@@ -304,7 +304,7 @@ class Users(AbstractBaseUser, GlobalModel):
         max_length=CHAR_MAX,
         validators=[validate_password])
     # defaults
-    status = models.ForeignKey(Status, on_delete=models.PROTECT)
+    status = models.ForeignKey(Status, on_delete=models.PROTECT, verbose_name=_('Status'))
     version = FIELD_VERSION
 
     # manager
