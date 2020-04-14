@@ -114,8 +114,8 @@ class ExecutionFields(GlobalModel):
     HASH_SEQUENCE = ['number', 'section', 'field', 'value', 'tag']
 
     # permissions
-    MODEL_ID = '40'
-    MODEL_CONTEXT = 'Execution'
+    # FO-215: corrected context to individual string to avoid false mixing for meta view
+    MODEL_CONTEXT = 'ExecutionFields'
     perms = None
 
     class Meta:

@@ -114,7 +114,8 @@ def meta_list(request, dialog):
             data['get']['timestamp_local'] = {'verbose_name': 'Timestamp',
                                               'data_type': 'DateTimeField',
                                               'render': True}
-        if model.objects.HAS_STATUS:
+        # FO-215: added exclude for runtime date, because fields are not used for that object type
+        if model.objects.HAS_STATUS and not model.objects.IS_RT:
             data['get']['valid_from_local'] = {'verbose_name': 'Valid from',
                                                'data_type': 'DateTimeField',
                                                'render': True}

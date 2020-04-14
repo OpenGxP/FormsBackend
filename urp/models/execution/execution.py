@@ -94,8 +94,8 @@ class ExecutionManager(GlobalManager):
                        'lifecycle_id',
                        'version',)
 
-    GET_MODEL_NOT_RENDER = ('tag',
-                            'version',)
+    # FO-215: removed version from not render to indicate what form object + version the execution object is inherited
+    GET_MODEL_NOT_RENDER = ('tag',)
     POST_MODEL_EXCLUDE = ('number',
                           'tag',)
 
@@ -116,7 +116,8 @@ class Execution(GlobalModel):
     tag = models.CharField(_('Tag'), max_length=CHAR_DEFAULT, blank=True)
     # defaults
     status = models.ForeignKey(Status, on_delete=models.PROTECT)
-    version = FIELD_VERSION
+    # FO-215: changed version verbose name to indicate version belongs to form, not execution object
+    version = models.IntegerField(_('Form version'))
 
     lifecycle_id = models.UUIDField()
     valid_from = None
