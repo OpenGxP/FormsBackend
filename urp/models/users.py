@@ -33,7 +33,7 @@ from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, LOG_HASH_SEQ
     Status, CHAR_BIG, GlobalModelLog
 from urp.validators import validate_no_space, validate_no_specials, validate_no_numbers, validate_only_ascii
 from urp.custom import create_log_record
-from basics.custom import generate_checksum, generate_to_hash
+from basics.custom import generate_checksum, generate_to_hash, str_list_change
 from urp.models.vault import Vault
 from urp.models.roles import Roles
 from urp.fields import LookupField
@@ -240,6 +240,8 @@ class UsersManager(BaseUserManager, GlobalManager):
         context = dict()
         context['function'] = 'init'
         fields['initial_password'] = initial_password
+        # FO-213: make roles array to string for log record
+        fields = str_list_change(data=fields, key='roles', target=str)
         create_log_record(model=self.model, context=context, obj=user, signature=False,
                           validated_data=fields, action=settings.DEFAULT_LOG_CREATE)
 
