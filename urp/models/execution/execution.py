@@ -112,7 +112,7 @@ class Execution(GlobalModel):
     # runtime fields
     number = models.IntegerField(_('Number'), unique=True)
     # custom fields
-    form = models.CharField(_('Form'), max_length=CHAR_DEFAULT)
+    form = models.CharField(_('Form'), max_length=CHAR_DEFAULT, help_text=_('Select form.'))
     tag = models.CharField(_('Tag'), max_length=CHAR_DEFAULT, blank=True)
     # defaults
     status = models.ForeignKey(Status, on_delete=models.PROTECT)

@@ -22,6 +22,8 @@ from django.utils.translation import gettext_lazy as _
 
 # app imports
 from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, LOG_HASH_SEQUENCE, GlobalModelLog
+from urp.validators import validate_no_space, validate_no_specials_reduced, validate_no_numbers, validate_only_ascii, \
+    SPECIALS_REDUCED
 
 
 # log manager
@@ -74,7 +76,11 @@ class TagsManager(GlobalManager):
 # table
 class Tags(GlobalModel):
     # custom fields
-    tag = models.CharField(_('Tag'), max_length=CHAR_DEFAULT, unique=True)
+    tag = models.CharField(_('Tag'), max_length=CHAR_DEFAULT, unique=True,
+                           help_text=_('Special characters "{}" are not permitted. No whitespaces and numbers.'
+                                       .format(SPECIALS_REDUCED)),
+                           validators=[validate_no_specials_reduced, validate_no_space, validate_no_numbers,
+                                       validate_only_ascii])
 
     # manager
     objects = TagsManager()

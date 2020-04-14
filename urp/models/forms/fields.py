@@ -24,7 +24,8 @@ from django.conf import settings
 # app imports
 from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, FIELD_VERSION, GlobalModelLog, LOG_HASH_SEQUENCE
 from basics.custom import HASH_ALGORITHM
-from urp.validators import validate_no_space, validate_no_specials_reduced, validate_no_numbers, validate_only_ascii
+from urp.validators import validate_no_space, validate_no_specials_reduced, validate_no_numbers, validate_only_ascii, \
+    SPECIALS_REDUCED
 from urp.models.forms.sub.sections import FormsSections
 
 
@@ -94,13 +95,19 @@ class FormsFieldsManager(GlobalManager):
 
 # table
 class FormsFields(GlobalModel):
-    section = models.CharField(_('Section'), max_length=CHAR_DEFAULT)
-    field = models.CharField(_('Field'), max_length=CHAR_DEFAULT, validators=[validate_no_specials_reduced,
-                                                                              validate_no_space,
-                                                                              validate_no_numbers,
-                                                                              validate_only_ascii])
-    instruction = models.CharField(_('Instruction'), max_length=CHAR_DEFAULT, blank=True)
-    mandatory = models.BooleanField(_('Mandatory'))
+    section = models.CharField(_('Section'), max_length=CHAR_DEFAULT,
+                               help_text=_('Special characters "{}" are not permitted. No whitespaces and numbers.'
+                                           .format(SPECIALS_REDUCED)),
+                               validators=[validate_no_specials_reduced, validate_no_space, validate_no_numbers,
+                                           validate_only_ascii])
+    field = models.CharField(_('Field'), max_length=CHAR_DEFAULT,
+                             help_text=_('Special characters "{}" are not permitted. No whitespaces and numbers.'
+                                         .format(SPECIALS_REDUCED)),
+                             validators=[validate_no_specials_reduced, validate_no_space, validate_no_numbers,
+                                         validate_only_ascii])
+    instruction = models.CharField(_('Instruction'), max_length=CHAR_DEFAULT, blank=True,
+                                   help_text=_('Enter instruction text'))
+    mandatory = models.BooleanField(_('Mandatory'), help_text=_('Specify if field is mandatory.'))
     sequence = models.IntegerField(_('Sequence'))  # only for graphic ordering
     version = FIELD_VERSION
 

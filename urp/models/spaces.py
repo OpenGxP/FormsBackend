@@ -25,6 +25,8 @@ from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, LOG_HASH_SEQ
 from urp.models.tags import Tags
 from urp.models.users import Users
 from urp.fields import LookupField
+from urp.validators import validate_no_space, validate_no_specials_reduced, validate_no_numbers, validate_only_ascii, \
+    SPECIALS_REDUCED
 
 
 # log manager
@@ -84,9 +86,13 @@ class SpacesManager(GlobalManager):
 # table
 class Spaces(GlobalModel):
     # custom fields
-    space = models.CharField(_('Space'), max_length=CHAR_DEFAULT, unique=True)
-    users = LookupField(_('Users'), max_length=CHAR_BIG)
-    tags = LookupField(_('Tags'), max_length=CHAR_BIG)
+    space = models.CharField(_('Space'), max_length=CHAR_DEFAULT, unique=True,
+                             help_text=_('Special characters "{}" are not permitted. No whitespaces and numbers.'
+                                         .format(SPECIALS_REDUCED)),
+                             validators=[validate_no_specials_reduced, validate_no_space, validate_no_numbers,
+                                         validate_only_ascii])
+    users = LookupField(_('Users'), max_length=CHAR_BIG, help_text=_('Select user(s).'))
+    tags = LookupField(_('Tags'), max_length=CHAR_BIG, help_text=_('Select users(s).'))
 
     # manager
     objects = SpacesManager()

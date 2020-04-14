@@ -21,10 +21,12 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 # app imports
-from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, Status, LOG_HASH_SEQUENCE, FIELD_VERSION, \
+from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, LOG_HASH_SEQUENCE, FIELD_VERSION, \
     CHAR_BIG, GlobalModelLog
 from urp.models.roles import Roles
 from urp.fields import LookupField
+from urp.validators import validate_no_space, validate_no_specials_reduced, SPECIALS_REDUCED, \
+    validate_no_numbers, validate_only_ascii
 
 
 # log manager
@@ -86,10 +88,15 @@ class WorkflowsStepsManager(GlobalManager):
 
 # sub table
 class WorkflowsSteps(GlobalModel):
-    step = models.CharField(_('Step'), max_length=CHAR_DEFAULT)
-    role = models.CharField(_('Role'), max_length=CHAR_DEFAULT)
-    predecessors = LookupField(_('Predecessors'), max_length=CHAR_BIG, blank=True)
-    text = models.CharField(_('Text'), max_length=CHAR_BIG, blank=True)
+    step = models.CharField(_('Step'), max_length=CHAR_DEFAULT, help_text=_('Special characters "{}" are not '
+                                                                            'permitted. No whitespaces and numbers.'
+                                                                            .format(SPECIALS_REDUCED)),
+                            validators=[validate_no_specials_reduced, validate_no_space, validate_no_numbers,
+                                        validate_only_ascii])
+    role = models.CharField(_('Role'), max_length=CHAR_DEFAULT, help_text=_('Select role.'))
+    predecessors = LookupField(_('Predecessors'), max_length=CHAR_BIG, blank=True,
+                               help_text=_('Select predecessor(s).'))
+    text = models.CharField(_('Text'), max_length=CHAR_BIG, blank=True, help_text=_('Enter instruction text.'))
     sequence = models.IntegerField(_('Sequence'))
     # defaults
     version = FIELD_VERSION

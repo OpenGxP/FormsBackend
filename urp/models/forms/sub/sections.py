@@ -26,7 +26,8 @@ from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, LOG_HASH_SEQ
     CHAR_BIG
 from urp.models.roles import Roles
 from urp.fields import LookupField
-from urp.validators import validate_no_space, validate_no_specials_reduced, validate_no_numbers, validate_only_ascii
+from urp.validators import validate_no_space, validate_no_specials_reduced, validate_no_numbers, validate_only_ascii, \
+    SPECIALS_REDUCED
 
 
 # log manager
@@ -89,14 +90,17 @@ class FormsSectionsManager(GlobalManager):
 
 # table
 class FormsSections(GlobalModel):
-    section = models.CharField(_('Section'), max_length=CHAR_DEFAULT, validators=[validate_no_specials_reduced,
-                                                                                  validate_no_space,
-                                                                                  validate_no_numbers,
-                                                                                  validate_only_ascii])
-    role = models.CharField(_('Role'), max_length=CHAR_DEFAULT, blank=True)
-    predecessors = LookupField(_('Predecessors'), max_length=CHAR_BIG, blank=True)
+    section = models.CharField(_('Section'), max_length=CHAR_DEFAULT,
+                               help_text=_('Special characters "{}" are not permitted. No whitespaces and numbers.'
+                                           .format(SPECIALS_REDUCED)),
+                               validators=[validate_no_specials_reduced, validate_no_space, validate_no_numbers,
+                                           validate_only_ascii])
+    role = models.CharField(_('Role'), max_length=CHAR_DEFAULT, blank=True, help_text=_('Select role.'))
+    predecessors = LookupField(_('Predecessors'), max_length=CHAR_BIG, blank=True,
+                               help_text=_('Select predecessor(s).'))
     sequence = models.IntegerField(_('Sequence'))  # only for graphic ordering
-    confirmation = models.CharField(_('Confirmation'), max_length=CHAR_DEFAULT)
+    confirmation = models.CharField(_('Confirmation'), max_length=CHAR_DEFAULT,
+                                    help_text=_('Select confirmation type.'))
 
     # defaults
     version = FIELD_VERSION

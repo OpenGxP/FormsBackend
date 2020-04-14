@@ -25,7 +25,8 @@ from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, Status, LOG_
     GlobalModelLog
 from urp.models.tags import Tags
 from urp.models.workflows.workflows import Workflows
-from urp.validators import validate_no_space, validate_no_specials_reduced, validate_no_numbers, validate_only_ascii
+from urp.validators import validate_no_space, validate_no_specials_reduced, validate_no_numbers, validate_only_ascii, \
+    SPECIALS_REDUCED
 from urp.models.forms.sub.sections import FormsSections
 from urp.models.forms.sub.text_fields import FormsTextFields
 from urp.models.forms.sub.bool_fields import FormsBoolFields
@@ -99,9 +100,12 @@ class Forms(GlobalModel):
     form = models.CharField(_('Form'), max_length=CHAR_DEFAULT, validators=[validate_no_specials_reduced,
                                                                             validate_no_space,
                                                                             validate_no_numbers,
-                                                                            validate_only_ascii])
-    workflow = models.CharField(_('Workflow'), max_length=CHAR_DEFAULT)
-    tag = models.CharField(_('Tag'), max_length=CHAR_DEFAULT, blank=True)
+                                                                            validate_only_ascii],
+                            help_text=_('Special characters "{}" are not '
+                                        'permitted. No whitespaces and numbers.'
+                                        .format(SPECIALS_REDUCED)))
+    workflow = models.CharField(_('Workflow'), max_length=CHAR_DEFAULT, help_text=_('Select workflow.'))
+    tag = models.CharField(_('Tag'), max_length=CHAR_DEFAULT, blank=True, help_text=_('Select tag.'))
     # defaults
     status = models.ForeignKey(Status, on_delete=models.PROTECT)
     version = FIELD_VERSION

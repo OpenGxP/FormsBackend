@@ -34,7 +34,7 @@ class FormsTextFieldsLogManager(FormsFieldsLogManager):
 
 # log table
 class FormsTextFieldsLog(FormsFieldsLog):
-    default = models.CharField(_('Default'), max_length=CHAR_DEFAULT, blank=True)
+    default = models.CharField(_('Default'), max_length=CHAR_DEFAULT, blank=True, help_text=_('Enter default value.'))
 
     # integrity check
     @property

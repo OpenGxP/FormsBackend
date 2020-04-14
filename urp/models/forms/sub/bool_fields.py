@@ -61,7 +61,7 @@ class FormsBoolFieldsManager(FormsFieldsManager):
 
 # table
 class FormsBoolFields(FormsFields):
-    default = models.BooleanField(_('Default'), blank=True, null=True)
+    default = models.BooleanField(_('Default'), blank=True, null=True, help_text=_('Enter default value.'))
 
     # integrity check
     def verify_checksum(self):

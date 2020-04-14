@@ -94,12 +94,16 @@ class EmailManager(GlobalManager):
 # table
 class Email(GlobalModel):
     # custom fields
-    host = models.CharField(_('Host'), max_length=CHAR_DEFAULT, unique=True)
-    port = models.IntegerField(_('Port'))
-    username = models.CharField(_('Username'), max_length=CHAR_DEFAULT)
-    password = models.CharField(_('Password'), max_length=CHAR_MAX)
-    use_ssl = models.BooleanField(_('SSL'))
-    priority = models.IntegerField(_('Priority'), validators=[validate_only_positive_numbers], unique=True)
+    host = models.CharField(_('Host'), max_length=CHAR_DEFAULT, unique=True, help_text=_('Provide email host.'))
+    port = models.IntegerField(_('Port'), validators=[validate_only_positive_numbers],
+                               help_text=_('Provide email host port, only positive numbers are allowed.'))
+    username = models.CharField(_('Username'), max_length=CHAR_DEFAULT,
+                                help_text=_('Username for email host authentication.'))
+    password = models.CharField(_('Password'), max_length=CHAR_MAX,
+                                help_text=_('Password for email host authentication.'))
+    use_ssl = models.BooleanField(_('SSL'), help_text=_('Specify if SSL/TLS connection is used.'))
+    priority = models.IntegerField(_('Priority'), validators=[validate_only_positive_numbers], unique=True,
+                                   help_text=_('Provide priority, only positive numbers are allowed.'))
 
     # manager
     objects = EmailManager()

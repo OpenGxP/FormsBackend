@@ -265,7 +265,7 @@ class Users(AbstractBaseUser, GlobalModel):
                     validate_only_ascii])
     email = models.EmailField(
         _('Email'),
-        help_text='Email must be provided in format example@example.com.',
+        help_text=_('Email must be provided in format example@example.com.'),
         max_length=CHAR_MAX)
     first_name = models.CharField(
         _('First name'),
@@ -289,18 +289,18 @@ class Users(AbstractBaseUser, GlobalModel):
         blank=True)
     ldap = models.BooleanField(
         _('LDAP'),
-        help_text=_('Specify if user login is internal or LDAP.'))
+        help_text=_('Specify if user authentication is internal or LDAP.'))
     external = models.BooleanField(
         _('External'),
         help_text=_('Specify if user is internally or externally manged.'))
     roles = LookupField(
         _('Roles'),
-        help_text='Select role(s).',
+        help_text=_('Select role(s).'),
         max_length=CHAR_BIG,
         blank=True)
     password = models.CharField(
         _('Password'),
-        help_text='{}'.format(password_validators_help_texts()),
+        help_text=_('{}'.format(password_validators_help_texts())),
         max_length=CHAR_MAX,
         validators=[validate_password])
     # defaults

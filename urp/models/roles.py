@@ -99,7 +99,7 @@ class Roles(GlobalModel):
                                                                             .format(SPECIALS_REDUCED)),
                             validators=[validate_no_specials_reduced, validate_no_space, validate_no_numbers,
                                         validate_only_ascii])
-    permissions = models.CharField(_('Permissions'), help_text='Provide comma separated permission keys.',
+    permissions = models.CharField(_('Permissions'), help_text=_('Provide comma separated permission keys.'),
                                    max_length=CHAR_BIG, blank=True)
     ldap = models.BooleanField(_('Ldap'))
     # defaults

@@ -121,8 +121,8 @@ class LDAPManager(GlobalManager):
 
     def meta(self, data):
         # add field for certificate
-        data['post']['certificate'] = {'verbose_name': 'Certificate',
-                                       'help_text': 'For ssl/tls connections add a certificate file in PEM format.',
+        data['post']['certificate'] = {'verbose_name': _('Certificate'),
+                                       'help_text': _('For SSL/TLS connections add a certificate file in PEM format.'),
                                        'max_length': None,
                                        'data_type': 'CharField',
                                        'required': False,
@@ -251,21 +251,35 @@ class LDAPManager(GlobalManager):
 # table
 class LDAP(GlobalModel):
     # custom fields
-    host = models.CharField(_('Host'), max_length=CHAR_DEFAULT, unique=True)
-    port = models.IntegerField(_('Port'))
-    ssl_tls = models.BooleanField(_('SSL'))
-    bindDN = models.CharField(_('BindDN'), max_length=CHAR_DEFAULT)
-    password = models.CharField(_('Password'), max_length=CHAR_MAX)
-    base_user = models.CharField(_('Base User'), max_length=CHAR_DEFAULT)
-    base_group = models.CharField(_('Base Group'), max_length=CHAR_DEFAULT, blank=True)
-    filter_user = models.CharField(_('Filter User'), max_length=CHAR_DEFAULT)
-    filter_group = models.CharField(_('Filter Groups'), max_length=CHAR_DEFAULT, blank=True)
-    attr_username = models.CharField(_('Attr Username'), max_length=CHAR_DEFAULT)
-    attr_group = models.CharField(_('Attr Group'), max_length=CHAR_DEFAULT, blank=True)
-    attr_email = models.CharField(_('Attr Email'), max_length=CHAR_DEFAULT, blank=True)
-    attr_surname = models.CharField(_('Attr Surname'), max_length=CHAR_DEFAULT, blank=True)
-    attr_forename = models.CharField(_('Attr Forename'), max_length=CHAR_DEFAULT, blank=True)
-    priority = models.IntegerField(_('Priority'), validators=[validate_only_positive_numbers], unique=True)
+    host = models.CharField(_('Host'), max_length=CHAR_DEFAULT, unique=True, help_text=_('Provide ldap host.'))
+    port = models.IntegerField(_('Port'), validators=[validate_only_positive_numbers],
+                               help_text=_('Provide ldap host port, only positive numbers are allowed.'))
+    ssl_tls = models.BooleanField(_('SSL'), help_text=_('Specify if SSL/TLS connection is used.'))
+    bindDN = models.CharField(_('BindDN'), max_length=CHAR_DEFAULT,
+                              help_text=_('BindDN to authenticate against ldap server. '
+                                          'Example: cn=userxy,dc=example,dc=com'))
+    password = models.CharField(_('Password'), max_length=CHAR_MAX,
+                                help_text=_('Password for ldap BindDN authentication.'))
+    base_user = models.CharField(_('Base User'), max_length=CHAR_DEFAULT,
+                                 help_text=_('Base for user operations. Example: ou=users,dc=example,dc=com'))
+    base_group = models.CharField(_('Base Group'), max_length=CHAR_DEFAULT, blank=True,
+                                  help_text=_('Base for group operations. Example: ou=groups,dc=example,dc=com'))
+    filter_user = models.CharField(_('Filter User'), max_length=CHAR_DEFAULT,
+                                   help_text=_('Filter for user operations. Example: (objectClass=inetOrgPerson)'))
+    filter_group = models.CharField(_('Filter Groups'), max_length=CHAR_DEFAULT, blank=True,
+                                    help_text=_('Filter for group operations. Example: (objectClass=posixGroup)'))
+    attr_username = models.CharField(_('Attr Username'), max_length=CHAR_DEFAULT,
+                                     help_text=_('Unique attribute of users in external ldap server. Example: cn/uid'))
+    attr_group = models.CharField(_('Attr Group'), max_length=CHAR_DEFAULT, blank=True,
+                                  help_text=_('Attribute of groups in external ldap server. Example: cn'))
+    attr_email = models.CharField(_('Attr Email'), max_length=CHAR_DEFAULT, blank=True,
+                                  help_text=_('Attribute of user email field. Example: mail'))
+    attr_surname = models.CharField(_('Attr Surname'), max_length=CHAR_DEFAULT, blank=True,
+                                    help_text=_('Attribute of user surname field. Example: sn'))
+    attr_forename = models.CharField(_('Attr Forename'), max_length=CHAR_DEFAULT, blank=True,
+                                     help_text=_('Attribute of user forename field. Example: givenName'))
+    priority = models.IntegerField(_('Priority'), validators=[validate_only_positive_numbers], unique=True,
+                                   help_text=_('Provide priority, only positive numbers are allowed.'))
 
     # manager
     objects = LDAPManager()

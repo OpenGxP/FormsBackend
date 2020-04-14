@@ -26,6 +26,8 @@ from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, LOG_HASH_SEQ
 from urp.models.tags import Tags
 from urp.fields import LookupField
 from basics.models import Status
+from urp.validators import validate_no_space, validate_no_specials_reduced, validate_no_numbers, validate_only_ascii, \
+    SPECIALS_REDUCED
 
 
 # log manager
@@ -91,10 +93,14 @@ class ListsManager(GlobalManager):
 # table
 class Lists(GlobalModel):
     # custom fields
-    list = models.CharField(_('List'), max_length=CHAR_DEFAULT)
-    type = models.CharField(_('Type'), max_length=CHAR_DEFAULT)
-    tag = models.CharField(_('Tag'), max_length=CHAR_DEFAULT, blank=True)
-    elements = LookupField(_('Elements'), max_length=CHAR_BIG)
+    list = models.CharField(_('List'), max_length=CHAR_DEFAULT, help_text=_('Special characters "{}" are not '
+                                                                            'permitted. No whitespaces and numbers.'
+                                                                            .format(SPECIALS_REDUCED)),
+                            validators=[validate_no_specials_reduced, validate_no_space, validate_no_numbers,
+                                        validate_only_ascii])
+    type = models.CharField(_('Type'), max_length=CHAR_DEFAULT, help_text=_('Select type.'))
+    tag = models.CharField(_('Tag'), max_length=CHAR_DEFAULT, blank=True, help_text=_('Select tag.'))
+    elements = LookupField(_('Elements'), max_length=CHAR_BIG, help_text=_('Provide elements of this list.'))
     # defaults
     status = models.ForeignKey(Status, on_delete=models.PROTECT)
     version = FIELD_VERSION
