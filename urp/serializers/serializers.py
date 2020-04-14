@@ -415,6 +415,9 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
             if self.context['function'] == 'status_change':
                 self.status_change = True
                 action = settings.DEFAULT_LOG_STATUS
+                # FO-221: changed action to "update" for valid to updates of previous version
+                if self_call:
+                    action = settings.DEFAULT_LOG_UPDATE
                 validated_data['status_id'] = Status.objects.status_by_text(self.context['status'])
 
                 # if "valid_from" is empty, set "valid_from" to timestamp of set productive
