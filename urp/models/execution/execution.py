@@ -167,3 +167,7 @@ class Execution(GlobalModel):
 
     def delete_me(self):
         self.delete()
+
+    # FO-214: changed unique id of execution object to number
+    def unique_id(self):
+        return self.number
