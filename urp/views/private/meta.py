@@ -111,6 +111,13 @@ def meta_list(request, dialog):
                                  'render': False}
         # add calculated field local timestamp if log table
         if model.objects.IS_LOG:
+            # FO-220: added localised valid from/to to log meta
+            data['get']['valid_from_local'] = {'verbose_name': 'Valid from',
+                                               'data_type': 'DateTimeField',
+                                               'render': True}
+            data['get']['valid_to_local'] = {'verbose_name': 'Valid to',
+                                             'data_type': 'DateTimeField',
+                                             'render': True}
             data['get']['timestamp_local'] = {'verbose_name': 'Timestamp',
                                               'data_type': 'DateTimeField',
                                               'render': True}
