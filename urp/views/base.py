@@ -25,7 +25,6 @@ from rest_framework import status as http_status
 
 # app imports
 from basics.models import Settings, Status
-from basics.custom import str_list_change_single
 from urp.backends.users import write_access_log
 from urp.pagination import MyPagination
 from urp.models.profile import Profile
