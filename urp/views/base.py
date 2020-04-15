@@ -30,6 +30,7 @@ from urp.pagination import MyPagination
 from urp.models.profile import Profile
 from urp.models.spaces import Spaces
 from urp.decorators import perm_required
+from urp.models.roles import Roles
 
 # django imports
 from django.utils import timezone
@@ -241,6 +242,11 @@ class GET(object):
     def queryset(self):
         if not self.tags:
             return self.model_object_base.all()
+        # FO-227: check if user has initial / all role.
+        if self.request.user.has_role(Settings.objects.core_initial_role):
+            # if user has role, then validate if role is prod/valid
+            if Roles.objects.verify_prod_valid(key=Settings.objects.core_initial_role):
+                return self.model_object_base.all()
         return self.model_object_base.filter(Q(tag__in=self.tags_list) | Q(tag='')).all()
 
     @property
