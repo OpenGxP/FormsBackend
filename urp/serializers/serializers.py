@@ -860,13 +860,22 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                                 _filter[field] = data[field]
                         else:
                             _filter = {self.model.UNIQUE: data[self.model.UNIQUE]}
-                        query = self.model.objects.filter(**_filter).exists()
+                        query = self.model.objects.filter(**_filter).all()
                         if query:
-                            records = self.model.objects.filter(**_filter).all()
-                            for item in records:
+                            for item in query:
                                 if self.instance.lifecycle_id != item.lifecycle_id:
-                                    raise serializers.ValidationError('Record(s) with data "{}" already exists'
-                                                                      .format(_filter))
+                                    # FO-210: improve error message
+                                    tag = getattr(query[0], 'tag', None)
+                                    msg = ''
+                                    for k, v in _filter.items():
+                                        msg += '{}="{}" &'.format(k, v)
+                                    msg = msg[:-2]
+                                    if tag:
+                                        raise serializers.ValidationError(
+                                            'Record(s) with {} already exists. '
+                                            'Record is only visible for users with access to tag "{}".'
+                                            .format(msg, tag))
+                                    raise serializers.ValidationError('Record(s) with {} already exists.'.format(msg))
 
             @require_NONE
             def validate_comment_signature_edit(self):
@@ -994,9 +1003,20 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                             _filter[field] = data[field]
                     else:
                         _filter = {self.model.UNIQUE: data[self.model.UNIQUE]}
-                    query = self.model.objects.filter(**_filter).exists()
+                    query = self.model.objects.filter(**_filter).all()
                     if query:
-                        raise serializers.ValidationError('Record(s) with data "{}" already exists'.format(_filter))
+                        # FO-210: improve error message
+                        tag = getattr(query[0], 'tag', None)
+                        msg = ''
+                        for k, v in _filter.items():
+                            msg += '{}="{}" &'.format(k, v)
+                        msg = msg[:-2]
+                        if tag:
+                            raise serializers.ValidationError('Record(s) with {} already exists. '
+                                                              'Record is only visible for users with access to '
+                                                              'tag "{}".'
+                                                              .format(msg, tag))
+                        raise serializers.ValidationError('Record(s) with {} already exists.'.format(msg))
 
             @require_NEW
             def validate_comment_signature_add(self):
