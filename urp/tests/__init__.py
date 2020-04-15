@@ -171,7 +171,8 @@ class Prerequisites(object):
 
     def role_past_valid_from(self):
         role = 'past_valid_from'
-        call_command('create-role', name=role, valid_from='01-01-2016 00:00:00')
+        # FO-228: because new validation rules, it is not possible to set user invalid from in test scenarios
+        call_command('create-role', name=role)
         Users.objects.create_superuser(username=self.username_valid_from, password=self.password, role=role,
                                        email=self.email_five, initial_password=False)
 
@@ -271,33 +272,11 @@ class Prerequisites(object):
         # get csrf
         csrf_token = self.get_csrf(ext_client, path=reverse('users-list'))
         user = Users.objects.filter(username=self.username, status=Status.objects.productive, version=1).get()
-        # new version
-        path = '{}/{}/1'.format(reverse('users-list'), user.lifecycle_id)
-        response = ext_client.post(path, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
-        assert response.status_code == status.HTTP_201_CREATED
-        # update draft of second version to be invalid
-        path = '{}/{}/2'.format(reverse('users-list'), user.lifecycle_id)
-        data = {'username': self.username,
-                'roles': ['all'],
-                'email': 'test@opengxp.org',
-                'valid_from': timezone.now(),
-                'valid_to': timezone.now(),
-                'ldap': False}
-        response = ext_client.patch(path, data=data, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
-        assert response.status_code == status.HTTP_200_OK
-        # auth with second user to avoid SoD and set set in circulation
-        self.role_superuser_three()
-        self.auth_three(ext_client)
-        csrf_token = self.get_csrf(ext_client, path=reverse('users-list'))
-        path = '{}/{}/2/circulation'.format(reverse('users-list'), user.lifecycle_id)
-        response = ext_client.patch(path, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
-        assert response.status_code == status.HTTP_200_OK
-        # auth again with user to be invalid
-        self.auth(ext_client)
-        csrf_token = self.get_csrf(ext_client, path=reverse('users-list'))
-        path = '{}/{}/2/productive'.format(reverse('users-list'), user.lifecycle_id)
-        response = ext_client.patch(path, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
-        assert response.status_code == status.HTTP_200_OK
+        # FO-228: because new validation rules, it is not possible to set user invalid in test scenario with public api
+        # therefore, just change validity range via internal data model to make user invalid
+        user.valid_from = timezone.now()
+        user.valid_to = timezone.now()
+        user.save()
         return csrf_token
 
     def change_dialog_com_sig(self, ext_client, mode, model, perm, value):

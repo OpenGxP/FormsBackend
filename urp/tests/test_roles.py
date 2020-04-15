@@ -58,8 +58,8 @@ class PostNewRoles(PostNew):
         self.base_path = BASE_PATH
         self.model = Roles
         self.prerequisites = Prerequisites(base_path=self.base_path)
-        self.valid_payload = {'role': 'test',
-                              'valid_from': timezone.now()}
+        # FO-228: because new validation rules, it is not possible to use now() in test scenarios
+        self.valid_payload = {'role': 'test'}
         self.invalid_payloads = [dict(),
                                  {'role': ''}]
         self.execute = True
@@ -77,8 +77,8 @@ class GetOneRole(GetOne):
         self.model = Roles
         self.prerequisites = Prerequisites(base_path=self.base_path)
         self.serializer = RolesReadWriteSerializer
-        self.ok_object_data = {'role': 'test',
-                               'valid_from': timezone.now()}
+        # FO-228: because new validation rules, it is not possible to use now() in test scenarios
+        self.ok_object_data = {'role': 'test'}
         self.execute = True
 
 
@@ -90,12 +90,10 @@ class PostNewVersionRole(PostNewVersion):
         self.model = Roles
         self.prerequisites = Prerequisites(base_path=self.base_path)
         self.serializer = RolesReadWriteSerializer
-        self.ok_object_data = {'role': 'test',
-                               'valid_from': timezone.now()}
-        self.fail_object_draft_data = {'role': 'test_draft',
-                                       'valid_from': timezone.now()}
-        self.fail_object_circulation_data = {'role': 'test_circ',
-                                             'valid_from': timezone.now()}
+        # FO-228: because new validation rules, it is not possible to use now() in test scenarios
+        self.ok_object_data = {'role': 'test'}
+        self.fail_object_draft_data = {'role': 'test_draft'}
+        self.fail_object_circulation_data = {'role': 'test_circ'}
         self.execute = True
 
 
@@ -107,8 +105,8 @@ class DeleteOneRole(DeleteOne):
         self.model = Roles
         self.prerequisites = Prerequisites(base_path=self.base_path)
         self.serializer = RolesReadWriteSerializer
-        self.ok_object_data = {'role': 'test',
-                               'valid_from': timezone.now()}
+        # FO-228: because new validation rules, it is not possible to use now() in test scenarios
+        self.ok_object_data = {'role': 'test'}
         self.execute = True
 
 
@@ -120,12 +118,9 @@ class PatchOneRole(PatchOne):
         self.model = Roles
         self.prerequisites = Prerequisites(base_path=self.base_path)
         self.serializer = RolesReadWriteSerializer
-        self.ok_object_data = {'role': 'test',
-                               'valid_from': timezone.now()}
-        self.valid_payload = {
-            'role': 'testneu',
-            'valid_to': timezone.now()
-        }
+        # FO-228: because new validation rules, it is not possible to use now() in test scenarios
+        self.ok_object_data = {'role': 'test'}
+        self.valid_payload = {'role': 'testneu'}
         self.invalid_payload = {
             'role': ''
         }
@@ -145,8 +140,8 @@ class PatchOneStatusRole(PatchOneStatus):
         self.model = Roles
         self.prerequisites = Prerequisites(base_path=self.base_path)
         self.serializer = RolesReadWriteSerializer
-        self.ok_object_data = {'role': 'test',
-                               'valid_from': timezone.now()}
+        # FO-228: because new validation rules, it is not possible to use now() in test scenarios
+        self.ok_object_data = {'role': 'test'}
         self.execute = True
 
 
@@ -159,30 +154,32 @@ class RolesMiscellaneous(APITestCase):
         self.prerequisites = Prerequisites(base_path=self.base_path)
         now = timezone.now()
         later = now + timezone.timedelta(days=15)
-        self.valid_payload = {
-            'role': 'test',
-            'valid_from': now
-        }
+        # FO-228: because new validation rules, it is not possible to use now() in test scenarios
+        self.valid_payload = {'role': 'test'}
 
         self.valid_payload_later = {
             'role': 'test',
+            # FO-228: because new validation rules, it is not possible to dates in the past
             'valid_from': later
         }
 
         self.valid_payload_overlapping = {
             'role': 'test',
-            'valid_from': timezone.datetime(year=2017, month=6, day=1),
+            # FO-228: because new validation rules, it is not possible to dates in the past
+            'valid_from': timezone.datetime(year=2080, month=6, day=1),
         }
 
         self.invalid_payload = {
             'role': 'test',
-            'valid_from': timezone.datetime(year=2018, month=1, day=1)
+            # FO-228: because new validation rules, it is not possible to dates in the past
+            'valid_from': timezone.datetime(year=2017, month=1, day=1)
         }
 
         self.valid_payload_valid_to = {
             'role': 'test',
-            'valid_from': timezone.datetime(year=2017, month=1, day=1),
-            'valid_to': timezone.datetime(year=2018, month=1, day=1)
+            # FO-228: because new validation rules, it is not possible to dates in the past
+            'valid_from': timezone.datetime(year=2080, month=1, day=1),
+            'valid_to': timezone.datetime(year=2081, month=1, day=1)
         }
 
     def setUp(self):
@@ -242,6 +239,13 @@ class RolesMiscellaneous(APITestCase):
         self.assertEqual(response_first_two.data['version'], 2)
         self.assertEqual(response_first_two.data['lifecycle_id'], str(response_first.data['lifecycle_id']))
         self.assertEqual(response_first_two.data['status'], 'draft')
+
+        # FO-228: because valid-from was set at previous set productive it is now in the past
+        # update valid from in the future
+        path = '{}/{}/{}'.format(self.base_path, response_first.data['lifecycle_id'], 2)
+        response_update = self.client.patch(path, data=self.valid_payload_later, content_type='application/json',
+                                            HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response_update.status_code, status.HTTP_200_OK)
 
         # start circulation of first record
         _status = 'circulation'
@@ -479,7 +483,9 @@ class RolesMiscellaneous(APITestCase):
         # change the valid from to a date after the valid_to of the previous version
         path = '{}/{}/{}'.format(self.base_path, response.data['lifecycle_id'], 2)
         data = {'role': 'test',
-                'valid_from': timezone.datetime(year=2019, month=1, day=1)}
+                # FO-228: because new validation rules, it is not possible to dates in the past
+                'valid_to': timezone.datetime(year=2082, month=1, day=1),
+                'valid_from': timezone.datetime(year=2081, month=6, day=1)}
         self.client.patch(path, data=data, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
 
         # start circulation of version 2

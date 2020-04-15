@@ -16,6 +16,9 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+# python imports
+import time
+
 # django imports
 from django.urls import reverse
 from django.utils import timezone
@@ -24,6 +27,7 @@ from rest_framework.serializers import ValidationError
 
 # rest framework imports
 from rest_framework.test import APITestCase
+from rest_framework import status
 
 # app imports
 from ..models import Roles
@@ -37,11 +41,6 @@ class Miscellaneous(APITestCase):
         super(Miscellaneous, self).__init__(*args, **kwargs)
         self.path = reverse('roles-list')
         self.prerequisites = Prerequisites(base_path=self.path)
-        self.valid_payload = {
-            'role': 'past_valid_from',
-            'valid_from': timezone.datetime.strptime('01-01-2017 00:00:00', '%d-%m-%Y %H:%M:%S'),
-            'valid_to': timezone.datetime.strptime('01-01-2018 00:00:00', '%d-%m-%Y %H:%M:%S')
-        }
 
     def setUp(self):
         self.client = Client(enforce_csrf_checks=True)
@@ -50,29 +49,147 @@ class Miscellaneous(APITestCase):
         self.prerequisites.role_past_valid_from()
 
     def test_403_invalid_range(self):
-        # authenticate
-        self.prerequisites.auth(self.client)
-        # get csrf
-        csrf_token = self.prerequisites.get_csrf(self.client)
         # get data from db
         role = Roles.objects.filter(role='past_valid_from').get()
-        # create new version
-        path = '{}/{}/{}'.format(self.path, role.lifecycle_id, role.version)
-        self.client.post(path, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
-        # update draft version 2
-        path = '{}/{}/{}'.format(self.path, role.lifecycle_id, role.version + 1)
-        self.client.patch(path, data=self.valid_payload, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
-        # start circulation
-        path = '{}/{}/{}/{}'.format(self.path, role.lifecycle_id, role.version + 1, 'circulation')
-        self.client.patch(path, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
-        # auth with second user to avoid SoD
-        self.prerequisites.auth_two(self.client)
-        # get csrf
-        csrf_token = self.prerequisites.get_csrf(self.client)
-        # set productive
-        path = '{}/{}/{}/{}'.format(self.path, role.lifecycle_id, role.version + 1, 'productive')
-        self.client.patch(path, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        # FO-228: because new validation rules, it is not possible to set role invalid in test scenario with public api
+        # therefore, just change validity range via internal data model to make role invalid
+        role.valid_from = timezone.now()
+        role.valid_to = timezone.now()
+        role.save()
         # try to authenticate with user who has invalid roles
         # FO-123: new test to verify that login with invalid role raises 400 error
         with self.assertRaises(ValidationError):
             self.prerequisites.auth_not_valid_roles(self.client)
+
+
+# FO-228: new test case to verify validity range of status managed objects with the example roles.
+# shall behave identical for all status managed objects
+class ValidityRange(APITestCase):
+    def __init__(self, *args, **kwargs):
+        super(ValidityRange, self).__init__(*args, **kwargs)
+        self.path = reverse('roles-list')
+        self.prerequisites = Prerequisites(base_path=self.path)
+
+    def setUp(self):
+        self.client = Client(enforce_csrf_checks=True)
+        self.prerequisites.role_superuser()
+        self.prerequisites.role_superuser_two()
+
+    def test_400_valid_from_circulation(self):
+        """This test shall show that it is not possible to start circulation of a status managed record with
+        valid from in the past."""
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get API response
+        data = {'role': 'test',
+                'valid_from': timezone.datetime(year=2000, month=6, day=1)}
+        # create first record in status draft and version 1
+        response = self.client.post(self.path, data=data, content_type='application/json',
+                                    HTTP_X_CSRFTOKEN=csrf_token)
+        # start circulation
+        path = '{}/{}/{}/{}'.format(self.path, response.data['lifecycle_id'], 1, 'circulation')
+        response_circ = self.client.patch(path, data={}, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response_circ.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_400_valid_to_circulation(self):
+        """This test shall show that it is not possible to start circulation of a status managed record with
+        valid to in the past."""
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get API response
+        data = {'role': 'test',
+                'valid_to': timezone.datetime(year=2000, month=6, day=1)}
+        # create first record in status draft and version 1
+        response = self.client.post(self.path, data=data, content_type='application/json',
+                                    HTTP_X_CSRFTOKEN=csrf_token)
+        # start circulation
+        path = '{}/{}/{}/{}'.format(self.path, response.data['lifecycle_id'], 1, 'circulation')
+        response_circ = self.client.patch(path, data={}, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response_circ.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_400_valid_from_to_circulation(self):
+        """This test shall show that it is not possible to start circulation of a status managed record with
+        valid from greater than valid to."""
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get API response
+        data = {'role': 'test',
+                'valid_from': timezone.datetime(year=2080, month=1, day=1),
+                'valid_to': timezone.datetime(year=2079, month=1, day=1)}
+        # create first record in status draft and version 1
+        response = self.client.post(self.path, data=data, content_type='application/json',
+                                    HTTP_X_CSRFTOKEN=csrf_token)
+        # start circulation
+        path = '{}/{}/{}/{}'.format(self.path, response.data['lifecycle_id'], 1, 'circulation')
+        response_circ = self.client.patch(path, data={}, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response_circ.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_400_valid_from_productive(self):
+        """This test shall show that it is not possible to set productive of a status managed record with
+        valid from in the past."""
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get API response
+        # create later record that it can be set in circulation
+        now = timezone.now()
+        later = now + timezone.timedelta(seconds=3)
+        data = {'role': 'test',
+                'valid_from': later}
+        # create first record in status draft and version 1
+        response = self.client.post(self.path, data=data, content_type='application/json',
+                                    HTTP_X_CSRFTOKEN=csrf_token)
+        # start circulation
+        path = '{}/{}/{}/{}'.format(self.path, response.data['lifecycle_id'], 1, 'circulation')
+        response_circ = self.client.patch(path, data={}, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response_circ.status_code, status.HTTP_200_OK)
+
+        # wait 3 seconds that previous circulated valid from is in the past
+        time.sleep(3)
+
+        # auth with second user to avoid SoD
+        self.prerequisites.auth_two(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        path = '{}/{}/{}/{}'.format(self.path, response.data['lifecycle_id'], 1, 'productive')
+        response_prod = self.client.patch(path, data={}, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response_prod.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_400_valid_to_productive(self):
+        """This test shall show that it is not possible to set productive of a status managed record with
+        valid to in the past."""
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get API response
+        # create later record that it can be set in circulation
+        now = timezone.now()
+        later = now + timezone.timedelta(seconds=3)
+        data = {'role': 'test',
+                'valid_to': later}
+        # create first record in status draft and version 1
+        response = self.client.post(self.path, data=data, content_type='application/json',
+                                    HTTP_X_CSRFTOKEN=csrf_token)
+        # start circulation
+        path = '{}/{}/{}/{}'.format(self.path, response.data['lifecycle_id'], 1, 'circulation')
+        response_circ = self.client.patch(path, data={}, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response_circ.status_code, status.HTTP_200_OK)
+
+        # wait 3 seconds that previous circulated valid from is in the past
+        time.sleep(3)
+
+        # auth with second user to avoid SoD
+        self.prerequisites.auth_two(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        path = '{}/{}/{}/{}'.format(self.path, response.data['lifecycle_id'], 1, 'productive')
+        response_prod = self.client.patch(path, data={}, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response_prod.status_code, status.HTTP_400_BAD_REQUEST)

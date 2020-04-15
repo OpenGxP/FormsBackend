@@ -526,6 +526,7 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
             self.instance = validate_method.instance
             self.function = validate_method.context['function']
             self.validate_method = validate_method
+            self.now = validate_method.now
 
             self.user = None
             if 'user' in self.context.keys():
@@ -562,6 +563,40 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 if self.context['status'] not in AVAILABLE_STATUS:
                     raise serializers.ValidationError('Target status not valid. Only "{}" are allowed.'
                                                       .format(AVAILABLE_STATUS))
+
+            # FO-228: validate valid from/to at start circulation
+            @require_STATUS_CHANGE
+            @require_draft
+            def validate_draft_validity_ranges(self):
+                if 'disable-sod' not in self.context:
+                    # if record has valid_from, validate it is not in the past
+                    if self.instance.valid_from:
+                        if self.instance.valid_from < self.now:
+                            raise serializers.ValidationError('Valid from can not be in the past.')
+                    # if record has valid_to, validate it is not in the past
+                    if self.instance.valid_to:
+                        if self.instance.valid_to < self.now:
+                            raise serializers.ValidationError('Valid to can not be in the past.')
+                    # if record has both, valid_from and valid_to, validate from can not be after two
+                    if self.instance.valid_to and self.instance.valid_from:
+                        if self.instance.valid_from > self.instance.valid_to:
+                            raise serializers.ValidationError('Valid from can not be after valid to.')
+
+            # FO-228: validate valid from/to at set productive
+            @require_STATUS_CHANGE
+            @require_circulation
+            def validate_circulation_validity_range(self):
+                if 'disable-sod' not in self.context:
+                    # because set productive can be anytime after set in circulation, validity range is validated again
+                    if self.context['status'] == 'productive':
+                        # if record has valid_from, validate it is not in the past
+                        if self.instance.valid_from:
+                            if self.instance.valid_from < self.now:
+                                raise serializers.ValidationError('Valid from can not be in the past.')
+                        # if record has valid_to, validate it is not in the past
+                        if self.instance.valid_to:
+                            if self.instance.valid_to < self.now:
+                                raise serializers.ValidationError('Valid to can not be in the past.')
 
             @require_STATUS_CHANGE
             @require_draft
