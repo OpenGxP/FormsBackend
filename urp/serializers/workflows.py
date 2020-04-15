@@ -26,7 +26,7 @@ from urp.models.tags import Tags
 from urp.serializers import GlobalReadWriteSerializer
 from urp.fields import StepsField
 from urp.models.roles import Roles
-from basics.models import CHAR_BIG
+from basics.models import CHAR_BIG, Status
 from urp.custom import create_log_record
 
 # django imports
@@ -53,6 +53,9 @@ class WorkflowsReadWriteSerializer(GlobalReadWriteSerializer):
         return value
 
     def validate_steps(self, value):
+        # FO-229: validate that steps are not empty
+        if not value:
+            raise serializers.ValidationError('At least one step ist required.')
         value = self.validate_sub(value, key='step', parent=True)
         self.validate_sequence_plain(value)
         self.validate_predecessors(value, key='step')
@@ -106,6 +109,12 @@ class WorkflowsNewVersionStatusSerializer(GlobalReadWriteSerializer):
             self.model.objects.create_sub_record(obj=obj, validated_data=validated_data, key=key,
                                                  sub_model=table, new_version=True, instance=self.instance)
         return validated_data, obj
+
+    def validate_patch_specific(self, data):
+        # FO-229: validate that steps are not empty
+        if self.instance.status.id == Status.objects.draft:
+            if not self.instance.linked_steps:
+                raise serializers.ValidationError('Steps field must not be empty.')
 
 
 # delete
