@@ -25,6 +25,7 @@ from rest_framework import status as http_status
 
 # app imports
 from basics.models import Settings, Status
+from basics.custom import str_list_change_single
 from urp.backends.users import write_access_log
 from urp.pagination import MyPagination
 from urp.models.profile import Profile
@@ -217,11 +218,25 @@ class GET(object):
 
     @property
     def tags_list(self):
-        tags_str = Spaces.objects.get_tags_by_username(username=self.request.user.username)
-        tags_list = []
-        if tags_str:
-            tags_list = tags_str[0].split(',')
-        return tags_list
+        # FO-226: get all tags related to a user via spaces, not only one (first)
+        tags_list_raw = list(Spaces.objects.get_tags_by_username(username=self.request.user.username))
+        tags_list_clean = []
+        if tags_list_raw:
+            for item in tags_list_raw:
+                # items can be single strings or strings comma separated
+                # if comma is in item, it is a comma separated string list that must be handled
+                if ',' in item:
+                    # split the string to a list
+                    x = item.split(',')
+                    # iterate over the list and add each item/i to clean list
+                    for i in x:
+                        tags_list_clean.append(i)
+                # if no comma in string, add item directly to clean list
+                else:
+                    tags_list_clean.append(item)
+            # because clean list contains duplicates, they are removed
+            tags_list_clean = list(set(tags_list_clean))
+        return tags_list_clean
 
     @property
     def queryset(self):
