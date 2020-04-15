@@ -183,7 +183,7 @@ class ValidityRange(APITestCase):
         response_circ = self.client.patch(path, data={}, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
         self.assertEqual(response_circ.status_code, status.HTTP_200_OK)
 
-        # wait 3 seconds that previous circulated valid from is in the past
+        # wait 3 seconds that previous circulated valid to is in the past
         time.sleep(3)
 
         # auth with second user to avoid SoD
