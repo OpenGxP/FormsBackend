@@ -21,8 +21,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 # app imports
-from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, Status, GlobalModelLog, LOG_HASH_SEQUENCE, \
-    FIELD_VERSION
+from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, Status, GlobalModelLog, LOG_HASH_SEQUENCE
 from urp.models.forms.forms import Forms
 from urp.models.execution.fields import ExecutionFields
 
@@ -40,8 +39,8 @@ class ExecutionLogManager(GlobalManager):
                        'tag',
                        'lifecycle_id',
                        'version',)
-    GET_MODEL_NOT_RENDER = ('tag',
-                            'version',)
+    # FO-215: removed version from not render to indicate what form object + version the execution object is inherited
+    GET_MODEL_NOT_RENDER = ('tag',)
 
 
 # log table
@@ -53,7 +52,8 @@ class ExecutionLog(GlobalModelLog):
     tag = models.CharField(_('Tag'), max_length=CHAR_DEFAULT, blank=True)
     # defaults
     status = models.ForeignKey(Status, on_delete=models.PROTECT, verbose_name=_('Status'))
-    version = FIELD_VERSION
+    # FO-215: changed version verbose name to indicate version belongs to form, not execution object
+    version = models.IntegerField(_('Form version'))
 
     lifecycle_id = models.UUIDField()
     valid_from = None
