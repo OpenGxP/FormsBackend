@@ -244,6 +244,9 @@ class FormsNewVersionStatusSerializer(GlobalReadWriteSerializer):
 
                 # last step of workflow performed
                 if not next_steps:
+                    # FO-234: set valid from at last step, if not yet set
+                    if not self.instance.valid_from:
+                        validated_data['valid_from'] = self.now
                     self.context['status'] = 'productive'
                     validated_data['status_id'] = Status.objects.status_by_text(self.context['status'])
                 else:

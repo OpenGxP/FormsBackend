@@ -421,7 +421,9 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 validated_data['status_id'] = Status.objects.status_by_text(self.context['status'])
 
                 # if "valid_from" is empty, set "valid_from" to timestamp of set productive
-                if self.context['status'] == 'productive' and not self.instance.valid_from and not self_call:
+                # FO-234: do not set valid from via regular mechanism
+                if self.context['status'] == 'productive' and not self.instance.valid_from and not self_call \
+                        and not self.model.objects.WF_MGMT:
                     validated_data['valid_from'] = self.now
 
                 # change "valid_to" of previous version to "valid from" of new version
