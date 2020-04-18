@@ -342,6 +342,9 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
             setattr(obj, 'lifecycle_id', self.instance.lifecycle_id)
             # version
             for attr in hash_sequence:
+                # FO-239: remove valid from/to of new version objects
+                if attr == 'valid_from' or attr == 'valid_to':
+                    continue
                 validated_data[attr] = getattr(self.instance, attr)
             validated_data['version'] = self.instance.version + 1
 

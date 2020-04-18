@@ -1030,7 +1030,9 @@ class PostNewVersion(APITestCase):
                     self.assertEqual(response.data[field], serializer.data[field])
             else:
                 self.assertEqual(response.data[self.model.UNIQUE], serializer.data[self.model.UNIQUE])
-            self.assertEqual(response.data['valid_from'], serializer.data['valid_from'])
+            # FO-239: remove valid from/to of new version objects, therefore test must show it is None
+            self.assertEqual(response.data['valid_from'], None)
+            self.assertEqual(response.data['valid_to'], None)
             # verify log record
             self.assertEqual(log_records(model=self.model, data=response.data, action=settings.DEFAULT_LOG_CREATE),
                              True)
