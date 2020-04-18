@@ -303,6 +303,8 @@ def delete(request, ser_del, query):
 class BaseView(object):
     def __init__(self, model, ser_rw, ser_log=None):
         self.model = model
+        # FO-235: add global indicator if model has permissions
+        self.perms = model.perms
         self.log_model = model.objects.LOG_TABLE
 
         # serializers
@@ -311,8 +313,13 @@ class BaseView(object):
 
     def list(self, request, tags=None, ext_filter=None):
         # permissions
-        perm_read = '{}.01'.format(self.model.MODEL_ID)
-        perm_add = '{}.02'.format(self.model.MODEL_ID)
+        # FO-235: if model has permissions use them, otherwise pass None to avoid restriction
+        if self.perms:
+            perm_read = '{}.01'.format(self.model.MODEL_ID)
+            perm_add = '{}.02'.format(self.model.MODEL_ID)
+        else:
+            perm_read = None
+            perm_add = None
 
         # serializer
         ser_rw = self.ser_rw
@@ -336,7 +343,12 @@ class BaseView(object):
             return _post(request)
 
     def list_log(self, request, tags=None, ext_filter=None):
-        perm_read = '{}.01'.format(self.log_model.MODEL_ID)
+        # permissions
+        # FO-235: if model has permissions use them, otherwise pass None to avoid restriction
+        if self.perms:
+            perm_read = '{}.01'.format(self.log_model.MODEL_ID)
+        else:
+            perm_read = None
 
         @perm_required(perm_read)
         def main(_request):
@@ -354,8 +366,13 @@ class UpdateView(BaseView):
 
     def detail(self, request, unique, ext_filter=None):
         # permissions
-        perm_read = '{}.01'.format(self.model.MODEL_ID)
-        perm_patch = '{}.03'.format(self.model.MODEL_ID)
+        # FO-235: if model has permissions use them, otherwise pass None to avoid restriction
+        if self.perms:
+            perm_read = '{}.01'.format(self.model.MODEL_ID)
+            perm_patch = '{}.03'.format(self.model.MODEL_ID)
+        else:
+            perm_read = None
+            perm_patch = None
 
         # serializer
         ser_rw = self.ser_rw
@@ -398,9 +415,15 @@ class StandardView(BaseView):
 
     def detail(self, request, unique):
         # permissions
-        perm_read = '{}.01'.format(self.model.MODEL_ID)
-        perm_patch = '{}.03'.format(self.model.MODEL_ID)
-        perm_del = '{}.04'.format(self.model.MODEL_ID)
+        # FO-235: if model has permissions use them, otherwise pass None to avoid restriction
+        if self.perms:
+            perm_read = '{}.01'.format(self.model.MODEL_ID)
+            perm_patch = '{}.03'.format(self.model.MODEL_ID)
+            perm_del = '{}.04'.format(self.model.MODEL_ID)
+        else:
+            perm_read = None
+            perm_patch = None
+            perm_del = None
 
         # serializer
         ser_rw = self.ser_rw
@@ -451,11 +474,19 @@ class StatusView(BaseView):
 
     def detail(self, request, lifecycle_id, version, tags=True):
         # permissions
-        perm_read = '{}.01'.format(self.model.MODEL_ID)
-        perm_patch = '{}.03'.format(self.model.MODEL_ID)
-        perm_del = '{}.04'.format(self.model.MODEL_ID)
-        perm_nv = '{}.11'.format(self.model.MODEL_ID)
-        perm_nva = '{}.12'.format(self.model.MODEL_ID)
+        # FO-235: if model has permissions use them, otherwise pass None to avoid restriction
+        if self.perms:
+            perm_read = '{}.01'.format(self.model.MODEL_ID)
+            perm_patch = '{}.03'.format(self.model.MODEL_ID)
+            perm_del = '{}.04'.format(self.model.MODEL_ID)
+            perm_nv = '{}.11'.format(self.model.MODEL_ID)
+            perm_nva = '{}.12'.format(self.model.MODEL_ID)
+        else:
+            perm_read = None
+            perm_patch = None
+            perm_del = None
+            perm_nv = None
+            perm_nva = None
 
         # serializer
         ser_rw = self.ser_rw
@@ -521,12 +552,21 @@ class StatusView(BaseView):
 
     def status(self, request, lifecycle_id, version, status):
         # permissions
-        perm_circ = '{}.05'.format(self.model.MODEL_ID)
-        perm_draft = '{}.06'.format(self.model.MODEL_ID)
-        perm_prod = '{}.07'.format(self.model.MODEL_ID)
-        perm_block = '{}.08'.format(self.model.MODEL_ID)
-        perm_arch = '{}.09'.format(self.model.MODEL_ID)
-        perm_inac = '{}.10'.format(self.model.MODEL_ID)
+        # FO-235: if model has permissions use them, otherwise pass None to avoid restriction
+        if self.perms:
+            perm_circ = '{}.05'.format(self.model.MODEL_ID)
+            perm_draft = '{}.06'.format(self.model.MODEL_ID)
+            perm_prod = '{}.07'.format(self.model.MODEL_ID)
+            perm_block = '{}.08'.format(self.model.MODEL_ID)
+            perm_arch = '{}.09'.format(self.model.MODEL_ID)
+            perm_inac = '{}.10'.format(self.model.MODEL_ID)
+        else:
+            perm_circ = None
+            perm_draft = None
+            perm_prod = None
+            perm_block = None
+            perm_arch = None
+            perm_inac = None
 
         # serializer
         ser_st = self.ser_st
@@ -602,9 +642,15 @@ class RTDView(StatusView):
 
     def detail(self, request, number, lifecycle_id=None, version=None, tags=True):
         # permissions
-        perm_read = '{}.01'.format(self.model.MODEL_ID)
-        perm_patch = '{}.03'.format(self.model.MODEL_ID)
-        perm_del = '{}.04'.format(self.model.MODEL_ID)
+        # FO-235: if model has permissions use them, otherwise pass None to avoid restriction
+        if self.perms:
+            perm_read = '{}.01'.format(self.model.MODEL_ID)
+            perm_patch = '{}.03'.format(self.model.MODEL_ID)
+            perm_del = '{}.04'.format(self.model.MODEL_ID)
+        else:
+            perm_read = None
+            perm_patch = None
+            perm_del = None
 
         # serializer
         ser_rw = self.ser_rw
@@ -645,9 +691,16 @@ class RTDView(StatusView):
 
     def status(self, request, number, status, lifecycle_id=None, version=None):
         # permissions
-        perm_start = '{}.05'.format(self.model.MODEL_ID)
-        perm_cancel = '{}.06'.format(self.model.MODEL_ID)
-        perm_complete = '{}.07'.format(self.model.MODEL_ID)
+        # FO-235: if model has permissions use them, otherwise pass None to avoid restriction
+        if self.perms:
+            perm_start = '{}.05'.format(self.model.MODEL_ID)
+            perm_cancel = '{}.06'.format(self.model.MODEL_ID)
+            perm_complete = '{}.07'.format(self.model.MODEL_ID)
+        else:
+            perm_start = None
+            perm_cancel = None
+            perm_complete = None
+
         # serializer
         ser_st = self.ser_st
 
@@ -691,8 +744,13 @@ class RTDView(StatusView):
 
     def value(self, request, number, section, field):
         # permissions
-        perm_patch = '{}.03'.format(self.model.MODEL_ID)
-        perm_correct = '{}.08'.format(self.model.MODEL_ID)
+        # FO-235: if model has permissions use them, otherwise pass None to avoid restriction
+        if self.perms:
+            perm_patch = '{}.03'.format(self.model.MODEL_ID)
+            perm_correct = '{}.08'.format(self.model.MODEL_ID)
+        else:
+            perm_patch = None
+            perm_correct = None
 
         # serializer
         ser_value = self.ser_value
@@ -723,7 +781,12 @@ class RTDView(StatusView):
 
     def list_log_value(self, request, tags=True, ext_filter=None):
         log_model = self.model_exec.objects.LOG_TABLE
-        perm_read = '{}.01'.format(log_model.MODEL_ID)
+        # permissions
+        # FO-235: if model has permissions use them, otherwise pass None to avoid restriction
+        if self.perms:
+            perm_read = '{}.01'.format(log_model.MODEL_ID)
+        else:
+            perm_read = None
 
         @perm_required(perm_read)
         def main(_request):

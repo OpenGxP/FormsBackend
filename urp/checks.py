@@ -168,6 +168,10 @@ class Check(object):
         return self.roles
 
     def verify_permission(self, permission):
+        # FO-235: if no permission passed / required, return True
+        if not permission:
+            setattr(self.request, settings.ATTR_PERMISSION, True)
+            return True
         if getattr(self.request, settings.ATTR_ROLES, None):
             _roles = getattr(self.request, settings.ATTR_ROLES)
         else:
