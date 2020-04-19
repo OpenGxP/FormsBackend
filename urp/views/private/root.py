@@ -247,39 +247,44 @@ def private_root_view(request):
                                                                'url': {'abs': reverse('workflows-log-list',
                                                                                       request=request),
                                                                        'rel': 'logs/workflows'}},
-                                                 'workflows_steps': {'title': 'Workflows Steps',
-                                                                     'url': {'abs': reverse(
-                                                                             'workflows-steps-log-list',
-                                                                             request=request),
-                                                                             'rel': 'logs/workflows_steps'}},
+                                                 # FO-241: adapted model key correctly for meta
+                                                 'workflowssteps': {'title': 'Workflows Steps',
+                                                                    'url': {'abs': reverse(
+                                                                            'workflows-steps-log-list',
+                                                                            request=request),
+                                                                            'rel': 'logs/workflows_steps'}},
                                                  'forms': {'title': 'Forms',
                                                            'url': {'abs': reverse('forms-log-list',
                                                                                   request=request),
                                                                    'rel': 'logs/forms'}},
-                                                 'forms_sections': {'title': 'Forms Sections',
-                                                                    'url': {'abs': reverse(
-                                                                        'forms-sections-log-list',
-                                                                        request=request),
-                                                                        'rel': 'logs/forms_sections'}},
-                                                 'forms_text_fields': {'title': 'Forms Text Fields',
-                                                                       'url': {'abs': reverse(
-                                                                           'forms-text-fields-log-list',
-                                                                           request=request),
-                                                                           'rel': 'logs/forms_text_fields'}},
-                                                 'forms_bool_fields': {'title': 'Forms Bool Fields',
-                                                                       'url': {'abs': reverse(
-                                                                           'forms-bool-fields-log-list',
-                                                                           request=request),
-                                                                           'rel': 'logs/forms_bool_fields'}},
+                                                 # FO-241: adapted model key correctly for meta
+                                                 'formssections': {'title': 'Forms Sections',
+                                                                   'url': {'abs': reverse(
+                                                                       'forms-sections-log-list',
+                                                                       request=request),
+                                                                       'rel': 'logs/forms_sections'}},
+                                                 # FO-241: adapted model key correctly for meta
+                                                 'formstextfields': {'title': 'Forms Text Fields',
+                                                                     'url': {'abs': reverse(
+                                                                         'forms-text-fields-log-list',
+                                                                         request=request),
+                                                                         'rel': 'logs/forms_text_fields'}},
+                                                 # FO-241: adapted model key correctly for meta
+                                                 'formsboolfields': {'title': 'Forms Bool Fields',
+                                                                     'url': {'abs': reverse(
+                                                                         'forms-bool-fields-log-list',
+                                                                         request=request),
+                                                                         'rel': 'logs/forms_bool_fields'}},
                                                  'execution': {'title': 'Execution',
                                                                'url': {'abs': reverse('execution-log-list',
                                                                                       request=request),
                                                                        'rel': 'logs/execution'}},
-                                                 'execution_values': {'title': 'Execution Values',
-                                                                      'url': {'abs': reverse(
-                                                                          'execution-values-log-list',
-                                                                          request=request),
-                                                                              'rel': 'logs/execution_values'}}
+                                                 # FO-241: adapted model key correctly for meta
+                                                 'executionfields': {'title': 'Execution Values',
+                                                                     'url': {'abs': reverse(
+                                                                         'execution-values-log-list',
+                                                                         request=request),
+                                                                         'rel': 'logs/execution_values'}}
                                                  }}}}
 
     return Response(root)
