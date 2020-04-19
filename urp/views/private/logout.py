@@ -24,7 +24,7 @@ from rest_framework import status as http_status
 
 # app imports
 from basics.models import Settings
-from urp.decorators import auth_required
+from urp.decorators import auth_auth_required, auth_required
 from urp.backends.users import write_access_log
 from urp.views.base import refresh_time
 
@@ -35,7 +35,7 @@ from django.contrib.auth import logout
 
 
 @api_view(['GET'])
-@auth_required(initial_password_check=False)
+@auth_auth_required()
 def logout_view(request):
     data = {
         'user': request.user.username,

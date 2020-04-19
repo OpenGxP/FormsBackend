@@ -17,7 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 # app imports
-from urp.decorators import auth_required
+from urp.decorators import auth_auth_required
 
 # rest imports
 from rest_framework.response import Response
@@ -26,7 +26,7 @@ from rest_framework.reverse import reverse
 
 
 @api_view(['GET'])
-@auth_required(initial_password_check=False)
+@auth_auth_required()
 def private_root_view(request):
     root = {'base': {'csrftoken': {'url': {'abs': reverse('get_csrf_token', request=request),
                                            'rel': 'csrftoken'}},
