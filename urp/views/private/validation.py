@@ -24,7 +24,7 @@ from rest_framework import serializers
 
 # app imports
 from urp.decorators import auth_auth_required
-from basics.models import CHAR_DEFAULT
+from basics.models import CHAR_DEFAULT, CHAR_BIG
 from urp.validators import validate_no_numbers, validate_no_space, validate_no_specials_reduced, validate_only_ascii
 
 
@@ -70,22 +70,23 @@ def _val_ascii(value):
     return errors
 
 
-FIELDS_A = ['section', 'field']
-FIELDS_B = ['instruction', 'default']
+FIELDS_A = ['section', 'field', 'step']
+FIELDS_B = ['default']
+FIELDS_C = ['text', 'instruction']
 
 
 # validate explicitly form data
 @api_view(['GET'])
 @auth_auth_required()
-def validate_form_data(request, key, value):
+def validate_form_worflow_data(request, key, value):
     # some basic validations
     if not isinstance(key, str):
         raise serializers.ValidationError('Key must be string.')
     if not isinstance(value, str):
         raise serializers.ValidationError('Value must be string.')
 
-    if key not in FIELDS_A + FIELDS_B:
-        allowed = ', '.join(FIELDS_A) + ', ' + ', '.join(FIELDS_B)
+    if key not in FIELDS_A + FIELDS_B + FIELDS_C:
+        allowed = ', '.join(FIELDS_A) + ', ' + ', '.join(FIELDS_B) + ', ' + ', '.join(FIELDS_C)
         raise serializers.ValidationError('Only keys ({}) are supported.'.format(allowed))
 
     errors = []
@@ -96,10 +97,29 @@ def validate_form_data(request, key, value):
     if key in FIELDS_B:
         errors += _val_ascii(value)
 
-    if len(value) > CHAR_DEFAULT:
-        errors.append('Character limit is {}.'.format(CHAR_DEFAULT))
+    if key in FIELDS_A + FIELDS_B:
+        if len(value) > CHAR_DEFAULT:
+            errors.append('Character limit is {}.'.format(CHAR_DEFAULT))
+    if key in FIELDS_C:
+        if len(value) > CHAR_BIG:
+            errors.append('Character limit is {}.'.format(CHAR_BIG))
 
     if errors:
         raise serializers.ValidationError(detail={key: errors})
+
+    return Response(status=http_status.HTTP_200_OK)
+
+
+# validate uniqueness of value list
+@api_view(['GET'])
+@auth_auth_required()
+def validate_uniqueness(request, value):
+    # some basic validations
+    if not isinstance(value, str):
+        raise serializers.ValidationError('Value must be string.')
+
+    values = value.split(',')
+    if len(values) > len(set(values)):
+        raise serializers.ValidationError('Values not unique.')
 
     return Response(status=http_status.HTTP_200_OK)

@@ -22,7 +22,8 @@ from django.utils.translation import gettext_lazy as _
 from django.conf import settings
 
 # app imports
-from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, FIELD_VERSION, GlobalModelLog, LOG_HASH_SEQUENCE
+from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, FIELD_VERSION, GlobalModelLog, LOG_HASH_SEQUENCE, \
+    CHAR_BIG
 from basics.custom import HASH_ALGORITHM
 from urp.validators import validate_no_space, validate_no_specials_reduced, validate_no_numbers, validate_only_ascii, \
     SPECIALS_REDUCED
@@ -105,7 +106,7 @@ class FormsFields(GlobalModel):
                                          .format(SPECIALS_REDUCED)),
                              validators=[validate_no_specials_reduced, validate_no_space, validate_no_numbers,
                                          validate_only_ascii])
-    instruction = models.CharField(_('Instruction'), max_length=CHAR_DEFAULT, blank=True,
+    instruction = models.CharField(_('Instruction'), max_length=CHAR_BIG, blank=True,
                                    help_text=_('Enter instruction text'))
     mandatory = models.BooleanField(_('Mandatory'), help_text=_('Specify if field is mandatory.'))
     sequence = models.IntegerField(_('Sequence'))  # only for graphic ordering
