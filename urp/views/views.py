@@ -26,7 +26,7 @@ from rest_framework import serializers
 from urp.models import Roles, Permissions, PermissionsLog, RolesLog, Vault
 from urp.serializers import StatusReadWriteSerializer, PermissionsReadWriteSerializer, StatusLogReadSerializer, \
     PermissionsLogReadSerializer, UserProfile
-from urp.decorators import auth_required, auth_perm_required
+from urp.decorators import auth_required, auth_perm_required, auth_auth_required
 from basics.models import Status, StatusLog
 from basics.custom import unique_items
 from urp.vault import create_update_vault
@@ -122,7 +122,7 @@ def user_change_questions_view(request):
 ########
 
 @api_view(['GET'])
-@auth_required(initial_password_check=False)
+@auth_auth_required()
 def get_csrf_token(request):
     token = {settings.CSRF_COOKIE_NAME: get_token(request)}
     return Response(data=token, status=http_status.HTTP_200_OK)
