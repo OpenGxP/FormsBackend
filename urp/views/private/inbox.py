@@ -18,10 +18,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # rest imports
 from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status as http_status
 
 # custom imports
 from urp.serializers.inbox import InboxReadSerializer
-from urp.decorators import auth_required
+from urp.decorators import auth_required, auth_auth_required
 from urp.models.inbox import Inbox
 from urp.views.base import auto_logout, GET
 
@@ -34,3 +36,11 @@ def inbox_list(request):
     get = GET(model=Inbox, request=request, serializer=InboxReadSerializer,
               _filter={'users__contains': request.user.username})
     return get.standard
+
+
+# FO-240: helper view for inbox notification polling only
+@api_view(['GET'])
+@auth_auth_required()
+def inbox_notifications(request):
+    count = Inbox.objects.filter(**{'users__contains': request.user.username}).count()
+    return Response(data={'notifications': count}, status=http_status.HTTP_200_OK)
