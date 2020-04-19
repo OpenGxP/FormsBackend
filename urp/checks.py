@@ -64,7 +64,6 @@ class Check(object):
     def verify_overall(self, permission=None):
         # 0) verify not anonymous, but authenticated
         if not self.verify_authentication:
-            self.http_status = http_status.HTTP_401_UNAUTHORIZED
             return False
         # 1) verify that user is ok
         if self.ext:
@@ -109,6 +108,7 @@ class Check(object):
             setattr(self.request, settings.ATTR_AUTH, True)
             return True
         if not self.request.user.is_authenticated:
+            self.http_status = http_status.HTTP_401_UNAUTHORIZED
             return False
         setattr(self.request, settings.ATTR_AUTH, True)
         return True

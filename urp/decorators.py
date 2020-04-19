@@ -29,6 +29,19 @@ from basics.models import Settings
 from urp.checks import Check
 
 
+def auth_auth_required():
+    """Authentication decorator to validate if user is only authenticated in django."""
+    def decorator(view_func):
+        @wraps(view_func)
+        def wrapper(request, *args, **kwargs):
+            check = Check(request=request)
+            if not check.verify_authentication:
+                return Response(status=check.http_status)
+            return view_func(request, *args, **kwargs)
+        return wrapper
+    return decorator
+
+
 def auth_required(initial_password_check=True):
     """Authentication decorator to validate user authentication credentials."""
     def decorator(view_func):
