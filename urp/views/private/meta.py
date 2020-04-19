@@ -17,7 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 # app imports
-from urp.decorators import auth_required
+from urp.decorators import auth_auth_required
 from basics.models import Settings
 from basics.custom import get_model_by_string, meta_lookup
 
@@ -32,7 +32,7 @@ from django.conf import settings
 
 
 @api_view(['GET'])
-@auth_required()
+@auth_auth_required()
 def meta_list(request, dialog):
     # lower all inputs for dialog
     dialog = dialog.lower()
