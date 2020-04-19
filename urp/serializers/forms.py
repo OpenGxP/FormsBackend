@@ -249,6 +249,8 @@ class FormsNewVersionStatusSerializer(GlobalReadWriteSerializer):
                         validated_data['valid_from'] = self.now
                     self.context['status'] = 'productive'
                     validated_data['status_id'] = Status.objects.status_by_text(self.context['status'])
+                    # FO-243: delete inbox record, because workflow is done
+                    Inbox.objects.delete(lifecycle_id=self.instance.lifecycle_id, version=self.instance.version)
                 else:
                     emails = []
                     users = []
