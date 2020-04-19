@@ -31,6 +31,7 @@ from urp.views.private.logs.signatures import signatures_log_list
 from urp.views.private.execution import execution_list, execution_detail, execution_log_list, execution_status, \
     execution_value, list_log_value
 from urp.views.private.roles import roles_list, roles_detail, roles_ldap, roles_log_list, roles_status
+from urp.views.private.validation import validate_form_data
 
 # app imports
 from urp.views import permissions_list, status_list, \
@@ -151,5 +152,7 @@ urls_private = [
     path('{}rtd/execution/<int:number>/<str:section>/<str:field>'.format(settings.BASE_URL),
          execution_value, name='execution-value'),
     # meta views
-    path('{}meta/<str:dialog>'.format(settings.BASE_URL), meta_list, name='meta-list')
+    path('{}meta/<str:dialog>'.format(settings.BASE_URL), meta_list, name='meta-list'),
+    # validate views
+    path('{}validate/<str:key>/<str:value>'.format(settings.BASE_URL), validate_form_data, name='validate-form-data'),
 ]
