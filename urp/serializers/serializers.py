@@ -326,6 +326,30 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
 
                         del_item.delete()
 
+    # Fo-251: new method to deal with valid to upgrade and consider no valid from
+    def update_previous_version_valid_to(self):
+        prev_instance = self.model.objects.get_previous_version(self.instance)
+        if not self.instance.valid_from:
+            valid_to = self.now
+        else:
+            valid_to = self.instance.valid_from
+        data = {'valid_to': valid_to}
+        # if no valid_to, always set
+        valid_to_prev_version = getattr(prev_instance, 'valid_to')
+        if not valid_to_prev_version:
+            self.update(instance=prev_instance, validated_data=data, self_call=True, now=self.now)
+        else:
+            # only overlapping validity ranges
+            valid_from = getattr(self.instance, 'valid_from', None)
+            if not valid_from:
+                if self.now < valid_to_prev_version:
+                    self.update(instance=prev_instance, validated_data=data, self_call=True,
+                                now=self.now)
+            else:
+                if getattr(self.instance, 'valid_from') < valid_to_prev_version:
+                    self.update(instance=prev_instance, validated_data=data, self_call=True,
+                                now=self.now)
+
     def create_specific(self, validated_data, obj):
         return validated_data, obj
 
@@ -407,7 +431,8 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
             self.instance = obj
             return obj
 
-    def update_specific(self, validated_data, instance):
+    # FO-251: route self_call
+    def update_specific(self, validated_data, instance, self_call=None):
         return validated_data, instance
 
     # update
@@ -415,7 +440,8 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         action = settings.DEFAULT_LOG_UPDATE
         model = self.model
         if 'function' in self.context.keys():
-            if self.context['function'] == 'status_change':
+            # FO-251: in self call self.x attributes remain, therefore exclude this when self_call
+            if self.context['function'] == 'status_change' and not self_call:
                 self.status_change = True
                 action = settings.DEFAULT_LOG_STATUS
                 # FO-221: changed action to "update" for valid to updates of previous version
@@ -431,19 +457,13 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
 
                 # change "valid_to" of previous version to "valid from" of new version
                 # only for set productive step
-                if self.context['status'] == 'productive' and self.instance.version > 1 and not self_call:
-                    prev_instance = model.objects.get_previous_version(instance)
-                    data = {'valid_to': self.instance.valid_from}
-                    # if no valid_to, always set
-                    valid_to_prev_version = getattr(prev_instance, 'valid_to')
-                    if not valid_to_prev_version:
-                        self.update(instance=prev_instance, validated_data=data, self_call=True, now=self.now)
-                    else:
-                        # only overlapping validity ranges
-                        if getattr(instance, 'valid_from') < valid_to_prev_version:
-                            self.update(instance=prev_instance, validated_data=data, self_call=True, now=self.now)
+                # Fo-251: call previous version method
+                if self.context['status'] == 'productive' and self.instance.version > 1 and not self_call \
+                        and not self.model.objects.WF_MGMT:
+                    self.update_previous_version_valid_to()
             else:
-                if model.objects.HAS_STATUS:
+                # FO-251: in self call attributes remain, therefore exclude this when self_call
+                if model.objects.HAS_STATUS and not self_call:
                     # get local timezone of user
                     user_tz = pytz_timezone(Profile.objects.timezone(username=self.context['user']))
                     # FO-197: validate if timestamp values are not Null / None
@@ -459,7 +479,8 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                                 is_dst=None).astimezone(pytz_utc)
 
         # specific
-        validated_data, instance = self.update_specific(validated_data, instance)
+        # FO-251: route self_call
+        validated_data, instance = self.update_specific(validated_data, instance, self_call)
 
         hash_sequence = instance.HASH_SEQUENCE
         fields = dict()
@@ -615,9 +636,11 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                     last_version = self.instance.version - 1
                     query = self.model.objects.filter(lifecycle_id=self.instance.lifecycle_id). \
                         filter(version=last_version).get()
-                    if self.instance.valid_from < query.valid_from:
-                        raise serializers.ValidationError('Valid from can not be before valid from '
-                                                          'of previous version')
+                    # FO-251: record may not have valid from, therefore only check, if own valid from available
+                    if self.instance.valid_from:
+                        if self.instance.valid_from < query.valid_from:
+                            raise serializers.ValidationError('Valid from can not be before valid from '
+                                                              'of previous version')
 
                 # check if object is workflow managed
                 if self.model.objects.WF_MGMT:

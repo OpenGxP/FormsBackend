@@ -85,7 +85,8 @@ class WorkflowsReadWriteSerializer(GlobalReadWriteSerializer):
                                                  sub_model=table)
         return validated_data, obj
 
-    def update_specific(self, validated_data, instance):
+    # FO-251: route self_call
+    def update_specific(self, validated_data, instance, self_call=None):
         self.update_sub(validated_data, instance)
         return validated_data, instance
 

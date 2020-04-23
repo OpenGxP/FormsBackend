@@ -34,7 +34,8 @@ class EmailReadWriteSerializer(GlobalReadWriteSerializer):
         validated_data['password'] = encrypt(raw_pw)
         return validated_data, obj
 
-    def update_specific(self, validated_data, instance):
+    # FO-251: route self_call
+    def update_specific(self, validated_data, instance, self_call=None):
         raw_pw = validated_data['password']
         validated_data['password'] = encrypt(raw_pw)
         return validated_data, instance

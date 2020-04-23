@@ -84,7 +84,8 @@ class UsersReadWriteSerializer(GlobalReadWriteSerializer):
 
         return validated_data, obj
 
-    def update_specific(self, validated_data, instance):
+    # FO-251: route self_call
+    def update_specific(self, validated_data, instance, self_call=None):
         # draft updates shall be reflected in vault
         if not validated_data['ldap']:
             # check if previous record was ldap managed

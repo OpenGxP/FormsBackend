@@ -173,8 +173,9 @@ class FormsNewVersionStatusSerializer(GlobalReadWriteSerializer):
                                                  sub_model=table, new_version=True, instance=self.instance)
         return validated_data, obj
 
-    def update_specific(self, validated_data, instance):
-        if self.context['workflow']:
+    # FO-251: route self_call
+    def update_specific(self, validated_data, instance, self_call=None):
+        if self.context['workflow'] and not self_call:
             # workflow start
             if self.context['status'] == 'circulation':
                 # get role(s) that do not have any predecessor (must be root steps)
@@ -247,6 +248,9 @@ class FormsNewVersionStatusSerializer(GlobalReadWriteSerializer):
                     # FO-234: set valid from at last step, if not yet set
                     if not self.instance.valid_from:
                         validated_data['valid_from'] = self.now
+                    # Fo-251: call previous version method
+                    if self.instance.version > 1:
+                        self.update_previous_version_valid_to()
                     self.context['status'] = 'productive'
                     validated_data['status_id'] = Status.objects.status_by_text(self.context['status'])
                     # FO-243: delete inbox record, because workflow is done
