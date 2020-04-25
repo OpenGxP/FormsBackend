@@ -102,7 +102,8 @@ class Vault(GlobalModel):
     MODEL_CONTEXT = 'passwords'
     perms = {
         '01': 'read',
-        '13': 'change_password',
+        # FO-255: changed permission to edit
+        '03': 'edit',
     }
 
     # unique field

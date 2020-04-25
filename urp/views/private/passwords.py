@@ -73,7 +73,8 @@ def change_password_view(request, username):
     validate_password_input(request.data, instance=vault)
 
     now = getattr(request, settings.ATTR_NOW, timezone.now())
-    signature = validate_signature(dialog='passwords', data=request.data, perm='change_password',
+    # FO-255: changed permission to edit
+    signature = validate_signature(dialog='passwords', data=request.data, perm='edit',
                                    logged_in_user=request.user.username, request=request)
 
     create_update_vault(data=request.data, instance=vault, action=settings.DEFAULT_LOG_PASSWORD,
