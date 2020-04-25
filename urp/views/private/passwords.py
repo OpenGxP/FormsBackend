@@ -31,7 +31,7 @@ from urp.views.base import auto_logout, BaseView
 from basics.custom import render_email_from_template
 from urp.backends.Email import send_email
 from urp.vault import validate_password_input, create_update_vault
-from urp.custom import validate_signature
+from urp.custom import validate_signature, validate_comment
 
 # django imports
 from django.utils import timezone
@@ -73,6 +73,8 @@ def change_password_view(request, username):
     validate_password_input(request.data, instance=vault)
 
     now = getattr(request, settings.ATTR_NOW, timezone.now())
+    # FO-256: add comment route for password change
+    validate_comment(dialog='passwords', data=request.data, perm='edit')
     # FO-255: changed permission to edit
     signature = validate_signature(dialog='passwords', data=request.data, perm='edit',
                                    logged_in_user=request.user.username, request=request)
