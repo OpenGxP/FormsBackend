@@ -156,11 +156,13 @@ class GET(object):
                 continue
 
             # route calculated fields
+            # FO-265: keep param with _local to find key in query parameters
+            param_old = param
             param = self.replace_local(param)
-
             if param in self.model_fields:
                 # split between filter conditions and and/or
-                major_split = self.request.query_params[param].split('_')
+                # FO-265: use param_old with _local to find key in query parameters
+                major_split = self.request.query_params[param_old].split('_')
                 and_or = Q.AND
                 if len(major_split) == 2:
                     if major_split[1] == 'or':
