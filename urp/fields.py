@@ -48,9 +48,15 @@ class StepsField(serializers.Field):
     def to_representation(self, value):
         steps = []
         for record in value:
+            # FO-250: if no predecessors, return empty array [], not split empty string which is ['']
+            if not record.predecessors:
+                predecessors = []
+            else:
+                predecessors = record.predecessors.split(',')
             steps.append({'step': record.step,
                           'role': record.role,
-                          'predecessors': record.predecessors.split(','),
+                          # FO-250: use variable from above
+                          'predecessors': predecessors,
                           'text': record.text,
                           'sequence': record.sequence})
         return steps
@@ -84,9 +90,15 @@ class SectionsField(serializers.Field):
     def to_representation(self, value):
         sections = []
         for record in value:
+            # FO-250: if no predecessors, return empty array [], not split empty string which is ['']
+            if not record.predecessors:
+                predecessors = []
+            else:
+                predecessors = record.predecessors.split(',')
             sections.append({'section': record.section,
                              'role': record.role,
-                             'predecessors': record.predecessors.split(','),
+                             # FO-250: use variable from above
+                             'predecessors': predecessors,
                              'confirmation': record.confirmation,
                              'sequence': record.sequence})
         return sections
