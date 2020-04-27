@@ -146,6 +146,7 @@ SILENCED_SYSTEM_CHECKS = ['auth.W004']  # disable warning that username is not u
 
 PROFILE_TIMEZONES = [zone for zone in common_timezones if zone.startswith('Europe/')]
 PROFILE_DEFAULT_TIMEZONE = 'UTC'
+SETTINGS_TIMEZONES = [PROFILE_DEFAULT_TIMEZONE] + PROFILE_TIMEZONES
 PROFILE_DEFAULT_LANGUAGE = 'en_EN'
 PROFILE_DEFAULT_DARKMODE = 'Yes'
 PROFILE_DEFAULT_DENSE = 'No'

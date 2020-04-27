@@ -617,6 +617,27 @@ class SettingsManager(GlobalManager):
             data['post'][f_name]['editable'] = False
             data['post'][f_name]['required'] = False
 
+    # FO-260: add misc lookup data for signature and comment selection
+    def meta(self, data):
+        # signature
+        data['data']['signature'] = {'data': self.model.ALLOWED_SIGNATURE,  # static select
+                                     'multi': False,
+                                     'method': 'select'}
+        # comment
+        data['data']['comment'] = {'data': self.model.ALLOWED_COMMENT,  # static select
+                                   'multi': False,
+                                   'method': 'select'}
+
+        # timezones
+        data['data']['profile.default.timezone'] = {'data': settings.SETTINGS_TIMEZONES,
+                                                    'multi': False,
+                                                    'method': 'select'}
+
+        # add calculated field "lookup"
+        data['get']['lookup'] = {'verbose_name': 'Lookup',
+                                 'data_type': 'CharField',
+                                 'render': False}
+
     @property
     def auth_maxloginattempts(self):
         try:
@@ -742,3 +763,15 @@ class Settings(GlobalModel):
     }
 
     UNIQUE = 'key'
+
+    ALLOWED_SIGNATURE = ['logging', 'signature']
+    ALLOWED_COMMENT = ['none', 'optional', 'mandatory']
+
+    @property
+    def lookup(self):
+        if 'signature' in self.key:
+            return 'signature'
+        elif 'comment' in self.key:
+            return 'comment'
+        else:
+            return self.key

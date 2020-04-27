@@ -96,7 +96,8 @@ def meta_list(request, dialog):
     def get(_request):
         data = {'get': dict(),
                 'post': dict(),
-                'misc': dict()}
+                'misc': dict(),
+                'data': dict()}
         # add get information
         exclude = model.objects.GET_BASE_EXCLUDE + model.objects.GET_MODEL_EXCLUDE
         fields = [i for i in model._meta.get_fields() if i.name not in exclude]

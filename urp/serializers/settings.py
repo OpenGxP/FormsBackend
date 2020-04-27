@@ -16,6 +16,9 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+# rest imports
+from rest_framework import serializers
+
 # app imports
 from basics.models import Settings, SettingsLog
 from urp.serializers import GlobalReadWriteSerializer
@@ -23,12 +26,14 @@ from urp.serializers import GlobalReadWriteSerializer
 
 # read / edit
 class SettingsReadWriteSerializer(GlobalReadWriteSerializer):
+    lookup = serializers.CharField(read_only=True)
+
     class Meta:
         model = Settings
         extra_kwargs = {'default': {'read_only': True},
                         'key': {'read_only': True}}
         fields = Settings.objects.GET_MODEL_ORDER + Settings.objects.GET_BASE_CALCULATED + \
-            model.objects.COMMENT_SIGNATURE
+            model.objects.COMMENT_SIGNATURE + ('lookup',)
 
 
 # initial write

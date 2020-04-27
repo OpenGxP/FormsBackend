@@ -971,18 +971,18 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
 
                 # validate allowed settings for signatures
                 if 'dialog' in self.instance.key and 'signature' in self.instance.key:
-                    if data['value'] not in ['logging', 'signature']:
+                    if data['value'] not in self.model.ALLOWED_SIGNATURE:
                         raise serializers.ValidationError('For signature settings, only "logging" and "signature" '
                                                           'are allowed.')
                         # validate allowed settings for signatures
                 if 'dialog' in self.instance.key and 'comment' in self.instance.key:
-                    if data['value'] not in ['none', 'optional', 'mandatory']:
+                    if data['value'] not in self.model.ALLOWED_COMMENT:
                         raise serializers.ValidationError('For signature settings, only "none", "optional" and '
                                                           '"mandatory" are allowed.')
 
                 # validate profile timezone default
                 if self.instance.key == 'profile.default.timezone':
-                    if data['value'] not in settings.PROFILE_TIMEZONES:
+                    if data['value'] not in settings.SETTINGS_TIMEZONES:
                         raise serializers.ValidationError({'value': ['Selected timezone is not supported.']})
 
             @require_NONE
