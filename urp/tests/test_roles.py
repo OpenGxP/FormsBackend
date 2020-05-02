@@ -537,3 +537,27 @@ class RolesMiscellaneous(APITestCase):
         path = '{}/{}/{}'.format(self.base_path, initial_role.lifecycle_id, 1)
         response = self.client.post(path, data={}, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_all_permission_mixing(self):
+        """
+        This test shall show that all permissions can not be mixed with regular permissions.
+        """
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get API response
+        # create first record in status draft and version 1
+        path = self.base_path
+        data_fail = {'role': 'test',
+                     'permissions': '00.00,03.01'}
+        response = self.client.post(path, data=data_fail, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        data_pos = {'role': 'test',
+                    'permissions': '00.00'}
+        response = self.client.post(path, data=data_pos, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        path = '{}/{}/{}'.format(self.base_path, response.data['lifecycle_id'], 1)
+        response = self.client.patch(path, data=data_fail, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

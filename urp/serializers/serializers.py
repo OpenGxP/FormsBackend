@@ -60,6 +60,10 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         else:
             self.request = None
 
+        # function
+        if 'function' in self.context:
+            self.function = self.context['function']
+
         # flags
         self.new_version = False
         self.status_change = False
