@@ -52,30 +52,51 @@ class WorkflowsReadWriteSerializer(GlobalReadWriteSerializer):
                 raise serializers.ValidationError('Not allowed to use "{}".'.format(value))
         return value
 
+    @staticmethod
+    def create_update_record(error_dict, item, value):
+        if item['sequence'] in error_dict:
+            error_dict[item['sequence']].update(value)
+        else:
+            error_dict[item['sequence']] = value
+
     def validate_steps(self, value):
+        error_dict = {}
         # FO-229: validate that steps are not empty
         if not value:
             raise serializers.ValidationError('At least one step ist required.')
-        value = self.validate_sub(value, key='step', parent=True)
         self.validate_sequence_plain(value)
+        try:
+            value = self.validate_sub(value, key='step', parent=True)
+        except serializers.ValidationError as e:
+            error_dict.update(e.detail)
         self.validate_predecessors(value, key='step')
         allowed_roles = Roles.objects.get_by_natural_key_productive_list('role')
 
         for item in value:
             # validate role field
             if 'role' not in item.keys():
-                raise serializers.ValidationError('Role ist required.')
-            if not isinstance(item['role'], str):
-                raise serializers.ValidationError('Role field must be string.')
-            if item['role'] not in allowed_roles:
-                raise serializers.ValidationError('Not allowed to use "{}".'.format(item['role']))
+                self.create_update_record(error_dict=error_dict, item=item, value={'role': ['This field is required.']})
+            elif not item['role']:
+                self.create_update_record(error_dict=error_dict, item=item, value={'role': ['This field is required.']})
+            elif not isinstance(item['role'], str):
+                self.create_update_record(error_dict=error_dict, item=item,
+                                          value={'role': ['This field requires data type string.']})
+            elif item['role'] not in allowed_roles:
+                self.create_update_record(error_dict=error_dict, item=item,
+                                          value={'role': ['Not allowed to use "{}".'.format(item['role'])]})
 
             # validate text
             if 'text' in item.keys():
                 if not isinstance(item['text'], str):
-                    raise serializers.ValidationError('Text field must be string.')
-                if len(item['text']) > CHAR_BIG:
-                    raise serializers.ValidationError('Text must not be longer than {} characters.'.format(CHAR_BIG))
+                    self.create_update_record(error_dict=error_dict, item=item,
+                                              value={'role': ['This field requires data type string.']})
+                elif len(item['text']) > CHAR_BIG:
+                    self.create_update_record(error_dict=error_dict, item=item,
+                                              value={'text': ['This field must not be longer than {} characters.'
+                                                     .format(CHAR_BIG)]})
+
+        if error_dict:
+            raise serializers.ValidationError(error_dict)
 
         return value
 

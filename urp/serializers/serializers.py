@@ -203,24 +203,42 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError('Sequence must be unique.')
 
     def validate_sub(self, value, key, parent=None):
+        error_dict = {}
         unique_check = []
 
         for item in value:
             if key not in item.keys():
-                raise serializers.ValidationError('{} is required.'.format(key.capitalize()))
+                error_dict[item['sequence']] = {key: ['This field is required.']}
+            else:
+                if not item[key]:
+                    error_dict[item['sequence']] = {key: ['This field is required.']}
+
+            # continue if no value
+            if item['sequence'] in error_dict:
+                continue
+
             try:
                 validate_only_ascii(item[key])
                 validate_no_specials_reduced(item[key])
                 validate_no_space(item[key])
                 validate_no_numbers(item[key])
             except serializers.ValidationError as e:
-                raise serializers.ValidationError(
-                    'Not allowed to use {} {}. {}'.format(key, item[key], e.detail[0]))
+                error_dict[item['sequence']] = {key: e.detail}
             unique_check.append(item[key])
+
+        if error_dict:
+            raise serializers.ValidationError(error_dict)
 
         # validate key unique characteristic
         if len(unique_check) != len(set(unique_check)):
-            raise serializers.ValidationError('{} must be unique.'.format(key.capitalize()))
+            duplicates = set([x for x in unique_check if unique_check.count(x) > 1])
+            for item in duplicates:
+                for record in value:
+                    if record[key] == item:
+                        error_dict[record['sequence']] = {key: ['This field must be unique.']}
+
+        if error_dict:
+            raise serializers.ValidationError(error_dict)
 
         if parent:
             self.sub_parents = unique_check
