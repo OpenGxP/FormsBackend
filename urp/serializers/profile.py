@@ -16,9 +16,16 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+# rest imports
+from rest_framework import serializers
+
 # app imports
 from urp.models.profile import Profile, ProfileLog
 from urp.serializers import GlobalReadWriteSerializer
+from basics.custom import value_to_int
+
+# django imports
+from django.conf import settings
 
 
 # read / edit
@@ -30,6 +37,26 @@ class ProfileReadWriteSerializer(GlobalReadWriteSerializer):
                         'key': {'read_only': True},
                         'human_readable': {'read_only': True}}
         fields = Profile.objects.GET_MODEL_ORDER + Profile.objects.GET_BASE_CALCULATED
+
+    def validate_value(self, value):
+        if self.instance.key == 'loc.timezone':
+            if value not in settings.PROFILE_TIMEZONES:
+                raise serializers.ValidationError('Selected timezone is not supported.')
+        elif self.instance.key == 'loc.language':
+            if value not in ['en_EN']:
+                raise serializers.ValidationError('Selected language is not supported.')
+        elif self.instance.key == 'gui.pagination':
+            try:
+                # try to convert to integer
+                value = value_to_int(value)
+                # verify that integer is positive
+                if value not in settings.PROFILE_PAGINATION_SELECTIONS:
+                    raise ValueError
+            except ValueError:
+                raise serializers.ValidationError('Only following integers are allowed: {}.'
+                                                  .format(settings.PROFILE_PAGINATION_SELECTIONS))
+
+        return value
 
 
 # initial write

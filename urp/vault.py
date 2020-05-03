@@ -39,30 +39,38 @@ def validate_password_input(data, instance=None, password='password_new', initia
     # field validation
     error_dict = dict()
     field_error = ['This filed is required.']
-
     if password not in data:
         error_dict[password] = field_error
+    else:
+        if not data[password]:
+            error_dict[password] = field_error
     if password_verification not in data:
-        error_dict[password] = field_error
-
+        error_dict[password_verification] = field_error
+    else:
+        if not data[password_verification]:
+            error_dict[password_verification] = field_error
     if error_dict:
         raise serializers.ValidationError(error_dict)
+
+    # compare passwords
+    if data[password] != data[password_verification]:
+        error = ['Passwords must match.']
+        raise serializers.ValidationError({password: error,
+                                           password_verification: error})
 
     # django password validation
     try:
         validate_password(data[password])
     except ValidationError as e:
-        raise serializers.ValidationError(e)
-
-    # compare passwords
-    if data[password] != data[password_verification]:
-        raise serializers.ValidationError('Passwords must match.')
+        raise serializers.ValidationError({password: e,
+                                           password_verification: e})
 
     # FO-147: new password can not be equal to previous password
     if instance:
         if check_password(data[password], instance.password):
-            raise serializers.ValidationError('New password is identical to previous password. '
-                                              'Password must be changed.')
+            error = ['New password is identical to previous password. Password must be changed.']
+            raise serializers.ValidationError({password: error,
+                                               password_verification: error})
 
 
 def create_update_vault(data, signature, password='password_new', initial=False, instance=None, action=None, user=None,

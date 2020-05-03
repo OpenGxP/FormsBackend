@@ -39,17 +39,45 @@ def login_view(request):
     # FO-137: adapted validation properly and raise serializer validation error (including 400 response)
     if not hasattr(request, 'data'):
         raise serializers.ValidationError('Fields "{}" and "password" are required.'.format(Users.USERNAME_FIELD))
-    if Users.USERNAME_FIELD in request.data and 'password' in request.data:
-        # FO-137: adapted validation properly and raise serializer validation error (including 400 response)
-        if not isinstance(request.data['username'], str) or not isinstance(request.data['password'], str):
-            raise serializers.ValidationError('Fields "{}" and "password" must be strings.'
-                                              .format(Users.USERNAME_FIELD))
-        # authenticate user
-        user = authenticate(request=request, username=request.data['username'], password=request.data['password'],
-                            initial_password_check=False, public=True)
+
+    error_dict = {}
+    error_text = ['This filed is required.']
+    if Users.USERNAME_FIELD not in request.data:
+        error_dict[Users.USERNAME_FIELD] = error_text
     else:
-        # FO-137: raise serializer validation error (including 400 response)
-        raise serializers.ValidationError('Fields "{}" and "password" are required.'.format(Users.USERNAME_FIELD))
+        if not request.data[Users.USERNAME_FIELD]:
+            error_dict[Users.USERNAME_FIELD] = error_text
+    if 'password' not in request.data:
+        error_dict['password'] = error_text
+    else:
+        if not request.data['password']:
+            error_dict['password'] = error_text
+    if error_dict:
+        raise serializers.ValidationError(error_dict)
+
+    # FO-137: adapted validation properly and raise serializer validation error (including 400 response)
+    error_text = ['This filed requires data type string.']
+    if not isinstance(request.data[Users.USERNAME_FIELD], str):
+        error_dict[Users.USERNAME_FIELD] = error_text
+    if not isinstance(request.data['password'], str):
+        error_dict['password'] = error_text
+
+    if error_dict:
+        raise serializers.ValidationError(error_dict)
+
+    user = None
+
+    if not error_dict:
+        try:
+            user = authenticate(request=request, username=request.data['username'], password=request.data['password'],
+                                initial_password_check=False, public=True)
+        except serializers.ValidationError as e:
+            error_dict['password'] = e.detail
+            error_dict[Users.USERNAME_FIELD] = e.detail
+
+    if error_dict:
+        raise serializers.ValidationError(error_dict)
+
     if user:
         login(request, user)
         request.session['last_touch'] = timezone.now()

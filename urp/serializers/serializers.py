@@ -18,20 +18,23 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # python imports
 from pytz import timezone as pytz_timezone, utc as pytz_utc
+from collections import OrderedDict
 
 # rest imports
 from rest_framework import serializers
+from rest_framework.settings import api_settings
+from rest_framework.compat import Mapping
+from rest_framework.fields import get_error_detail, set_value, SkipField
 
 # custom imports
-from urp.models import Permissions, Users, Roles, AccessLog, PermissionsLog, LDAP, Vault
-from basics.custom import generate_checksum, generate_to_hash, value_to_int
+from urp.models import Permissions, Users, Roles, AccessLog, PermissionsLog, Vault
+from basics.custom import generate_checksum, generate_to_hash
 from basics.models import Status, AVAILABLE_STATUS, StatusLog, CentralLog, Settings, CHAR_DEFAULT, CHAR_BIG
 from urp.decorators import require_STATUS_CHANGE, require_POST, require_DELETE, require_PATCH, require_NONE, \
-    require_NEW_VERSION, require_status, require_USERS, require_NEW, require_SETTINGS, require_SOD, \
-    require_EMAIL, require_ROLES, require_PROFILE
+    require_NEW_VERSION, require_status, require_USERS, require_NEW, require_SOD, \
+    require_EMAIL, require_ROLES
 from urp.custom import create_log_record, validate_comment, validate_signature
 from urp.backends.Email import MyEmailBackend
-from urp.vault import validate_password_input
 from urp.models.profile import Profile
 from urp.models.workflows.workflows import Workflows
 from urp.models.logs.signatures import SignaturesLog
@@ -41,7 +44,6 @@ from urp.validators import validate_only_ascii, validate_no_specials_reduced, va
 from django.utils import timezone
 from django.db import IntegrityError
 from django.conf import settings
-from django.core.validators import validate_email
 from django.core.exceptions import ImproperlyConfigured
 from django.core.exceptions import ValidationError as DjangoValidationError
 
@@ -87,6 +89,8 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         self.user = None
         if 'user' in self.context.keys():
             self.user = self.context['user']
+
+        self.my_errors = OrderedDict()
 
     valid = serializers.BooleanField(source='verify_checksum', read_only=True)
     # unique attribute for frontend selection
@@ -557,6 +561,7 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
             self.function = validate_method.context['function']
             self.validate_method = validate_method
             self.now = validate_method.now
+            self.my_errors = validate_method.my_errors
 
             self.user = None
             if 'user' in self.context.keys():
@@ -566,9 +571,66 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
             self.validate()
 
         def validate(self):
+            if self.__class__.__name__ == 'Post':
+                rem = 'validate_post_specific'
+                if rem in self.method_list:
+                    self.method_list.remove(rem)
+                    getattr(self, 'validate_post_specific')()
+            elif self.__class__.__name__ == 'Patch':
+                rem = 'validate_patch_specific'
+                if rem in self.method_list:
+                    self.method_list.remove(rem)
+                    getattr(self, 'validate_patch_specific')()
+            elif self.__class__.__name__ == 'Delete':
+                rem = 'validate_delete_specific'
+                if rem in self.method_list:
+                    self.method_list.remove(rem)
+                    getattr(self, 'validate_delete_specific')()
+
             for method in self.method_list:
                 if method.startswith('validate_'):
                     getattr(self, method)()
+
+    def to_internal_value(self, data):
+        """
+        Dict of native values <- Dict of primitive datatypes.
+        """
+        if not isinstance(data, Mapping):
+            message = self.error_messages['invalid'].format(
+                datatype=type(data).__name__
+            )
+            raise serializers.ValidationError({
+                api_settings.NON_FIELD_ERRORS_KEY: [message]
+            }, code='invalid')
+
+        ret = OrderedDict()
+        fields = self._writable_fields
+
+        for field in fields:
+            validate_method = getattr(self, 'validate_' + field.field_name, None)
+            primitive_value = field.get_value(data)
+            try:
+                validated_value = field.run_validation(primitive_value)
+                if validate_method is not None:
+                    validated_value = validate_method(validated_value)
+            except serializers.ValidationError as exc:
+                self.my_errors[field.field_name] = exc.detail
+            except DjangoValidationError as exc:
+                self.my_errors[field.field_name] = get_error_detail(exc)
+            except SkipField:
+                pass
+            else:
+                set_value(ret, field.source_attrs, validated_value)
+
+        # if self.my_errors:
+        # raise serializers.ValidationError(self.my_errors)
+        if self.model == Users:
+            if 'password' in data:
+                set_value(ret, ['password'], data['password'])
+            if 'password_verification' in data:
+                set_value(ret, ['password_verification'], data['password_verification'])
+
+        return ret
 
     def validate(self, data):
         if self.context['function'] == 'init':
@@ -586,6 +648,9 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         class Patch(self.Validate):
             def validate_patch_specific(self):
                 self.validate_method.validate_patch_specific(data)
+
+                if self.my_errors:
+                    raise serializers.ValidationError(self.my_errors)
 
             @require_STATUS_CHANGE
             def validate_correct_status(self):
@@ -925,93 +990,6 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError(e)
 
             @require_NONE
-            @require_USERS
-            def validate_ldap_and_password(self):
-                if data['ldap']:
-                    # in case a password was passed, set to none
-                    data['password'] = ''
-                    LDAP.objects.search_user(data)
-                else:
-                    # check if previous record was ldap managed
-                    if self.instance.ldap:
-                        validate_password_input(data=data, initial=True)
-
-            # FO-156: for user updates email shall only be used by own lifecycle record, not by other users
-            @require_NONE
-            @require_USERS
-            def validate_email_not_used_by_other_lifecycle_id(self):
-                references = Users.objects.filter(email__contains=data['email']).values_list('lifecycle_id', flat=True)
-                for ref in references:
-                    if ref != self.instance.lifecycle_id:
-                        raise serializers.ValidationError('Email is is use by another user used.')
-
-            @require_NONE
-            @require_SETTINGS
-            def validate_settings(self):
-                # validate maximum login attempts and maximum inactive time and run time data number range start
-                if self.instance.key == 'auth.max_login_attempts' or self.instance.key == 'core.auto_logout' \
-                        or self.instance.key == 'core.password_reset_time' or self.instance.key == 'rtd.number_range':
-                    try:
-                        # try to convert to integer
-                        data['value'] = value_to_int(data['value'])
-                        # verify that integer is positive
-                        if self.instance.key == 'rtd.number_range':
-                            # 0 is allowed as number range
-                            if data['value'] < 0:
-                                raise ValueError
-                        else:
-                            if data['value'] < 1:
-                                raise ValueError
-                    except ValueError:
-                        raise serializers.ValidationError('Setting "{}" must be a positive integer.'
-                                                          .format(self.instance.key))
-
-                # FO-177: added validation for sender email setting
-                if self.instance.key == 'email.sender':
-                    try:
-                        validate_email(data['value'])
-                    except DjangoValidationError as e:
-                        raise serializers.ValidationError(e.message)
-
-                # validate allowed settings for signatures
-                if 'dialog' in self.instance.key and 'signature' in self.instance.key:
-                    if data['value'] not in self.model.ALLOWED_SIGNATURE:
-                        raise serializers.ValidationError('For signature settings, only "logging" and "signature" '
-                                                          'are allowed.')
-                        # validate allowed settings for signatures
-                if 'dialog' in self.instance.key and 'comment' in self.instance.key:
-                    if data['value'] not in self.model.ALLOWED_COMMENT:
-                        raise serializers.ValidationError('For signature settings, only "none", "optional" and '
-                                                          '"mandatory" are allowed.')
-
-                # validate profile timezone default
-                if self.instance.key == 'profile.default.timezone':
-                    if data['value'] not in settings.SETTINGS_TIMEZONES:
-                        raise serializers.ValidationError({'value': ['Selected timezone is not supported.']})
-
-            @require_NONE
-            @require_PROFILE
-            def validate_profile(self):
-                if self.instance.key == 'loc.timezone':
-                    if data['value'] not in settings.PROFILE_TIMEZONES:
-                        raise serializers.ValidationError({'value': ['Selected timezone is not supported.']})
-
-                if self.instance.key == 'loc.language':
-                    if data['value'] not in ['en_EN', 'de_DE']:
-                        raise serializers.ValidationError({'value': ['Selected language is not supported.']})
-
-                if self.instance.key == 'gui.pagination':
-                    try:
-                        # try to convert to integer
-                        data['value'] = value_to_int(data['value'])
-                        # verify that integer is positive
-                        if data['value'] not in settings.PROFILE_PAGINATION_SELECTIONS:
-                            raise ValueError
-                    except ValueError:
-                        raise serializers.ValidationError('Value must be one integer of {}.'
-                                                          .format(settings.PROFILE_PAGINATION_SELECTIONS))
-
-            @require_NONE
             @require_SOD
             def validate_roles(self):
                 if data['base'] == data['conflict']:
@@ -1024,6 +1002,9 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         class Post(self.Validate):
             def validate_post_specific(self):
                 self.validate_method.validate_post_specific(data)
+
+                if self.my_errors:
+                    raise serializers.ValidationError(self.my_errors)
 
             @require_NEW
             def validate_unique(self):
@@ -1099,29 +1080,6 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError(e)
 
             @require_NEW
-            @require_USERS
-            def validate_ldap(self):
-                if data['ldap']:
-                    # in case a password was passed, set to none
-                    data['password'] = ''
-                    LDAP.objects.search_user(data)
-
-            @require_NEW
-            @require_USERS
-            def validate_password(self):
-                # FO-143: password check for non-ldap managed users only
-                if not data['ldap']:
-                    # perform password check
-                    validate_password_input(data=data, initial=True)
-
-            # FO-156: for new users email must not yet be used by other users
-            @require_NEW
-            @require_USERS
-            def validate_email_not_used_by_other_lifecycle_id(self):
-                if Users.objects.filter(email__contains=data['email']):
-                    raise serializers.ValidationError('Email is is use by another user used.')
-
-            @require_NEW
             @require_SOD
             def validate_roles(self):
                 if data['base'] == data['conflict']:
@@ -1135,6 +1093,9 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         class Delete(self.Validate):
             def validate_delete_specific(self):
                 self.validate_method.validate_delete_specific(data)
+
+                if self.my_errors:
+                    raise serializers.ValidationError(self.my_errors)
 
             def validate_delete_only_in_draft(self):
                 if self.model.objects.HAS_STATUS and not self.model.objects.IS_RT:

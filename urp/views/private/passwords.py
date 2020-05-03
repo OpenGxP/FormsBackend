@@ -103,8 +103,12 @@ def user_change_password_view(request):
     if not hasattr(request, 'data'):
         raise serializers.ValidationError('Fields "password", "password_new" and "password_new_verification" '
                                           'are required.')
+    error_dict = {}
     if 'password' not in request.data:
-        raise serializers.ValidationError({'password': ['This filed is required.']})
+        error_dict['password'] = ['This filed is required.']
+    else:
+        if not request.data['password']:
+            error_dict['password'] = ['This filed is required.']
 
     try:
         vault = Vault.objects.get(username=request.user.username)
@@ -115,10 +119,20 @@ def user_change_password_view(request):
 
     # check if provided password is correct
     now = getattr(request, settings.ATTR_NOW, timezone.now())
-    authenticate(request=request, username=request.user.username, password=request.data['password'],
-                 self_password_change=True)
+    if not error_dict:
+        try:
+            authenticate(request=request, username=request.user.username, password=request.data['password'],
+                         self_password_change=True)
+        except serializers.ValidationError as e:
+            error_dict['password'] = e.detail
 
-    validate_password_input(request.data, instance=vault)
+    try:
+        validate_password_input(request.data, instance=vault)
+    except serializers.ValidationError as e:
+        error_dict.update(e.detail)
+
+    if error_dict:
+        raise serializers.ValidationError(error_dict)
 
     create_update_vault(data=request.data, instance=vault, action=settings.DEFAULT_LOG_PASSWORD,
                         user=request.user.username, self_pw=True, signature=False, now=now)

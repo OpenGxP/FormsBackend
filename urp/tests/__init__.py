@@ -348,6 +348,8 @@ def log_records(model, action, data, access_log=None, _status=True, sub_tables=T
     try:
         if model.MODEL_ID == '40':
             del data['fields_values']
+        elif model.MODEL_ID == '13':
+            del data['lookup']
         query = log_model.objects.filter(**data).all()[0]
     except model.DoesNotExist or IndexError:
         assert 'No log record found for "{}".'.format(data)

@@ -22,6 +22,11 @@ from rest_framework import serializers
 # app imports
 from basics.models import Settings, SettingsLog
 from urp.serializers import GlobalReadWriteSerializer
+from basics.custom import value_to_int
+
+# django imports
+from django.conf import settings
+from django.core.validators import validate_email
 
 
 # read / edit
@@ -34,6 +39,44 @@ class SettingsReadWriteSerializer(GlobalReadWriteSerializer):
                         'key': {'read_only': True}}
         fields = Settings.objects.GET_MODEL_ORDER + Settings.objects.GET_BASE_CALCULATED + \
             model.objects.COMMENT_SIGNATURE + ('lookup',)
+
+    def validate_value(self, value):
+        # validate maximum login attempts and maximum inactive time and run time data number range start
+        if self.instance.key == 'auth.max_login_attempts' or self.instance.key == 'core.auto_logout' \
+                or self.instance.key == 'core.password_reset_time' or self.instance.key == 'rtd.number_range':
+            try:
+                # try to convert to integer
+                value = value_to_int(value)
+                # verify that integer is positive
+                if self.instance.key == 'rtd.number_range':
+                    # 0 is allowed as number range
+                    if value < 0:
+                        raise ValueError
+                else:
+                    if value < 1:
+                        raise ValueError
+            except ValueError:
+                raise serializers.ValidationError('A valid positive integer is required.')
+
+        # FO-177: added validation for sender email setting
+        elif self.instance.key == 'email.sender':
+            validate_email(value)
+
+        # validate profile timezone default
+        elif self.instance.key == 'profile.default.timezone':
+            if value not in settings.SETTINGS_TIMEZONES:
+                raise serializers.ValidationError('Selected timezone is not supported.')
+
+        # validate allowed settings for signatures and comments
+        elif 'dialog' in self.instance.key:
+            if 'signature' in self.instance.key:
+                if value not in self.model.ALLOWED_SIGNATURE:
+                    raise serializers.ValidationError('Only "logging" and "signature" are allowed.')
+            elif 'comment' in self.instance.key:
+                if value not in self.model.ALLOWED_COMMENT:
+                    raise serializers.ValidationError('Only "none", "optional" and "mandatory" are allowed.')
+
+        return value
 
 
 # initial write

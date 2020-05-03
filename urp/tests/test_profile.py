@@ -79,7 +79,7 @@ class PatchOneProfile(PatchOneNoStatus):
         self.data_available = True
         self.ok_object_data_unique = 'key'
         self.test_data = 'loc.language'
-        self.valid_payload = {'value': 'de_DE'}
+        self.valid_payload = {'value': 'en_EN'}
         self.invalid_payload = {'key': 'changedkey'}
         self.filter = {'username': self.prerequisites.username}
 
@@ -216,7 +216,7 @@ class ProfileMiscellaneous(APITestCase):
         csrf_token = self.prerequisites.get_csrf(self.client)
         # get API response
         path = '{}/{}'.format(self.base_path, self.test_data_language)
-        data = {'value': 'de_DE'}
+        data = {'value': 'en_EN'}
         response = self.client.patch(path, data=data, content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 

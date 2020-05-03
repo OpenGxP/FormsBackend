@@ -26,6 +26,8 @@ from urp.vault import create_update_vault
 from urp.serializers import GlobalReadWriteSerializer
 from urp.models.profile import Profile
 from urp.models.vault import Vault
+from urp.models.ldap import LDAP
+from urp.vault import validate_password_input
 
 
 # read / add / edit
@@ -52,13 +54,61 @@ class UsersReadWriteSerializer(GlobalReadWriteSerializer):
                 raise serializers.ValidationError('Not allowed to use "{}".'.format(item))
         return value
 
+    # FO-156: for user updates email shall only be used by own lifecycle record, not by other users
+    def validate_email(self, value):
+        if not self.instance:
+            if Users.objects.filter(email__contains=value):
+                raise serializers.ValidationError('Email is is use by another user used.')
+        else:
+            references = Users.objects.filter(email__contains=value).values_list('lifecycle_id', flat=True)
+            for ref in references:
+                if self.instance:
+                    if ref != self.instance.lifecycle_id:
+                        raise serializers.ValidationError('Email is is used by another user.')
+        return value
+
+    def validate_external(self, value):
+        if self.instance:
+            if self.instance.external != value:
+                raise serializers.ValidationError('Value of this field can not be changed.')
+        return value
+
+    def validate_ldap(self, value):
+        if value:
+            # in case a password was passed, set to none
+            self.initial_data['password'] = ''
+            LDAP.objects.search_user(self.initial_data)
+
+        return value
+
     def validate_post_specific(self, data):
         data['external'] = False
 
+        # FO-143: password check for non-ldap managed users only
+        if 'ldap' not in self.my_errors.keys():
+            if not data['ldap']:
+                # perform password check
+                try:
+                    validate_password_input(data=data, initial=True)
+                except serializers.ValidationError as e:
+                    self.my_errors.update(e.detail)
+
     def validate_patch_specific(self, data):
-        if 'external' in data:
-            if self.instance.external != data['external']:
-                raise serializers.ValidationError('External attribute can not be changed.')
+        if 'ldap' not in self.my_errors.keys():
+            if not data['ldap']:
+                # if previous record was ldap managed, fore password check
+                if self.instance.ldap:
+                    try:
+                        validate_password_input(data=data, initial=True)
+                    except serializers.ValidationError as e:
+                        self.my_errors.update(e.detail)
+                # if previous record was not ldap managed, make password change optional
+                else:
+                    if data['password'] if 'password' in data.keys() else None:
+                        try:
+                            validate_password_input(data=data, initial=True)
+                        except serializers.ValidationError as e:
+                            self.my_errors.update(e.detail)
 
     def create_specific(self, validated_data, obj):
         if self.context['function'] == 'new_version':

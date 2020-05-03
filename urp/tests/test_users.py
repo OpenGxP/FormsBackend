@@ -340,7 +340,7 @@ class UsersMiscellaneous(APITestCase):
         new_password = '32hai82dhaks8da'
         data = {'username': self.username,
                 'password': new_password,
-                'password_two': new_password,
+                'password_verification': new_password,
                 'roles': ['all'],
                 'ldap': False,
                 'email': 'example@example.com'}

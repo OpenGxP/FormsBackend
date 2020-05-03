@@ -36,24 +36,27 @@ class LDAPReadWriteSerializer(GlobalReadWriteSerializer):
         fields = model.objects.GET_MODEL_ORDER + ('certificate',) + model.objects.GET_BASE_CALCULATED + \
             model.objects.COMMENT_SIGNATURE
 
-    @staticmethod
-    def group_validation(data):
+    def group_validation(self, data):
         flag = 0
+        errors = {}
         for x in ['base_group', 'filter_group', 'attr_group']:
             if x in data:
                 if data[x]:
                     flag += 1
+                    continue
+            errors[x] = 'This field is required.'
         if flag != 0 and flag != 3:
-            raise serializers.ValidationError('Group attributes "base_group", "filter_group" and "attr_group" '
-                                              'must all be entered.')
+            self.my_errors.update(errors)
 
     def validate_post_specific(self, data):
         self.group_validation(data)
-        server_check(data)
+        if not self.my_errors:
+            server_check(data)
 
     def validate_patch_specific(self, data):
         self.group_validation(data)
-        server_check(data)
+        if not self.my_errors:
+            server_check(data)
 
     def create_specific(self, validated_data, obj):
         raw_pw = validated_data['password']
