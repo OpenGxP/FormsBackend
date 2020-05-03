@@ -62,8 +62,8 @@ def validate_password_input(data, instance=None, password='password_new', initia
     try:
         validate_password(data[password])
     except ValidationError as e:
-        raise serializers.ValidationError({password: e,
-                                           password_verification: e})
+        raise serializers.ValidationError({password: list(e),
+                                           password_verification: list(e)})
 
     # FO-147: new password can not be equal to previous password
     if instance:
