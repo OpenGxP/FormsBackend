@@ -152,13 +152,20 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
             return True
         return
 
+    @staticmethod
+    def create_update_record(error_dict, item, value):
+        if item['sequence'] in error_dict:
+            error_dict[item['sequence']].update(value)
+        else:
+            error_dict[item['sequence']] = value
+
     def validate_predecessors(self, value, key):
         predecessors_check = []
         for item in value:
             # predecessors are optional
             if 'predecessors' in item.keys():
                 if not isinstance(item['predecessors'], list):
-                    raise serializers.ValidationError('Predecessor not a valid array.')
+                    raise serializers.ValidationError('Predecessors not a valid array.')
                 if not item['predecessors']:
                     del item['predecessors']
                     continue
@@ -237,33 +244,46 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                     if record[key] == item:
                         error_dict[record['sequence']] = {key: ['This field must be unique.']}
 
-        if error_dict:
-            raise serializers.ValidationError(error_dict)
-
         if parent:
             self.sub_parents = unique_check
+
+        if error_dict:
+            raise serializers.ValidationError(error_dict)
 
         return value
 
     def validated_form_fields(self, value):
+        error_dict = {}
         for item in value:
             # validate mandatory field
             if 'mandatory' not in item.keys():
-                raise serializers.ValidationError('Mandatory field ist required.')
-            if not isinstance(item['mandatory'], bool):
-                raise serializers.ValidationError('Mandatory field must be boolean.')
+                self.create_update_record(error_dict=error_dict, item=item,
+                                          value={'mandatory': ['This field is required.']})
+            elif not isinstance(item['mandatory'], bool):
+                self.create_update_record(error_dict=error_dict, item=item,
+                                          value={'role': ['This field requires data type boolean.']})
 
             # field must be in existing section
-            if item['section'] not in self.sub_parents:
-                raise serializers.ValidationError('Field must be in valid section.')
+            if 'section' not in item.keys():
+                self.create_update_record(error_dict=error_dict, item=item,
+                                          value={'section': ['This field is required.']})
+            elif item['section'] not in self.sub_parents:
+                self.create_update_record(error_dict=error_dict, item=item,
+                                          value={'section': ['Section must be a valid.']})
 
             # validate optional instruction
             if 'instruction' in item.keys():
                 if not isinstance(item['instruction'], str):
-                    raise serializers.ValidationError('Instruction field must be string.')
-                if len(item['instruction']) > CHAR_DEFAULT:
-                    raise serializers.ValidationError('Instruction must not be longer than {} characters.'
-                                                      .format(CHAR_BIG))
+                    self.create_update_record(error_dict=error_dict, item=item,
+                                              value={'instruction': ['This field requires data type string.']})
+                elif len(item['instruction']) > CHAR_DEFAULT:
+                    self.create_update_record(error_dict=error_dict, item=item,
+                                              value={'instruction': ['This field must not be longer than {} characters.'
+                                                     .format(CHAR_DEFAULT)]})
+
+        if error_dict:
+            raise serializers.ValidationError(error_dict)
+
         return value
 
     def update_sub(self, validated_data, instance):

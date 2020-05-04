@@ -52,13 +52,6 @@ class WorkflowsReadWriteSerializer(GlobalReadWriteSerializer):
                 raise serializers.ValidationError('Not allowed to use "{}".'.format(value))
         return value
 
-    @staticmethod
-    def create_update_record(error_dict, item, value):
-        if item['sequence'] in error_dict:
-            error_dict[item['sequence']].update(value)
-        else:
-            error_dict[item['sequence']] = value
-
     def validate_steps(self, value):
         error_dict = {}
         # FO-229: validate that steps are not empty

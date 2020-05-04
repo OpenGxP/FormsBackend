@@ -76,66 +76,120 @@ class FormsReadWriteSerializer(GlobalReadWriteSerializer):
 
     def validate_post_specific(self, data):
         # validate that any field type is present
-        try:
-            for k in data:
-                if k in ['linked_fields_text', 'linked_fields_bool']:
-                    if data[k]:
-                        raise DummyException
-            raise serializers.ValidationError('At least one field must be available.')
-        except DummyException:
+        check = ['linked_fields_text', 'linked_fields_bool']
+        if set(check).issubset(data):
+            flag = False
+            for x in data:
+                if x in check:
+                    if data[x]:
+                        flag = True
+                        break
+            if not flag:
+                self.my_errors.update({'fields_text': ['At least one field must be available.']})
+                self.my_errors.update({'fields_bool': ['At least one field must be available.']})
+        else:
             for p in self.sub_parents:
                 # validate sequence unique characteristic within parent
                 if len(self.global_sequence_check[p]) != len(set(self.global_sequence_check[p])):
                     raise serializers.ValidationError('Sequence within one section must be unique.')
 
     def validate_sections(self, value):
-        value = self.validate_sub(value, key='section', parent=True)
+        error_dict = {}
+        if not value:
+            raise serializers.ValidationError('At least one section ist required.')
         self.validate_sequence_plain(value)
+        try:
+            value = self.validate_sub(value, key='section', parent=True)
+        except serializers.ValidationError as e:
+            error_dict.update(e.detail)
+
         self.validate_predecessors(value, key='section')
         allowed_roles = Roles.objects.get_by_natural_key_productive_list('role')
 
         for item in value:
-            # validate role field, but is optional
-            if 'role' in item.keys():
-                if not isinstance(item['role'], str):
-                    raise serializers.ValidationError('Role field must be string.')
-                if item['role'] not in allowed_roles:
-                    raise serializers.ValidationError('Not allowed to use "{}".'.format(item['role']))
+            # validate role field
+            if 'role' not in item.keys():
+                self.create_update_record(error_dict=error_dict, item=item, value={'role': ['This field is required.']})
+            elif not item['role']:
+                self.create_update_record(error_dict=error_dict, item=item, value={'role': ['This field is required.']})
+            elif not isinstance(item['role'], str):
+                self.create_update_record(error_dict=error_dict, item=item,
+                                          value={'role': ['This field requires data type string.']})
+            elif item['role'] not in allowed_roles:
+                self.create_update_record(error_dict=error_dict, item=item,
+                                          value={'role': ['Not allowed to use "{}".'.format(item['role'])]})
 
             # validate confirmation field
             if 'confirmation' not in item.keys():
-                raise serializers.ValidationError('Confirmation ist required.')
-            if item['confirmation'] not in settings.DEFAULT_LOG_CONFIRMATIONS:
-                raise serializers.ValidationError('Not allowed to use "{}".'.format(item['confirmation']))
+                self.create_update_record(error_dict=error_dict, item=item,
+                                          value={'confirmation': ['This field is required.']})
+            elif not item['confirmation']:
+                self.create_update_record(error_dict=error_dict, item=item,
+                                          value={'confirmation': ['This field is required.']})
+            elif item['confirmation'] not in settings.DEFAULT_LOG_CONFIRMATIONS:
+                allowed = ''
+                for i in settings.DEFAULT_LOG_CONFIRMATIONS:
+                    allowed += '"{}", '.format(i)
+                self.create_update_record(error_dict=error_dict, item=item,
+                                          value={'confirmation': ['Only {} are allowed.'.format(allowed[:-2])]})
+
+        if error_dict:
+            raise serializers.ValidationError(error_dict)
 
         return value
 
     def validate_fields_text(self, value):
-        value = self.validate_sub(value, key='field')
+        error_dict = {}
         self.validate_sequence_plain(value, form=True)
-        value = self.validated_form_fields(value)
+        try:
+            value = self.validate_sub(value, key='field')
+        except serializers.ValidationError as e:
+            error_dict.update(e.detail)
+
+        try:
+            value = self.validated_form_fields(value)
+        except serializers.ValidationError as e:
+            error_dict.update(e.detail)
 
         for item in value:
             # validate default field
             if 'default' in item.keys():
                 if not isinstance(item['default'], str):
-                    raise serializers.ValidationError('Default field must be string.')
-                if len(item['default']) > CHAR_DEFAULT:
-                    raise serializers.ValidationError('Instruction must not be longer than {} characters.'
-                                                      .format(CHAR_DEFAULT))
+                    self.create_update_record(error_dict=error_dict, item=item,
+                                              value={'default': ['This field requires data type string.']})
+                elif len(item['default']) > CHAR_DEFAULT:
+                    self.create_update_record(error_dict=error_dict, item=item,
+                                              value={'instruction': ['This field must not be longer than {} characters.'
+                                                     .format(CHAR_DEFAULT)]})
+
+        if error_dict:
+            raise serializers.ValidationError(error_dict)
 
         return value
 
     def validate_fields_bool(self, value):
-        value = self.validate_sub(value, key='field')
+        error_dict = {}
         self.validate_sequence_plain(value, form=True)
-        value = self.validated_form_fields(value)
+
+        try:
+            value = self.validate_sub(value, key='field')
+        except serializers.ValidationError as e:
+            error_dict.update(e.detail)
+
+        try:
+            value = self.validated_form_fields(value)
+        except serializers.ValidationError as e:
+            error_dict.update(e.detail)
 
         for item in value:
             # validate default field
             if 'default' in item.keys():
                 if not isinstance(item['default'], bool):
-                    raise serializers.ValidationError('Default field must be boolean.')
+                    self.create_update_record(error_dict=error_dict, item=item,
+                                              value={'default': ['This field requires data type boolean.']})
+
+        if error_dict:
+            raise serializers.ValidationError(error_dict)
 
         return value
 
