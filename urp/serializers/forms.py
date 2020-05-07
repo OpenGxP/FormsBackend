@@ -102,8 +102,10 @@ class FormsReadWriteSerializer(GlobalReadWriteSerializer):
             value = self.validate_sub(value, key='section', parent=True)
         except serializers.ValidationError as e:
             error_dict.update(e.detail)
-
-        self.validate_predecessors(value, key='section')
+        try:
+            self.validate_predecessors(value, key='section')
+        except serializers.ValidationError as e:
+            error_dict.update(e.detail)
         allowed_roles = Roles.objects.get_by_natural_key_productive_list('role')
 
         for item in value:

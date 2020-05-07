@@ -160,25 +160,29 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
             error_dict[item['sequence']] = value
 
     def validate_predecessors(self, value, key):
+        error_dict = {}
         predecessors_check = []
         for item in value:
             # predecessors are optional
             if 'predecessors' in item.keys():
                 if not isinstance(item['predecessors'], list):
-                    raise serializers.ValidationError('Predecessors not a valid array.')
-                if not item['predecessors']:
+                    error_dict[item['predecessors']] = {key: ['Predecessors not a valid array.']}
+                    # raise serializers.ValidationError('Predecessors not a valid array.')
+                elif not item['predecessors']:
                     del item['predecessors']
                     continue
                 # validate predecessors for string items
                 for pred in item['predecessors']:
                     if not isinstance(pred, str):
-                        raise serializers.ValidationError('Predecessors must be strings.')
+                        error_dict[item['predecessors']] = {key: ['This field requires data type string.']}
+                        # raise serializers.ValidationError('Predecessors must be strings.')
                 predecessors_check.append(item['predecessors'])
 
                 # FO-191: unique items shall not self reference
                 if item[key] in item['predecessors']:
-                    raise serializers.ValidationError('{} can not be self referenced in predecessors.'
-                                                      .format(key.capitalize()))
+                    error_dict[item['predecessors']] = {key: ['Predecessors can not be self referenced.']}
+                    # raise serializers.ValidationError('{} can not be self referenced in predecessors.'
+                     #                                 .format(key.capitalize()))
 
         # check that predecessors exist
         for item in predecessors_check:
@@ -187,7 +191,11 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 if each == '':
                     continue
                 if each not in self.sub_parents:
-                    raise serializers.ValidationError('Predecessors must only contain valid {}s.'.format(key))
+                    error_dict[item['predecessors']] = {key: ['Predecessors must only contain valid {}s.'.format(key)]}
+                    # raise serializers.ValidationError('Predecessors must only contain valid {}s.'.format(key))
+
+        if error_dict:
+            raise serializers.ValidationError(error_dict)
 
     def validate_sequence_plain(self, value, form=None):
         sequence_check = []
