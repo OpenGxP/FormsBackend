@@ -49,7 +49,8 @@ class MyInternalUserModelBackend(BaseModelBackend):
                          initial_password_check=initial_password_check, opt_filter_user={'ldap': False,
                                                                                          'external': False})
 
-        user = getattr(request, settings.ATTR_USER, None)
+        # FO-273: use user instance from check, that is the prod valid on every request
+        user = getattr(request, 'user', None)
         self._attempt(username=username)
 
         # verify password

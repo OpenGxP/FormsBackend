@@ -70,8 +70,10 @@ class MyExternalLDAPUserModelBackend(BaseModelBackend):
                 write_access_log(self.data)
                 raise serializers.ValidationError(ERROR_TEXT_AUTH)
 
-        user = getattr(request, settings.ATTR_USER, request.user)
+        # FO-273: use user instance from check, that is the prod valid on every request
+        user = getattr(request, 'user', None)
         self._attempt(username=username)
+
         # check user password against ldap (bind)
         if LDAP.objects.bind(username=username, password=password):
             # create log record

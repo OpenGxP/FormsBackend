@@ -118,7 +118,8 @@ class Check(object):
         self.user, self.error = Users.objects.prod_val_with_errors(key=self.username, opt_filter=self.opt_filter_user,
                                                                    now=self.now)
         if self.user:
-            setattr(self.request, settings.ATTR_USER, self.user)
+            # FO-273: set user, that is the prod valid on every request
+            setattr(self.request, 'user', self.user)
         return self.user
 
     @property
@@ -131,7 +132,8 @@ class Check(object):
             if self.error == settings.ERROR_NO_RECORD:
                 self.user = Users.objects.create_ldap_external_user(username=self.username, now=self.now)
         if self.user:
-            setattr(self.request, settings.ATTR_USER, self.user)
+            # FO-273: set user, that is the prod valid on every request
+            setattr(self.request, 'user', self.user)
         return self.user
 
     @property
