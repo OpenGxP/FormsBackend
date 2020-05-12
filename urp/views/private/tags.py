@@ -22,7 +22,7 @@ from rest_framework.decorators import api_view
 # custom imports
 from urp.models import Tags
 from urp.serializers.tags import TagsReadWriteSerializer, TagsDeleteSerializer, TagsLogReadSerializer
-from urp.decorators import auth_required
+from urp.decorators import auth_required, auth_auth_required
 
 from urp.views.base import auto_logout, StandardView
 
@@ -38,11 +38,25 @@ def tags_list(request):
     return view.list(request)
 
 
+@api_view(['POST'])
+@auth_auth_required()
+@auto_logout()
+def tags_list_validate(request):
+    return view.list(request, validate_only=True)
+
+
 @api_view(['GET', 'PATCH', 'DELETE'])
 @auth_required()
 @auto_logout()
 def tags_detail(request, tag):
     return view.detail(request, tag)
+
+
+@api_view(['PATCH'])
+@auth_auth_required()
+@auto_logout()
+def tags_detail_validate(request, tag):
+    return view.detail(request, tag, validate_only=True)
 
 
 @api_view(['GET'])

@@ -24,7 +24,7 @@ from urp.views.views import auto_logout
 from urp.models.sod import SoD
 from urp.serializers.sod import SoDReadWriteSerializer, SoDLogReadSerializer, SoDDeleteSerializer, \
     SoDNewVersionStatusSerializer
-from urp.decorators import auth_required
+from urp.decorators import auth_required, auth_auth_required
 from urp.views.base import StatusView
 
 
@@ -39,11 +39,25 @@ def sod_list(request):
     return view.list(request, tags=False)
 
 
+@api_view(['POST'])
+@auth_auth_required()
+@auto_logout()
+def sod_list_validate(request):
+    return view.list(request, validate_only=True)
+
+
 @api_view(['GET', 'PATCH', 'POST', 'DELETE'])
 @auth_required()
 @auto_logout()
 def sod_detail(request, lifecycle_id, version):
     return view.detail(request, lifecycle_id, version, tags=False)
+
+
+@api_view(['PATCH'])
+@auth_auth_required()
+@auto_logout()
+def sod_detail_validate(request, lifecycle_id, version):
+    return view.detail(request, lifecycle_id, version, validate_only=True)
 
 
 @api_view(['PATCH'])

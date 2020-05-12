@@ -21,7 +21,7 @@ from rest_framework.decorators import api_view
 
 # custom imports
 from urp.serializers.settings import SettingsLogReadSerializer, SettingsReadWriteSerializer
-from urp.decorators import auth_required
+from urp.decorators import auth_required, auth_auth_required
 from basics.models import Settings
 from urp.views.base import auto_logout, UpdateView
 
@@ -41,6 +41,13 @@ def settings_list(request):
 @auto_logout()
 def settings_detail(request, key):
     return view.detail(request, key)
+
+
+@api_view(['PATCH'])
+@auth_auth_required()
+@auto_logout()
+def settings_detail_validate(request, key):
+    return view.detail(request, key, validate_only=True)
 
 
 @api_view(['GET'])

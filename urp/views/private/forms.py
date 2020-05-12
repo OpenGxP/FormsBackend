@@ -25,7 +25,7 @@ from urp.models.forms.forms import Forms
 from urp.serializers.forms import FormsReadWriteSerializer, FormsNewVersionStatusSerializer, \
     FormsLogReadSerializer, FormsDeleteSerializer, FormsSectionsLogReadSerializer, FormsTextFieldsLogReadSerializer, \
     FormsBoolFieldsLogReadSerializer
-from urp.decorators import auth_required, auth_perm_required
+from urp.decorators import auth_required, auth_perm_required, auth_auth_required
 from urp.views.base import StatusView
 from urp.models.forms.sub.sections import FormsSectionsLog
 from urp.models.forms.sub.text_fields import FormsTextFieldsLog
@@ -43,11 +43,25 @@ def forms_list(request):
     return view.list(request)
 
 
+@api_view(['POST'])
+@auth_auth_required()
+@auto_logout()
+def forms_list_validate(request):
+    return view.list(request, validate_only=True)
+
+
 @api_view(['GET', 'PATCH', 'POST', 'DELETE'])
 @auth_required()
 @auto_logout()
 def forms_detail(request, lifecycle_id, version):
     return view.detail(request, lifecycle_id, version)
+
+
+@api_view(['PATCH'])
+@auth_auth_required()
+@auto_logout()
+def forms_detail_validate(request, lifecycle_id, version):
+    return view.detail(request, lifecycle_id, version, validate_only=True)
 
 
 @api_view(['PATCH'])

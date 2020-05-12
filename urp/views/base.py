@@ -102,7 +102,7 @@ class GET(object):
             self.filter_set_strict = {}
 
         # data
-        self.model_fields = [i.name for i in self.model._meta.get_fields()]
+        self.model_fields = [i.name for i in getattr(self.model, '_meta').get_fields()]
         self.sort_field = ''
         self.filter_set_query = {}
         self.or_filter = False
@@ -270,25 +270,31 @@ class GET(object):
         return self.paginated_response
 
 
-def post(request, ser_rw):
+def post(request, ser_rw, validate_only=False):
     request.data['version'] = 1
     serializer = ser_rw(data=request.data, context={'method': 'POST',
                                                     'function': 'new',
                                                     'user': request.user.username,
                                                     'request': request})
     if serializer.is_valid():
-        serializer.save()
-        return Response(serializer.data, status=http_status.HTTP_201_CREATED)
+        if not validate_only:
+            serializer.save()
+            return Response(serializer.data, status=http_status.HTTP_201_CREATED)
+        else:
+            return Response(status=http_status.HTTP_200_OK)
     return Response(serializer.errors, status=http_status.HTTP_400_BAD_REQUEST)
 
 
-def update(request, ser_rw, query):
+def update(request, ser_rw, query, validate_only=False):
     serializer = ser_rw(query, data=request.data, context={'method': 'PATCH', 'function': '',
                                                            'user': request.user.username,
                                                            'request': request})
     if serializer.is_valid():
-        serializer.save()
-        return Response(serializer.data)
+        if not validate_only:
+            serializer.save()
+            return Response(serializer.data)
+        else:
+            return Response(status=http_status.HTTP_200_OK)
     return Response(serializer.errors, status=http_status.HTTP_400_BAD_REQUEST)
 
 
@@ -313,7 +319,7 @@ class BaseView(object):
         self.ser_rw = ser_rw
         self.ser_log = ser_log
 
-    def list(self, request, tags=None, ext_filter=None):
+    def list(self, request, tags=None, ext_filter=None, validate_only=False):
         # permissions
         # FO-235: if model has permissions use them, otherwise pass None to avoid restriction
         if self.perms:
@@ -323,13 +329,16 @@ class BaseView(object):
             perm_read = None
             perm_add = None
 
+        if validate_only:
+            perm_add = None
+
         # serializer
         ser_rw = self.ser_rw
 
         @perm_required(perm_add)
         @csrf_protect
         def _post(_request):
-            return post(request, ser_rw)
+            return post(request, ser_rw, validate_only=validate_only)
 
         @perm_required(perm_read)
         @ensure_csrf_cookie
@@ -366,7 +375,7 @@ class UpdateView(BaseView):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def detail(self, request, unique, ext_filter=None):
+    def detail(self, request, unique, ext_filter=None, validate_only=False):
         # permissions
         # FO-235: if model has permissions use them, otherwise pass None to avoid restriction
         if self.perms:
@@ -376,13 +385,16 @@ class UpdateView(BaseView):
             perm_read = None
             perm_patch = None
 
+        if validate_only:
+            perm_patch = None
+
         # serializer
         ser_rw = self.ser_rw
 
         @perm_required(perm_patch)
         @csrf_protect
         def patch(_request):
-            return update(request, ser_rw, query)
+            return update(request, ser_rw, query, validate_only=validate_only)
 
         @perm_required(perm_read)
         @ensure_csrf_cookie
@@ -415,7 +427,7 @@ class StandardView(BaseView):
         # serializers
         self.ser_del = ser_del
 
-    def detail(self, request, unique):
+    def detail(self, request, unique, validate_only=False):
         # permissions
         # FO-235: if model has permissions use them, otherwise pass None to avoid restriction
         if self.perms:
@@ -427,6 +439,9 @@ class StandardView(BaseView):
             perm_patch = None
             perm_del = None
 
+        if validate_only:
+            perm_patch = None
+
         # serializer
         ser_rw = self.ser_rw
         ser_del = self.ser_del
@@ -434,7 +449,7 @@ class StandardView(BaseView):
         @perm_required(perm_patch)
         @csrf_protect
         def patch(_request):
-            return update(request, ser_rw, query)
+            return update(request, ser_rw, query, validate_only=validate_only)
 
         @perm_required(perm_del)
         @csrf_protect
@@ -471,10 +486,10 @@ class StatusView(BaseView):
         self.ser_del = ser_del
         self.ser_st = ser_st
 
-    def list(self, request, tags=True, ext_filter=None):
-        return super().list(request, tags, ext_filter)
+    def list(self, request, tags=True, ext_filter=None, validate_only=False):
+        return super().list(request, tags, ext_filter, validate_only)
 
-    def detail(self, request, lifecycle_id, version, tags=True):
+    def detail(self, request, lifecycle_id, version, tags=True, validate_only=False):
         # permissions
         # FO-235: if model has permissions use them, otherwise pass None to avoid restriction
         if self.perms:
@@ -490,6 +505,9 @@ class StatusView(BaseView):
             perm_nv = None
             perm_nva = None
 
+        if validate_only:
+            perm_patch = None
+
         # serializer
         ser_rw = self.ser_rw
         ser_st = self.ser_st
@@ -498,7 +516,7 @@ class StatusView(BaseView):
         @perm_required(perm_patch)
         @csrf_protect
         def patch(_request):
-            return update(request, ser_rw, query)
+            return update(request, ser_rw, query, validate_only=validate_only)
 
         @csrf_protect
         def new_version_base(_request, nv):

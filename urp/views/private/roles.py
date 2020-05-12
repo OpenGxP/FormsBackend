@@ -27,7 +27,7 @@ from urp.views.views import auto_logout
 from urp.models.roles import Roles
 from urp.serializers.roles import RolesReadWriteSerializer, RolesLogReadSerializer, RolesDeleteSerializer, \
     RolesNewVersionStatusSerializer
-from urp.decorators import auth_perm_required, auth_required
+from urp.decorators import auth_perm_required, auth_required, auth_auth_required
 from urp.views.base import StatusView
 from urp.custom import validate_comment, validate_signature
 
@@ -43,11 +43,25 @@ def roles_list(request):
     return view.list(request, tags=False)
 
 
+@api_view(['POST'])
+@auth_auth_required()
+@auto_logout()
+def roles_list_validate(request):
+    return view.list(request, validate_only=True)
+
+
 @api_view(['GET', 'PATCH', 'POST', 'DELETE'])
 @auth_required()
 @auto_logout()
 def roles_detail(request, lifecycle_id, version):
     return view.detail(request, lifecycle_id, version, tags=False)
+
+
+@api_view(['PATCH'])
+@auth_auth_required()
+@auto_logout()
+def roles_detail_validate(request, lifecycle_id, version):
+    return view.detail(request, lifecycle_id, version, validate_only=True)
 
 
 @api_view(['PATCH'])

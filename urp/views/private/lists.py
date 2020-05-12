@@ -24,7 +24,7 @@ from urp.views.views import auto_logout
 from urp.models import Lists
 from urp.serializers.lists import ListsReadWriteSerializer, ListsDeleteSerializer, ListsNewVersionStatusSerializer, \
     ListsLogReadSerializer
-from urp.decorators import auth_required
+from urp.decorators import auth_required, auth_auth_required
 from urp.views.base import StatusView
 
 
@@ -39,11 +39,25 @@ def lists_list(request):
     return view.list(request)
 
 
+@api_view(['POST'])
+@auth_auth_required()
+@auto_logout()
+def lists_list_validate(request):
+    return view.list(request, validate_only=True)
+
+
 @api_view(['GET', 'PATCH', 'POST', 'DELETE'])
 @auth_required()
 @auto_logout()
 def lists_detail(request, lifecycle_id, version):
     return view.detail(request, lifecycle_id, version)
+
+
+@api_view(['PATCH'])
+@auth_auth_required()
+@auto_logout()
+def lists_detail_validate(request, lifecycle_id, version):
+    return view.detail(request, lifecycle_id, version, validate_only=True)
 
 
 @api_view(['PATCH'])

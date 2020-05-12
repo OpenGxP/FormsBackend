@@ -25,7 +25,7 @@ from urp.models.workflows.workflows import Workflows
 from urp.models.workflows.sub.steps import WorkflowsStepsLog
 from urp.serializers.workflows import WorkflowsReadWriteSerializer, WorkflowsNewVersionStatusSerializer, \
     WorkflowsLogReadSerializer, WorkflowsDeleteSerializer, WorkflowsStepsLogReadSerializer
-from urp.decorators import auth_required, auth_perm_required
+from urp.decorators import auth_required, auth_perm_required, auth_auth_required
 from urp.views.base import StatusView
 
 
@@ -40,11 +40,25 @@ def workflows_list(request):
     return view.list(request)
 
 
+@api_view(['POST'])
+@auth_auth_required()
+@auto_logout()
+def workflows_list_validate(request):
+    return view.list(request, validate_only=True)
+
+
 @api_view(['GET', 'PATCH', 'POST', 'DELETE'])
 @auth_required()
 @auto_logout()
 def workflows_detail(request, lifecycle_id, version):
     return view.detail(request, lifecycle_id, version)
+
+
+@api_view(['PATCH'])
+@auth_auth_required()
+@auto_logout()
+def workflows_detail_validate(request, lifecycle_id, version):
+    return view.detail(request, lifecycle_id, version, validate_only=True)
 
 
 @api_view(['PATCH'])

@@ -22,7 +22,7 @@ from rest_framework.decorators import api_view
 # custom imports
 from urp.models.email import Email
 from urp.serializers.email import EmailReadWriteSerializer, EmailDeleteSerializer, EmailLogReadSerializer
-from urp.decorators import auth_required
+from urp.decorators import auth_required, auth_auth_required
 
 from urp.views.base import auto_logout,  StandardView
 
@@ -38,11 +38,25 @@ def email_list(request):
     return view.list(request)
 
 
+@api_view(['POST'])
+@auth_auth_required()
+@auto_logout()
+def email_list_validate(request):
+    return view.list(request, validate_only=True)
+
+
 @api_view(['GET', 'PATCH', 'DELETE'])
 @auth_required()
 @auto_logout()
 def email_detail(request, host):
     return view.detail(request, host)
+
+
+@api_view(['PATCH'])
+@auth_auth_required()
+@auto_logout()
+def email_detail_validate(request, host):
+    return view.detail(request, host, validate_only=True)
 
 
 @api_view(['GET'])

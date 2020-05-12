@@ -21,7 +21,7 @@ from rest_framework.decorators import api_view
 
 # app imports
 from urp.views.views import auto_logout
-from urp.decorators import auth_required
+from urp.decorators import auth_required, auth_auth_required
 from urp.models import Spaces
 from urp.serializers.spaces import SpacesReadWriteSerializer, SpacesLogReadSerializer, SpacesDeleteSerializer
 from urp.views.base import StandardView
@@ -38,11 +38,25 @@ def spaces_list(request):
     return view.list(request)
 
 
+@api_view(['POST'])
+@auth_auth_required()
+@auto_logout()
+def spaces_list_validate(request):
+    return view.list(request, validate_only=True)
+
+
 @api_view(['GET', 'PATCH', 'DELETE'])
 @auth_required()
 @auto_logout()
 def spaces_detail(request, space):
     return view.detail(request, space)
+
+
+@api_view(['PATCH'])
+@auth_auth_required()
+@auto_logout()
+def spaces_detail_validate(request, space):
+    return view.detail(request, space, validate_only=True)
 
 
 @api_view(['GET'])
