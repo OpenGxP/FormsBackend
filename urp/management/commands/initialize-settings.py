@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # app imports
 from urp.serializers.settings import SettingsInitialWriteSerializer
+from basics.models import Settings
 
 # django imports
 from django.apps import apps
@@ -29,9 +30,14 @@ from django.core.management.base import BaseCommand
 def add_setting(self, data):
     serializer = SettingsInitialWriteSerializer(data=data, context={'method': 'POST', 'function': 'init'})
     if serializer.is_valid():
-        serializer.save()
-        self.stdout.write(self.style.SUCCESS('Added setting key: "{}", value: "{}".'
-                                             .format(data['key'], data['value'])))
+        # FO-276: added unique check to avoid error on container restart
+        _filter = {Settings.UNIQUE: data['key']}
+        if Settings.objects.filter(**_filter).exists():
+            pass
+        else:
+            serializer.save()
+            self.stdout.write(self.style.SUCCESS('Added setting key: "{}", value: "{}".'
+                                                 .format(data['key'], data['value'])))
     else:
         for error in serializer.errors:
             if serializer.errors[error][0].code != 'unique':

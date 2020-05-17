@@ -491,6 +491,8 @@ class Status(GlobalModel):
 
     # hashing
     HASH_SEQUENCE = ['status']
+    # FO-276: added UNIQUE to find unique field
+    UNIQUE = 'status'
 
     # permissions
     MODEL_ID = '01'
