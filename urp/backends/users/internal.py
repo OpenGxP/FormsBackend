@@ -26,7 +26,7 @@ from rest_framework import serializers
 from django.conf import settings
 
 # custom imports
-from basics.models import Settings
+from urp.models.settings import Settings
 from urp.backends.users import BaseModelBackend, ERROR_TEXT_AUTH, write_access_log
 
 # define logger

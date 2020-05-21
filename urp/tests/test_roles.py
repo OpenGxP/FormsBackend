@@ -28,7 +28,7 @@ from rest_framework.test import APITestCase
 # app imports
 from urp.models import Roles
 from urp.serializers.roles import RolesReadWriteSerializer
-from basics.models import Settings
+from urp.models.settings import Settings
 
 # test imports
 from . import Prerequisites, GetAll, PostNew, GetOne, PostNewVersion, DeleteOne, PatchOne, PatchOneStatus

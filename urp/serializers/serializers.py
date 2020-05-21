@@ -29,7 +29,8 @@ from rest_framework.fields import get_error_detail, set_value, SkipField
 # custom imports
 from urp.models import Permissions, Users, Roles, AccessLog, PermissionsLog, Vault
 from basics.custom import generate_checksum, generate_to_hash
-from basics.models import Status, AVAILABLE_STATUS, StatusLog, CentralLog, Settings, CHAR_DEFAULT, CHAR_BIG
+from basics.models import Status, AVAILABLE_STATUS, StatusLog, CentralLog, CHAR_DEFAULT
+from urp.models.settings import Settings
 from urp.decorators import require_STATUS_CHANGE, require_POST, require_DELETE, require_PATCH, require_NONE, \
     require_NEW_VERSION, require_status, require_USERS, require_NEW, require_SOD, \
     require_EMAIL, require_ROLES

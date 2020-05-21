@@ -179,7 +179,8 @@ class ExecutionFieldsWriteSerializer(GlobalReadWriteSerializer):
         if getattr(self.instance, 'value'):
             dialog = self.model.MODEL_CONTEXT.lower()
             validate_comment(dialog=dialog, data=data, perm='correct')
-            self.signature = validate_signature(logged_in_user=self.user, dialog=dialog, data=data, perm='correct')
+            self.signature = validate_signature(logged_in_user=self.user, dialog=dialog, data=data, perm='correct',
+                                                request=self.request)
 
 
 # read field logs

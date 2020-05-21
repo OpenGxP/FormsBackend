@@ -23,7 +23,8 @@ from django.core.exceptions import ValidationError
 
 
 # app imports
-from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, Settings
+from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT
+from urp.models.settings import Settings
 from basics.custom import generate_checksum, generate_to_hash
 
 

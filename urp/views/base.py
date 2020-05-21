@@ -24,7 +24,8 @@ from rest_framework.response import Response
 from rest_framework import status as http_status
 
 # app imports
-from basics.models import Settings, Status
+from basics.models import Status
+from urp.models.settings import Settings
 from urp.backends.users import write_access_log
 from urp.pagination import MyPagination
 from urp.models.profile import Profile

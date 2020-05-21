@@ -21,9 +21,6 @@ from basics.custom import value_to_int, value_to_bool, require_file, require_env
 
 from ldap3.utils.log import BASIC
 
-# python imports
-import os
-
 # import base settings
 from .base import *
 

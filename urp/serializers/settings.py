@@ -20,7 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from rest_framework import serializers
 
 # app imports
-from basics.models import Settings, SettingsLog
+from urp.models.settings import Settings, SettingsLog
 from urp.serializers import GlobalReadWriteSerializer
 from basics.custom import value_to_int
 

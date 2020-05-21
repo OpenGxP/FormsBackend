@@ -19,7 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # custom imports
 from urp.serializers.logs.access import AccessLogReadWriteSerializer
 from urp.serializers.users import UsersDeleteSerializer
-from basics.models import Settings
+from urp.models.settings import Settings
 from urp.models.access import AccessLog
 from urp.checks import Check
 

@@ -25,7 +25,7 @@ from rest_framework.response import Response
 # app imports
 from .models import Roles, LDAP, Users, SoD, Email
 from urp.models.profile import Profile
-from basics.models import Settings
+from urp.models.settings import Settings
 from urp.checks import Check
 
 

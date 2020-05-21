@@ -27,7 +27,6 @@ from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, FIELD_VERSIO
 from basics.custom import HASH_ALGORITHM
 from urp.validators import validate_no_space, validate_no_specials_reduced, validate_no_numbers, validate_only_ascii, \
     SPECIALS_REDUCED
-from urp.models.forms.sub.sections import FormsSections
 
 
 # variables

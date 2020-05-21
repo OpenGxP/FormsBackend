@@ -26,7 +26,8 @@ from django.contrib.auth import authenticate
 from django.core.exceptions import ValidationError
 
 # app imports
-from basics.models import CentralLog, Settings
+from basics.models import CentralLog
+from urp.models.settings import Settings
 from basics.custom import generate_checksum, generate_to_hash, str_list_change
 from urp.models.logs.signatures import SignaturesLog
 

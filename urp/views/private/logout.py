@@ -23,7 +23,7 @@ from rest_framework.decorators import api_view
 from rest_framework import status as http_status
 
 # app imports
-from basics.models import Settings
+from urp.models.settings import Settings
 from urp.decorators import auth_auth_required, auth_required
 from urp.backends.users import write_access_log
 from urp.views.base import refresh_time

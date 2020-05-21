@@ -22,7 +22,7 @@ from rest_framework.decorators import api_view
 # custom imports
 from urp.serializers.settings import SettingsLogReadSerializer, SettingsReadWriteSerializer
 from urp.decorators import auth_required, auth_auth_required
-from basics.models import Settings
+from urp.models.settings import Settings
 from urp.views.base import auto_logout, UpdateView
 
 

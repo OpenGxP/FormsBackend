@@ -28,7 +28,7 @@ from django.conf import settings
 # custom imports
 from urp.models.ldap import LDAP
 from urp.checks import Check
-from basics.models import Settings
+from urp.models.settings import Settings
 from urp.backends.users import BaseModelBackend, write_access_log, ERROR_TEXT_AUTH, USER_MODEL
 
 # define logger

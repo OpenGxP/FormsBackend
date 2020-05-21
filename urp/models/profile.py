@@ -24,7 +24,8 @@ from django.utils import timezone
 from django.core.exceptions import ValidationError
 
 # app imports
-from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, LOG_HASH_SEQUENCE, GlobalModelLog, Settings
+from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, LOG_HASH_SEQUENCE, GlobalModelLog
+from urp.models.settings import Settings
 from basics.custom import generate_checksum, generate_to_hash
 from urp.custom import create_log_record
 

@@ -23,7 +23,7 @@ import sys
 # app imports
 from urp.serializers.roles import RolesReadWriteSerializer, RolesNewVersionStatusSerializer
 from urp.models import Roles
-from basics.models import Settings
+from urp.models.settings import Settings
 
 # django imports
 from django.core import exceptions

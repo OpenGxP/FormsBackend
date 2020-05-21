@@ -40,7 +40,6 @@ from urp.models.logs.signatures import SignaturesLog
 from urp.models.forms.sub.sections import FormsSectionsLog
 from urp.models.forms.sub.text_fields import FormsTextFieldsLog
 from urp.models.forms.sub.bool_fields import FormsBoolFieldsLog
-from urp.execptions import DummyException
 
 
 FORM_FIELDS = ('sections', 'fields_text', 'fields_bool', )

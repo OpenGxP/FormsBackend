@@ -19,7 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # app imports
 from urp.serializers.settings import SettingsInitialWriteSerializer
-from basics.models import Settings
+from urp.models.settings import Settings
 
 # django imports
 from django.apps import apps
