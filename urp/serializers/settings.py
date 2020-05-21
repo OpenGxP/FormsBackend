@@ -23,6 +23,7 @@ from rest_framework import serializers
 from urp.models.settings import Settings, SettingsLog
 from urp.serializers import GlobalReadWriteSerializer
 from basics.custom import value_to_int
+from urp.models.users import Users
 
 # django imports
 from django.conf import settings
@@ -75,6 +76,11 @@ class SettingsReadWriteSerializer(GlobalReadWriteSerializer):
             elif 'comment' in self.instance.key:
                 if value not in self.model.ALLOWED_COMMENT:
                     raise serializers.ValidationError('Only "none", "optional" and "mandatory" are allowed.')
+
+        # FO-279: validate if name is an existing user
+        elif self.instance.key == 'core.system_username':
+            if Users.objects.filter(**{Users.UNIQUE: value}).exists():
+                raise serializers.ValidationError('System user cannot be named like a real user.')
 
         return value
 

@@ -28,6 +28,7 @@ from urp.models.profile import Profile
 from urp.models.vault import Vault
 from urp.models.ldap import LDAP
 from urp.vault import validate_password_input
+from urp.models.settings import Settings
 
 
 # read / add / edit
@@ -45,6 +46,12 @@ class UsersReadWriteSerializer(GlobalReadWriteSerializer):
                         'roles': {'required': True}}
         fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_ORDER_STATUS_MANAGED + \
             model.objects.GET_BASE_CALCULATED + ('password_verification',) + model.objects.COMMENT_SIGNATURE
+
+    # FO-279: validate is username is currently configured as system user
+    def validate_username(self, value):
+        if value == Settings.objects.core_system_username:
+            raise serializers.ValidationError('This username is not allowed, because it is used for the system user.')
+        return value
 
     def validate_roles(self, value):
         allowed = Roles.objects.get_by_natural_key_productive_list('role')

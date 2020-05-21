@@ -5,6 +5,8 @@ set -e
 [[ ! -z "${ROLE}" && "${ROLE}" =~ ^([A-Za-z])+$ ]] || (echo "ROLE must not be empty and match pattern A-Za-z"; exit 1)
 # username
 [[ ! -z "${USERNAME}" && "${USERNAME}" =~ ^([A-Za-z])+$ ]] || (echo "USERNAME must not be empty and match pattern A-Za-z"; exit 1)
+# FO-279: validate if name is an existing user
+[[ "${USERNAME}" == "system" ]] && (echo "USERNAME cannot be named 'system'."; exit 1)
 # email
 [[ ! -z "${EMAIL}" && "${EMAIL}" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}$ ]] || (echo "EMAIL must not be empty and match pattern xxx@xxx.xxx"; exit 1)
 # password

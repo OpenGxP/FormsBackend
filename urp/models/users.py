@@ -19,11 +19,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # python import
 import string
 
+# rest imports
+from rest_framework.serializers import ValidationError
+
 # django imports
 from django.db import models
 from django.utils import timezone
 from django.conf import settings
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.utils.translation import gettext_lazy as _
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.contrib.auth.password_validation import password_validators_help_texts, validate_password
@@ -38,6 +41,12 @@ from urp.models.vault import Vault
 from urp.models.roles import Roles
 from urp.fields import LookupField
 from urp.models.profile import Profile
+from urp.models.settings import Settings
+
+
+def validate_username_system_user(value):
+    if value == Settings.objects.core_system_username:
+        raise ValidationError('This username is not allowed, because it is used for the system user.')
 
 
 # log manager
@@ -179,7 +188,7 @@ class UsersManager(BaseUserManager, GlobalManager):
 
         try:
             user.save()
-        except ValidationError:
+        except DjangoValidationError:
             raise
         # log record
         context = dict()
@@ -231,7 +240,7 @@ class UsersManager(BaseUserManager, GlobalManager):
         try:
             user.full_clean()
             vault.full_clean()
-        except ValidationError as e:
+        except DjangoValidationError as e:
             raise e
         else:
             user.save()
@@ -262,7 +271,9 @@ class Users(AbstractBaseUser, GlobalModel):
         validators=[validate_no_specials,
                     validate_no_space,
                     validate_no_numbers,
-                    validate_only_ascii])
+                    validate_only_ascii,
+                    # FO-279: validate on model level for system user
+                    validate_username_system_user])
     email = models.EmailField(
         _('Email'),
         help_text=_('Email must be provided in format example@example.com.'),

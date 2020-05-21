@@ -21,6 +21,9 @@ import os
 import sys
 import getpass
 
+# rest imports
+from rest_framework.serializers import ValidationError as RestValidationError
+
 # app imports
 from basics.models import Status
 from urp.models import Roles
@@ -28,7 +31,7 @@ from basics.custom import require_file
 
 # django imports
 from django.contrib.auth import get_user_model
-from django.core import exceptions
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import Q
 from django.core.management.base import BaseCommand
 from django.contrib.auth.password_validation import validate_password
@@ -122,7 +125,7 @@ class Command(BaseCommand):
                         continue
                     try:
                         validate_password(password2, self.UserModel(**fake_user_data))
-                    except exceptions.ValidationError as err:
+                    except DjangoValidationError as err:
                         self.stderr.write('\n'.join(err.messages))
                         password = None
                         continue
@@ -134,7 +137,7 @@ class Command(BaseCommand):
                 self.stderr.write("Error: Blank passwords aren't allowed.")
             try:
                 validate_password(password, self.UserModel(**fake_user_data))
-            except exceptions.ValidationError as err:
+            except DjangoValidationError as err:
                 self.stderr.write('\n'.join(err.messages))
 
         if username and password and role and email:
@@ -158,7 +161,11 @@ class Command(BaseCommand):
         """
         try:
             val = field.clean(value, None)
-        except exceptions.ValidationError as e:
+        except DjangoValidationError as e:
             self.stderr.write("Error: %s" % '; '.join(e.messages))
+            val = None
+        # FO-279: check for serializer validation errors
+        except RestValidationError as e:
+            self.stderr.write("Error: %s" % '; '.join(e.detail))
             val = None
         return val
