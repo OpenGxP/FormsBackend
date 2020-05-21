@@ -281,6 +281,7 @@ class GlobalModel(models.Model):
 
     HASH_SEQUENCE = []
     UNIQUE = None
+    NO_UPDATE = ['version']
 
     @staticmethod
     def sub_tables():

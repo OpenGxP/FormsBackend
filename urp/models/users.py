@@ -356,6 +356,7 @@ class Users(AbstractBaseUser, GlobalModel):
 
     # unique field
     UNIQUE = 'username'
+    NO_UPDATE = ['version', 'external']
 
     class Meta:
         unique_together = ('lifecycle_id', 'version')

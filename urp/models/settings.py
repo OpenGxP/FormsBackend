@@ -251,6 +251,7 @@ class Settings(GlobalModel):
     }
 
     UNIQUE = 'key'
+    NO_UPDATE = ['key', 'default']
 
     ALLOWED_SIGNATURE = ['logging', 'signature']
     ALLOWED_COMMENT = ['none', 'optional', 'mandatory']

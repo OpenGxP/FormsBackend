@@ -143,6 +143,7 @@ class Roles(GlobalModel):
 
     # unique field
     UNIQUE = 'role'
+    NO_UPDATE = ['version', 'ldap']
 
     class Meta:
         unique_together = ('lifecycle_id', 'version')

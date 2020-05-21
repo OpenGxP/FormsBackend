@@ -207,6 +207,7 @@ class Profile(GlobalModel):
 
     # unique field
     UNIQUE = 'key'
+    NO_UPDATE = ['username', 'key', 'default']
 
     def unique_id(self):
         return self.username + '_' + self.key

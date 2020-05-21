@@ -42,6 +42,7 @@ from urp.models.logs.signatures import SignaturesLog
 from urp.validators import validate_only_ascii, validate_no_specials_reduced, validate_no_space, validate_no_numbers
 
 # django imports
+from django.db.models import CharField, IntegerField, DateTimeField, BooleanField
 from django.utils import timezone
 from django.db import IntegrityError
 from django.conf import settings
@@ -539,11 +540,33 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         hash_sequence = instance.HASH_SEQUENCE
         fields = dict()
         for attr in hash_sequence:
+            # FO-246: do not update fields that shall not be altered by users
+            if attr in model.NO_UPDATE:
+                fields[attr] = getattr(instance, attr)
+                continue
             if attr in validated_data.keys():
                 fields[attr] = validated_data[attr]
                 setattr(instance, attr, validated_data[attr])
             else:
-                fields[attr] = getattr(instance, attr)
+                # FO-246: delete field values if no data is received
+                if self.status_change:
+                    fields[attr] = getattr(instance, attr)
+                else:
+                    field = getattr(model, '_meta').get_field(attr)
+                    if getattr(instance, attr, None):
+                        if attr == 'status_id':
+                            fields[attr] = getattr(instance, attr)
+                        elif isinstance(field, CharField):
+                            setattr(instance, attr, '')
+                            fields[attr] = ''
+                        elif isinstance(field, DateTimeField) or isinstance(field, IntegerField):
+                            setattr(instance, attr, None)
+                            fields[attr] = None
+                        elif isinstance(field, BooleanField):
+                            setattr(instance, attr, False)
+                            fields[attr] = False
+                    else:
+                        fields[attr] = getattr(instance, attr)
         to_hash = generate_to_hash(fields=fields, hash_sequence=hash_sequence, unique_id=instance.id,
                                    lifecycle_id=instance.lifecycle_id)
         instance.checksum = generate_checksum(to_hash)
