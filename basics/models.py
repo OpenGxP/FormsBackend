@@ -640,6 +640,20 @@ class SettingsManager(GlobalManager):
                                  'data_type': 'CharField',
                                  'render': False}
 
+    # FO-277: method to define initial role in settings
+    def define_initial_role(self, role):
+        data = {'key': 'core.initial_role',
+                'default': role,
+                'value': role}
+        obj = self.filter(key='core.initial_role').get()
+        obj.default = role
+        obj.value = role
+
+        to_hash = generate_to_hash(fields=data, hash_sequence=self.model.HASH_SEQUENCE, unique_id=obj.id)
+        obj.checksum = generate_checksum(to_hash)
+        obj.full_clean()
+        obj.save()
+
     @property
     def auth_maxloginattempts(self):
         try:

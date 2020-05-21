@@ -23,12 +23,14 @@ import sys
 # app imports
 from urp.serializers.roles import RolesReadWriteSerializer, RolesNewVersionStatusSerializer
 from urp.models import Roles
+from basics.models import Settings
 
 # django imports
 from django.core import exceptions
 from django.utils import timezone
 from django.conf import settings
 from django.core.management.base import BaseCommand
+from django.core.exceptions import ValidationError
 
 
 class Command(BaseCommand):
@@ -112,6 +114,15 @@ class Command(BaseCommand):
                         serializer_productive.save()
                         self.stdout.write(self.style.SUCCESS('Role "{}" changed to status "productive".'
                                                              .format(role.role)))
+                        # FO-277: write role to settings
+                        try:
+                            Settings.objects.define_initial_role(role=role.role)
+                        except ValidationError:
+                            self.stderr.write(self.style.ERROR('Failed to define role "{}" in settings.'
+                                                               .format(role.role)))
+                        else:
+                            self.stdout.write(self.style.SUCCESS('Role "{}" saved in settings.'
+                                                                 .format(role.role)))
                     else:
                         for error in serializer_productive.errors:
                             self.stderr.write(self.style.ERROR('Data: "{}", error: "{}".'
