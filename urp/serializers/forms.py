@@ -105,20 +105,19 @@ class FormsReadWriteSerializer(GlobalReadWriteSerializer):
             self.validate_predecessors(value, key='section')
         except serializers.ValidationError as e:
             error_dict.update(e.detail)
-        allowed_roles = Roles.objects.get_by_natural_key_productive_list('role')
 
         for item in value:
             # validate role field
-            if 'role' not in item.keys():
-                self.create_update_record(error_dict=error_dict, item=item, value={'role': ['This field is required.']})
-            elif not item['role']:
-                self.create_update_record(error_dict=error_dict, item=item, value={'role': ['This field is required.']})
-            elif not isinstance(item['role'], str):
-                self.create_update_record(error_dict=error_dict, item=item,
-                                          value={'role': ['This field requires data type string.']})
-            elif item['role'] not in allowed_roles:
-                self.create_update_record(error_dict=error_dict, item=item,
-                                          value={'role': ['Not allowed to use "{}".'.format(item['role'])]})
+            # FO-281: role for sections is now optional
+            if 'role' in item.keys():
+                if item['role']:
+                    if not isinstance(item['role'], str):
+                        self.create_update_record(error_dict=error_dict, item=item,
+                                                  value={'role': ['This field requires data type string.']})
+                    allowed_roles = Roles.objects.get_by_natural_key_productive_list('role')
+                    if item['role'] not in allowed_roles:
+                        self.create_update_record(error_dict=error_dict, item=item,
+                                                  value={'role': ['Not allowed to use "{}".'.format(item['role'])]})
 
             # validate confirmation field
             if 'confirmation' not in item.keys():
