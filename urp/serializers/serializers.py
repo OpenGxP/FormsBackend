@@ -77,6 +77,7 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
 
         # sub elements
         self.sub_parents = []
+        self.sub_parent_sequences = []
         # sequence check
         self.global_sequence_check = {}
 
@@ -155,11 +156,36 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         return
 
     @staticmethod
-    def create_update_record(error_dict, item, value):
-        if item['sequence'] in error_dict:
-            error_dict[item['sequence']].update(value)
+    # FO-282: adapted this method to control the item key, default is sequence to not alter workflow behavior
+    def create_update_record(error_dict, item, value, key='sequence'):
+        if item[key] in error_dict:
+            error_dict[item[key]].update(value)
         else:
-            error_dict[item['sequence']] = value
+            error_dict[item[key]] = value
+
+    # FO-282: new method to update error dictionaries containing sections, for forms only
+    @staticmethod
+    def create_update_record_section(error_dict, item, value):
+        if item['section'] in error_dict.keys():
+            if item['sequence'] in error_dict[item['section']].keys():
+                error_dict[item['section']][item['sequence']].update(value)
+            else:
+                error_dict[item['section']][item['sequence']] = value
+        else:
+            error_dict[item['section']] = {item['sequence']: value}
+
+    # FO-282: new method to merge error dicts on section and sequence level, for forms only
+    @staticmethod
+    def merge_error_dicts(base, merge):
+        for section in merge:
+            if section in base:
+                for sequence in merge[section]:
+                    if sequence in base[section]:
+                        base[section][sequence].update(merge[section][sequence])
+                    else:
+                        base[section][sequence] = merge[section][sequence]
+            else:
+                base[section] = merge[section]
 
     def validate_predecessors(self, value, key):
         error_dict = {}
@@ -217,6 +243,8 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         if not form:
             if len(sequence_check) != len(set(sequence_check)):
                 raise serializers.ValidationError('Sequence must be unique.')
+            # FO-282: save sequences of parents (sections)
+            self.sub_parent_sequences = sequence_check
 
     def validate_sub(self, value, key, parent=None):
         error_dict = {}
@@ -224,10 +252,20 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
 
         for item in value:
             if key not in item.keys():
-                error_dict[item['sequence']] = {key: ['This field is required.']}
+                # FO-282: for sub elements inf forms, consider section
+                if not parent:
+                    error = {item['sequence']: {key: ['This field is required.']}}
+                    self.create_update_record(error_dict=error_dict, item=item, value=error)
+                else:
+                    error_dict[item['sequence']] = {key: ['This field is required.']}
             else:
                 if not item[key]:
-                    error_dict[item['sequence']] = {key: ['This field is required.']}
+                    # FO-282: for sub elements inf forms, consider section
+                    if not parent:
+                        error = {item['sequence']: {key: ['This field is required.']}}
+                        self.create_update_record(error_dict=error_dict, item=item, value=error)
+                    else:
+                        error_dict[item['sequence']] = {key: ['This field is required.']}
 
             # continue if no value
             if item['sequence'] in error_dict:
@@ -239,7 +277,12 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 validate_no_space(item[key])
                 validate_no_numbers(item[key])
             except serializers.ValidationError as e:
-                error_dict[item['sequence']] = {key: e.detail}
+                # FO-282: for sub elements inf forms, consider section
+                if not parent:
+                    error = {item['sequence']: {key: e.detail}}
+                    self.create_update_record(error_dict=error_dict, item=item, value=error)
+                else:
+                    error_dict[item['sequence']] = {key: e.detail}
             unique_check.append(item[key])
 
         if error_dict:
@@ -251,7 +294,12 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
             for item in duplicates:
                 for record in value:
                     if record[key] == item:
-                        error_dict[record['sequence']] = {key: ['This field must be unique.']}
+                        # FO-282: for sub elements inf forms, consider section
+                        if not parent:
+                            error = {item['sequence']: {key: ['This field must be unique.']}}
+                            self.create_update_record(error_dict=error_dict, item=item, value=error)
+                        else:
+                            error_dict[record['sequence']] = {key: ['This field must be unique.']}
 
         if parent:
             self.sub_parents = unique_check
@@ -266,29 +314,38 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         for item in value:
             # validate mandatory field
             if 'mandatory' not in item.keys():
-                self.create_update_record(error_dict=error_dict, item=item,
-                                          value={'mandatory': ['This field is required.']})
+                # FO-282: for sub elements inf forms, consider section
+                self.create_update_record_section(error_dict=error_dict, item=item,
+                                                  value={'mandatory': ['This field is required.']})
             elif not isinstance(item['mandatory'], bool):
-                self.create_update_record(error_dict=error_dict, item=item,
-                                          value={'role': ['This field requires data type boolean.']})
+                # FO-282: for sub elements inf forms, consider section
+                self.create_update_record_section(error_dict=error_dict, item=item,
+                                                  value={'mandatory': ['This field requires data type boolean.']})
 
             # field must be in existing section
+            # FO-282: for sub elements inf forms, consider section
             if 'section' not in item.keys():
-                self.create_update_record(error_dict=error_dict, item=item,
-                                          value={'section': ['This field is required.']})
-            elif item['section'] not in self.sub_parents:
-                self.create_update_record(error_dict=error_dict, item=item,
-                                          value={'section': ['Section must be a valid.']})
+                self.create_update_record_section(error_dict=error_dict, item=item,
+                                                  value={'section': ['This field is required.']})
+            elif not isinstance(item['section'], int):
+                self.create_update_record_section(error_dict=error_dict, item=item,
+                                                  value={'section': ['This field requires data type integer.']})
+            elif item['section'] not in self.sub_parent_sequences:
+                self.create_update_record_section(error_dict=error_dict, item=item,
+                                                  value={'section': ['Section must be valid.']})
 
             # validate optional instruction
             if 'instruction' in item.keys():
                 if not isinstance(item['instruction'], str):
-                    self.create_update_record(error_dict=error_dict, item=item,
-                                              value={'instruction': ['This field requires data type string.']})
+                    # FO-282: for sub elements inf forms, consider section
+                    self.create_update_record_section(error_dict=error_dict, item=item,
+                                                      value={'instruction': ['This field requires data type string.']})
                 elif len(item['instruction']) > CHAR_DEFAULT:
-                    self.create_update_record(error_dict=error_dict, item=item,
-                                              value={'instruction': ['This field must not be longer than {} characters.'
-                                                     .format(CHAR_DEFAULT)]})
+                    # FO-282: for sub elements inf forms, consider section
+                    self.create_update_record_section(error_dict=error_dict, item=item,
+                                                      value={'instruction':
+                                                             ['This field must not be longer than {} characters.'
+                                                              .format(CHAR_DEFAULT)]})
 
         if error_dict:
             raise serializers.ValidationError(error_dict)

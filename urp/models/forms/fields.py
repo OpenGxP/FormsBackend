@@ -55,7 +55,8 @@ class FormsFieldsLogManager(GlobalManager):
 
 # log table
 class FormsFieldsLog(GlobalModelLog):
-    section = models.CharField(_('Section'), max_length=CHAR_DEFAULT)
+    # FO-282: changed data type to integer
+    section = models.IntegerField(_('Section'))
     field = models.CharField(_('Field'), max_length=CHAR_DEFAULT)
     instruction = models.CharField(_('Instruction'), max_length=CHAR_DEFAULT, blank=True)
     mandatory = models.BooleanField(_('Mandatory'))
@@ -95,11 +96,8 @@ class FormsFieldsManager(GlobalManager):
 
 # table
 class FormsFields(GlobalModel):
-    section = models.CharField(_('Section'), max_length=CHAR_DEFAULT,
-                               help_text=_('Special characters "{}" are not permitted. No whitespaces and numbers.'
-                                           .format(SPECIALS_REDUCED)),
-                               validators=[validate_no_specials_reduced, validate_no_space, validate_no_numbers,
-                                           validate_only_ascii])
+    # FO-282: changed data type to integer
+    section = models.IntegerField(_('Section'))
     field = models.CharField(_('Field'), max_length=CHAR_DEFAULT,
                              help_text=_('Special characters "{}" are not permitted. No whitespaces and numbers.'
                                          .format(SPECIALS_REDUCED)),
