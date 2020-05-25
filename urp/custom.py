@@ -26,7 +26,7 @@ from django.contrib.auth import authenticate
 from django.core.exceptions import ValidationError
 
 # app imports
-from basics.models import CentralLog
+from basics.models import CentralLog, CHAR_DEFAULT
 from urp.models.settings import Settings
 from basics.custom import generate_checksum, generate_to_hash, str_list_change
 from urp.models.logs.signatures import SignaturesLog
@@ -163,11 +163,16 @@ def validate_comment(dialog, data, perm):
             if data['com'] == '' or not data['com']:
                 raise serializers.ValidationError({'comment': ['This field is required.']})
 
+            # FO-287: validate comment length
+            if len(data['com']) > CHAR_DEFAULT:
+                raise serializers.ValidationError({'comment': ['This field must not be longer than {} characters.'
+                                                  .format(CHAR_DEFAULT)]})
+
             # change "com" to "comment" for natural log record
             data['comment'] = data['com']
             del data['com']
 
-        if Settings.objects.dialog_comment(dialog=dialog, perm=perm) == 'optional':
+        elif Settings.objects.dialog_comment(dialog=dialog, perm=perm) == 'optional':
             # validate if comment field in payload
             if 'com' in data:
                 # change "com" to "comment" for natural log record
