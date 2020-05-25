@@ -203,6 +203,11 @@ def validate_signature(request, dialog, data, perm, logged_in_user=None):
             if error_dict:
                 raise serializers.ValidationError(error_dict)
 
+            if logged_in_user:
+                if data['sig_user'] != logged_in_user and settings.DEFAULT_SIGNATURE_USER_LOCK:
+                    error_dict['sig_user'] = ['Signature user must be logged in user.']
+                    raise serializers.ValidationError(error_dict)
+
             # auth check
             try:
                 authenticate(request=request, username=data['sig_user'], password=data['sig_pw'], signature=True)
@@ -210,11 +215,6 @@ def validate_signature(request, dialog, data, perm, logged_in_user=None):
                 error_dict['sig_user'] = e.detail
                 error_dict['sig_pw'] = e.detail
                 raise serializers.ValidationError(error_dict)
-            else:
-                if logged_in_user:
-                    if data['sig_user'] != logged_in_user and settings.DEFAULT_SIGNATURE_USER_LOCK:
-                        error_dict['sig_user'] = ['Signature user must be logged in user.']
-                        raise serializers.ValidationError(error_dict)
 
             # return true for success
             return True
