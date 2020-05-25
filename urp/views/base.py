@@ -276,7 +276,8 @@ def post(request, ser_rw, validate_only=False):
     serializer = ser_rw(data=request.data, context={'method': 'POST',
                                                     'function': 'new',
                                                     'user': request.user.username,
-                                                    'request': request})
+                                                    'request': request,
+                                                    'validate_only': validate_only})
     if serializer.is_valid():
         if not validate_only:
             serializer.save()
@@ -289,7 +290,8 @@ def post(request, ser_rw, validate_only=False):
 def update(request, ser_rw, query, validate_only=False):
     serializer = ser_rw(query, data=request.data, context={'method': 'PATCH', 'function': '',
                                                            'user': request.user.username,
-                                                           'request': request})
+                                                           'request': request,
+                                                           'validate_only': validate_only})
     if serializer.is_valid():
         if not validate_only:
             serializer.save()

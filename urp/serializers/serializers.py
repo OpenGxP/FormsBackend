@@ -68,6 +68,12 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         if 'function' in self.context:
             self.function = self.context['function']
 
+        # validate only
+        if 'validate_only' in self.context:
+            self.validate_only = self.context['validate_only']
+        else:
+            self.validate_only = False
+
         # flags
         self.new_version = False
         self.status_change = False
@@ -688,6 +694,7 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
             self.validate_method = validate_method
             self.now = validate_method.now
             self.my_errors = validate_method.my_errors
+            self.validate_only = validate_method.validate_only
 
             self.user = None
             if 'user' in self.context.keys():
@@ -1102,10 +1109,11 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
 
             @require_NONE
             def validate_comment_signature_edit(self):
-                dialog = self.model.MODEL_CONTEXT.lower()
-                validate_comment(dialog=dialog, data=data, perm='edit')
-                self.validate_method.signature = validate_signature(logged_in_user=self.user, dialog=dialog,
-                                                                    data=data, perm='edit', request=self.request)
+                if not self.validate_only:
+                    dialog = self.model.MODEL_CONTEXT.lower()
+                    validate_comment(dialog=dialog, data=data, perm='edit')
+                    self.validate_method.signature = validate_signature(logged_in_user=self.user, dialog=dialog,
+                                                                        data=data, perm='edit', request=self.request)
 
             @require_NONE
             @require_EMAIL
@@ -1159,10 +1167,11 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
 
             @require_NEW
             def validate_comment_signature_add(self):
-                dialog = self.model.MODEL_CONTEXT.lower()
-                validate_comment(dialog=dialog, data=data, perm='add')
-                self.validate_method.signature = validate_signature(logged_in_user=self.user, dialog=dialog,
-                                                                    data=data, perm='add', request=self.request)
+                if not self.validate_only:
+                    dialog = self.model.MODEL_CONTEXT.lower()
+                    validate_comment(dialog=dialog, data=data, perm='add')
+                    self.validate_method.signature = validate_signature(logged_in_user=self.user, dialog=dialog,
+                                                                        data=data, perm='add', request=self.request)
 
             @require_NEW_VERSION
             def validate_only_draft_or_circulation(self):

@@ -158,10 +158,10 @@ def validate_comment(dialog, data, perm):
         if Settings.objects.dialog_comment(dialog=dialog, perm=perm) == 'mandatory':
             # validate if comment field in payload
             if 'com' not in data:
-                raise serializers.ValidationError('Comment field is mandatory.')
+                raise serializers.ValidationError({'comment': ['This field is required.']})
             # validate if comment not empty
             if data['com'] == '' or not data['com']:
-                raise serializers.ValidationError('Comment is mandatory.')
+                raise serializers.ValidationError({'comment': ['This field is required.']})
 
             # change "com" to "comment" for natural log record
             data['comment'] = data['com']
@@ -177,19 +177,39 @@ def validate_comment(dialog, data, perm):
 
 def validate_signature(request, dialog, data, perm, logged_in_user=None):
     if dialog not in ['accesslog', 'profile']:
+        error_dict = {}
+        error_text = ['This filed is required.']
+        error_text_data_type = ['This filed requires data type string.']
         if Settings.objects.dialog_signature(dialog=dialog, perm=perm):
             # validate for signature username and password field
-            if 'sig_user' not in data or 'sig_pw' not in data:
-                raise serializers.ValidationError('Signature username and password fields are required.')
-            if data['sig_user'] == '' or not data['sig_user'] or data['sig_pw'] == '' or not data['sig_pw']:
-                raise serializers.ValidationError('Signature username and password are required.')
+            if 'sig_user' not in data:
+                error_dict['sig_user'] = error_text
+            elif data['sig_user'] == '' or not data['sig_user']:
+                error_dict['sig_user'] = error_text
+            elif not isinstance(data['sig_user'], str):
+                error_dict['sig_user'] = error_text_data_type
+            if 'sig_pw' not in data:
+                error_dict['sig_pw'] = error_text
+            elif data['sig_pw'] == '' or not data['sig_pw']:
+                error_dict['sig_pw'] = error_text
+            elif not isinstance(data['sig_pw'], str):
+                error_dict['sig_pw'] = error_text_data_type
 
-            if logged_in_user:
-                if data['sig_user'] != logged_in_user and settings.DEFAULT_SIGNATURE_USER_LOCK:
-                    raise serializers.ValidationError('Signature user must be logged in user.')
+            if error_dict:
+                raise serializers.ValidationError(error_dict)
 
             # auth check
-            authenticate(request=request, username=data['sig_user'], password=data['sig_pw'], signature=True)
+            try:
+                authenticate(request=request, username=data['sig_user'], password=data['sig_pw'], signature=True)
+            except serializers.ValidationError as e:
+                error_dict['sig_user'] = e.detail
+                error_dict['sig_pw'] = e.detail
+                raise serializers.ValidationError(error_dict)
+            else:
+                if logged_in_user:
+                    if data['sig_user'] != logged_in_user and settings.DEFAULT_SIGNATURE_USER_LOCK:
+                        error_dict['sig_user'] = ['Signature user must be logged in user.']
+                        raise serializers.ValidationError(error_dict)
 
             # return true for success
             return True
