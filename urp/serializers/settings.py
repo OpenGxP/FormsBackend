@@ -48,6 +48,10 @@ class SettingsReadWriteSerializer(GlobalReadWriteSerializer):
             try:
                 # try to convert to integer
                 value = value_to_int(value)
+                # FO-285: limit integer settings size to one year in seconds
+                if value >= settings.DEFAULT_LIMIT_SETTINGS_INT:
+                    raise serializers.ValidationError('Maximum integer size is {}'
+                                                      .format(settings.DEFAULT_LIMIT_SETTINGS_INT))
                 # verify that integer is positive
                 if self.instance.key == 'rtd.number_range':
                     # 0 is allowed as number range
