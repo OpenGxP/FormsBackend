@@ -16,6 +16,9 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+# rest imports
+from rest_framework.serializers import ValidationError as SerializerValidationError
+
 # django imports
 from django.db import models
 from django.core.exceptions import ValidationError
@@ -134,7 +137,8 @@ class LDAPManager(GlobalManager):
     def _server(self):
         query = self.order_by('-priority').all()
         if not query:
-            raise ValidationError('No LDAP server configured.')
+            # FO-283: change error type to django rest framework
+            raise SerializerValidationError('No LDAP server configured.')
         return query
 
     @property
