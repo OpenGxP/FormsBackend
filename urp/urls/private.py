@@ -44,6 +44,8 @@ from urp.views.private.lists import lists_list, lists_detail, lists_log_list, li
 from urp.views.private.email import email_detail, email_list, email_log_list, email_list_validate, email_detail_validate
 from urp.views.private.settings import settings_list, settings_detail, settings_log_list, settings_detail_validate
 from urp.views.private.sod import sod_list, sod_detail, sod_log_list, sod_status, sod_list_validate, sod_detail_validate
+from urp.views.private.webhooks import webhooks_list, webhooks_detail, webhooks_log_list, webhooks_status, \
+    webhooks_list_validate, webhooks_detail_validate
 
 # app imports
 from urp.views import permissions_list, status_list, access_log_list, central_log_list, \
@@ -85,6 +87,7 @@ urls_private = [
     path('{}logs/permissions'.format(settings.BASE_URL), permissions_log_list, name='permissions-log-list'),
     path('{}logs/roles'.format(settings.BASE_URL), roles_log_list, name='roles-log-list'),
     path('{}logs/users'.format(settings.BASE_URL), users_log_list, name='users-log-list'),
+    path('{}logs/webhooks'.format(settings.BASE_URL), webhooks_log_list, name='webhooks-log-list'),
     path('{}logs/sod'.format(settings.BASE_URL), sod_log_list, name='sod-log-list'),
     path('{}logs/ldap'.format(settings.BASE_URL), ldap_log_list, name='ldap-log-list'),
     path('{}logs/email'.format(settings.BASE_URL), email_log_list, name='email-log-list'),
@@ -160,6 +163,15 @@ urls_private = [
     path('{}admin/passwords'.format(settings.BASE_URL), users_password_list, name='users-password-list'),
     path('{}admin/passwords/<str:username>'.format(settings.BASE_URL), change_password_view,
          name='change-password-view'),
+    # webhooks
+    path('{}admin/webhooks'.format(settings.BASE_URL), webhooks_list, name='webhooks-list'),
+    path('{}admin/webhooks_validate'.format(settings.BASE_URL), webhooks_list_validate, name='webhooks-list-validate'),
+    path('{}admin/webhooks/<str:lifecycle_id>/<int:version>'.format(settings.BASE_URL), webhooks_detail,
+         name='webhooks-detail'),
+    path('{}admin/webhooks_validate/<str:lifecycle_id>/<int:version>'.format(settings.BASE_URL),
+         webhooks_detail_validate, name='webhooks-detail-validate'),
+    path('{}admin/webhooks/<str:lifecycle_id>/<int:version>/<str:status>'.format(settings.BASE_URL), webhooks_status,
+         name='webhooks-status'),
     # lists
     path('{}md/lists'.format(settings.BASE_URL), lists_list, name='lists-list'),
     path('{}md/lists_validate'.format(settings.BASE_URL), lists_list_validate, name='lists-list-validate'),
