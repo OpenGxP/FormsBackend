@@ -103,7 +103,8 @@ class FormsReadWriteSerializer(GlobalReadWriteSerializer):
             raise serializers.ValidationError('At least one section ist required.')
         self.validate_sequence_plain(value)
         try:
-            value = self.validate_sub(value, key='section', parent=True)
+            # FO-239: validate_sub must control error_key, use "section" for forms
+            value = self.validate_sub(value, key='section', parent=True, error_key='section')
         except serializers.ValidationError as e:
             error_dict.update(e.detail)
         try:
@@ -152,7 +153,8 @@ class FormsReadWriteSerializer(GlobalReadWriteSerializer):
         error_dict = {}
         self.validate_sequence_plain(value, form=True)
         try:
-            value = self.validate_sub(value, key='field')
+            # FO-239: validate_sub must control error_key, use "section" for forms
+            value = self.validate_sub(value, key='field', error_key='section')
         except serializers.ValidationError as e:
             error_dict.update(e.detail)
 
@@ -186,7 +188,8 @@ class FormsReadWriteSerializer(GlobalReadWriteSerializer):
         self.validate_sequence_plain(value, form=True)
 
         try:
-            value = self.validate_sub(value, key='field')
+            # FO-239: validate_sub must control error_key, use "section" for forms
+            value = self.validate_sub(value, key='field', error_key='section')
         except serializers.ValidationError as e:
             error_dict.update(e.detail)
 

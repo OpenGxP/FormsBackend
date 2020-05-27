@@ -251,7 +251,8 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
             # FO-282: save sequences of parents (sections)
             self.sub_parent_sequences = sequence_check
 
-    def validate_sub(self, value, key, parent=None):
+    # FO-239: to control workflow keys, new variable error_key
+    def validate_sub(self, value, key, error_key, parent=None):
         error_dict = {}
         unique_check = []
 
@@ -260,7 +261,8 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 # FO-282: for sub elements inf forms, consider section
                 if not parent:
                     error = {item['sequence']: {key: ['This field is required.']}}
-                    self.create_update_record(error_dict=error_dict, item=item, value=error)
+                    # FO-239: pass error_key to field based error collection method
+                    self.create_update_record(error_dict=error_dict, item=item, value=error, key=error_key)
                 else:
                     error_dict[item['sequence']] = {key: ['This field is required.']}
             else:
@@ -268,7 +270,8 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                     # FO-282: for sub elements inf forms, consider section
                     if not parent:
                         error = {item['sequence']: {key: ['This field is required.']}}
-                        self.create_update_record(error_dict=error_dict, item=item, value=error)
+                        # FO-239: pass error_key to field based error collection method
+                        self.create_update_record(error_dict=error_dict, item=item, value=error, key=error_key)
                     else:
                         error_dict[item['sequence']] = {key: ['This field is required.']}
 
@@ -285,7 +288,8 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 # FO-282: for sub elements inf forms, consider section
                 if not parent:
                     error = {item['sequence']: {key: e.detail}}
-                    self.create_update_record(error_dict=error_dict, item=item, value=error)
+                    # FO-239: pass error_key to field based error collection method
+                    self.create_update_record(error_dict=error_dict, item=item, value=error, key=error_key)
                 else:
                     error_dict[item['sequence']] = {key: e.detail}
             unique_check.append(item[key])
@@ -302,7 +306,8 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                         # FO-282: for sub elements inf forms, consider section
                         if not parent:
                             error = {item['sequence']: {key: ['This field must be unique.']}}
-                            self.create_update_record(error_dict=error_dict, item=item, value=error)
+                            # FO-239: pass error_key to field based error collection method
+                            self.create_update_record(error_dict=error_dict, item=item, value=error, key=error_key)
                         else:
                             error_dict[record['sequence']] = {key: ['This field must be unique.']}
 

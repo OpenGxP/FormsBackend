@@ -59,7 +59,8 @@ class WorkflowsReadWriteSerializer(GlobalReadWriteSerializer):
             raise serializers.ValidationError('At least one step ist required.')
         self.validate_sequence_plain(value)
         try:
-            value = self.validate_sub(value, key='step', parent=True)
+            # FO-239: validate_sub must control error_key, use "sequence" for workflows
+            value = self.validate_sub(value, key='step', parent=True, error_key='sequence')
         except serializers.ValidationError as e:
             error_dict.update(e.detail)
         try:
