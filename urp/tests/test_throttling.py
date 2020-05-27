@@ -16,6 +16,9 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+# python imports
+from time import sleep
+
 # django imports
 from django.urls import reverse
 from django.test import Client
@@ -45,6 +48,7 @@ class AnonRateThrottle(APITestCase):
             response = self.client.post(self.path, data=data, content_type='application/json')
             self.assertEqual(response.status_code, status.HTTP_200_OK)
             self.client.logout()
+            sleep(0.5)
 
         # try to login exceeding throttle limit
         response = self.client.post(self.path, data=data, content_type='application/json')
