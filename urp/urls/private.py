@@ -46,6 +46,8 @@ from urp.views.private.settings import settings_list, settings_detail, settings_
 from urp.views.private.sod import sod_list, sod_detail, sod_log_list, sod_status, sod_list_validate, sod_detail_validate
 from urp.views.private.webhooks import webhooks_list, webhooks_detail, webhooks_log_list, webhooks_status, \
     webhooks_list_validate, webhooks_detail_validate
+from urp.views.private.securitykeys import securitykeys_list, securitykeys_detail, securitykeys_log_list, \
+    securitykeys_list_validate
 
 # app imports
 from urp.views import permissions_list, status_list, access_log_list, central_log_list, \
@@ -92,6 +94,7 @@ urls_private = [
     path('{}logs/ldap'.format(settings.BASE_URL), ldap_log_list, name='ldap-log-list'),
     path('{}logs/email'.format(settings.BASE_URL), email_log_list, name='email-log-list'),
     path('{}logs/settings'.format(settings.BASE_URL), settings_log_list, name='settings-log-list'),
+    path('{}logs/securitykeys'.format(settings.BASE_URL), securitykeys_log_list, name='securitykeys-log-list'),
     path('{}logs/tags'.format(settings.BASE_URL), tags_log_list, name='tags-log-list'),
     path('{}logs/spaces'.format(settings.BASE_URL), spaces_log_list, name='spaces-log-list'),
     path('{}logs/lists'.format(settings.BASE_URL), lists_log_list, name='lists-log-list'),
@@ -135,6 +138,12 @@ urls_private = [
     path('{}admin/settings/<str:key>'.format(settings.BASE_URL), settings_detail, name='settings-detail'),
     path('{}admin/settings_validate/<str:key>'.format(settings.BASE_URL), settings_detail_validate,
          name='settings-detail-validate'),
+    # security keys
+    path('{}admin/securitykeys'.format(settings.BASE_URL), securitykeys_list, name='securitykeys-list'),
+    path('{}admin/securitykeys_validate'.format(settings.BASE_URL), securitykeys_list_validate,
+         name='securitykeys-list-validate'),
+    path('{}admin/securitykeys/<str:security_key>'.format(settings.BASE_URL), securitykeys_detail,
+         name='securitykeys-detail'),
     # roles
     path('{}admin/roles'.format(settings.BASE_URL), roles_list, name='roles-list'),
     path('{}admin/roles_validate'.format(settings.BASE_URL), roles_list_validate, name='roles-list-validate'),
