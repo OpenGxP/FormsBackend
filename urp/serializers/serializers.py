@@ -782,8 +782,57 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
             def validate_patch_specific(self):
                 self.validate_method.validate_patch_specific(data)
 
+                # FO-292: execute unique field validation if no errors exist for relevant field(s)
+                if isinstance(self.model.UNIQUE, list):
+                    if not any(e in self.my_errors.keys() for e in self.model.UNIQUE):
+                        self.field_unique()
+                else:
+                    if self.model.UNIQUE not in self.my_errors.keys():
+                        self.field_unique()
+
                 if self.my_errors:
                     raise serializers.ValidationError(self.my_errors)
+
+            # FO-292: renamed field to not perform validation again
+            @require_NONE
+            def field_unique(self):
+                if self.model.objects.HAS_STATUS and not self.model.objects.IS_RT:
+                    # verify that record remains unique
+                    if self.instance.version > 1:
+                        if isinstance(self.model.UNIQUE, list):
+                            for field in self.model.UNIQUE:
+                                if getattr(self.instance, field) != data[field]:
+                                    self.my_errors[field] = ['Attribute is immutable.']
+                        else:
+                            if getattr(self.instance, self.model.UNIQUE) != data[self.model.UNIQUE]:
+                                self.my_errors[self.model.UNIQUE] = ['Attribute is immutable.']
+                    else:
+                        # if unique is not only one, but a list of fields
+                        if isinstance(self.model.UNIQUE, list):
+                            _filter = dict()
+                            for field in self.model.UNIQUE:
+                                _filter[field] = data[field]
+                        else:
+                            _filter = {self.model.UNIQUE: data[self.model.UNIQUE]}
+                        query = self.model.objects.filter(**_filter).all()
+                        if query:
+                            for item in query:
+                                if self.instance.lifecycle_id != item.lifecycle_id:
+                                    # FO-210: improve error message
+                                    tag = getattr(query[0], 'tag', None)
+                                    # FO-292: adapted error collection to provide field based error messages
+                                    if tag:
+                                        error = 'Record(s) already exists. Record is only visible ' \
+                                                'for users with access to tag "{}".'.format(tag)
+                                    else:
+                                        error = 'Record(s) already exist.'
+
+                                    if isinstance(self.model.UNIQUE, list):
+                                        for f in self.model.UNIQUE:
+                                            self.my_errors[f] = [error]
+                                    else:
+                                        self.my_errors[self.model.UNIQUE] = [error]
+                                    break
 
             @require_STATUS_CHANGE
             def validate_correct_status(self):
@@ -1071,42 +1120,6 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                     if self.instance.status.id != Status.objects.draft:
                         raise serializers.ValidationError('Updates are only permitted in status draft.')
 
-                    # verify that record remains unique
-                    if self.instance.version > 1:
-                        if isinstance(self.model.UNIQUE, list):
-                            for field in self.model.UNIQUE:
-                                if getattr(self.instance, field) != data[field]:
-                                    raise serializers.ValidationError('Attribute "{}" is unique and can not be changed.'
-                                                                      .format(field))
-                        else:
-                            if getattr(self.instance, self.model.UNIQUE) != data[self.model.UNIQUE]:
-                                raise serializers.ValidationError('Attribute "{}" is unique and can not be changed.'
-                                                                  .format(self.model.UNIQUE))
-                    else:
-                        # if unique is not only one, but a list of fields
-                        if isinstance(self.model.UNIQUE, list):
-                            _filter = dict()
-                            for field in self.model.UNIQUE:
-                                _filter[field] = data[field]
-                        else:
-                            _filter = {self.model.UNIQUE: data[self.model.UNIQUE]}
-                        query = self.model.objects.filter(**_filter).all()
-                        if query:
-                            for item in query:
-                                if self.instance.lifecycle_id != item.lifecycle_id:
-                                    # FO-210: improve error message
-                                    tag = getattr(query[0], 'tag', None)
-                                    msg = ''
-                                    for k, v in _filter.items():
-                                        msg += '{}="{}" &'.format(k, v)
-                                    msg = msg[:-2]
-                                    if tag:
-                                        raise serializers.ValidationError(
-                                            'Record(s) with {} already exists. '
-                                            'Record is only visible for users with access to tag "{}".'
-                                            .format(msg, tag))
-                                    raise serializers.ValidationError('Record(s) with {} already exists.'.format(msg))
-
             @require_NONE
             def validate_comment_signature_edit(self):
                 if not self.validate_only:
@@ -1123,25 +1136,25 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 except ImproperlyConfigured as e:
                     raise serializers.ValidationError(e)
 
-            @require_NONE
-            @require_SOD
-            def validate_roles(self):
-                if data['base'] == data['conflict']:
-                    raise serializers.ValidationError('Role "{}" cannot be in self-conflict.'.format(data['base']))
-                for field in self.model.UNIQUE:
-                    if not Roles.objects.filter(role=data[field]).exists():
-                        raise serializers.ValidationError('Role "{}" does not exist.'.format(data[field]))
-
         @require_POST
         class Post(self.Validate):
             def validate_post_specific(self):
                 self.validate_method.validate_post_specific(data)
 
+                # FO-292: execute unique field validation if no errors exist for relevant field(s)
+                if isinstance(self.model.UNIQUE, list):
+                    if not any(e in self.my_errors.keys() for e in self.model.UNIQUE):
+                        self.field_unique()
+                else:
+                    if self.model.UNIQUE not in self.my_errors.keys():
+                        self.field_unique()
+
                 if self.my_errors:
                     raise serializers.ValidationError(self.my_errors)
 
+            # FO-292: renamed field to not perform validation again
             @require_NEW
-            def validate_unique(self):
+            def field_unique(self):
                 if self.model.objects.HAS_STATUS and not self.model.objects.IS_RT:
                     # if unique is not only one, but a list of fields
                     if isinstance(self.model.UNIQUE, list):
@@ -1154,16 +1167,18 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                     if query:
                         # FO-210: improve error message
                         tag = getattr(query[0], 'tag', None)
-                        msg = ''
-                        for k, v in _filter.items():
-                            msg += '{}="{}" &'.format(k, v)
-                        msg = msg[:-2]
+                        # FO-292: adapted error collection to provide field based error messages
                         if tag:
-                            raise serializers.ValidationError('Record(s) with {} already exists. '
-                                                              'Record is only visible for users with access to '
-                                                              'tag "{}".'
-                                                              .format(msg, tag))
-                        raise serializers.ValidationError('Record(s) with {} already exists.'.format(msg))
+                            error = 'Record(s) already exists. Record is only visible for users with access to '
+                            'tag "{}".'.format(tag)
+                        else:
+                            error = 'Record(s) already exist.'
+
+                        if isinstance(self.model.UNIQUE, list):
+                            for f in self.model.UNIQUE:
+                                self.my_errors[f] = [error]
+                        else:
+                            self.my_errors[self.model.UNIQUE] = [error]
 
             @require_NEW
             def validate_comment_signature_add(self):
@@ -1213,16 +1228,6 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                     MyEmailBackend(**data, check_call=True).open()
                 except ImproperlyConfigured as e:
                     raise serializers.ValidationError(e)
-
-            @require_NEW
-            @require_SOD
-            def validate_roles(self):
-                if data['base'] == data['conflict']:
-                    raise serializers.ValidationError('Role "{}" cannot be in self-conflict.'.format(data['base']))
-
-                for field in self.model.UNIQUE:
-                    if not Roles.objects.filter(role=data[field]).exists():
-                        raise serializers.ValidationError('Role "{}" does not exist.'.format(data[field]))
 
         @require_DELETE
         class Delete(self.Validate):

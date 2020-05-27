@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from rest_framework import serializers
 
 # app imports
+from urp.models.roles import Roles
 from urp.models.sod import SoD, SoDLog
 from urp.serializers import GlobalReadWriteSerializer
 
@@ -33,6 +34,23 @@ class SoDReadWriteSerializer(GlobalReadWriteSerializer):
         extra_kwargs = {'version': {'required': False}}
         fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_ORDER_STATUS_MANAGED + \
             model.objects.GET_BASE_CALCULATED + model.objects.COMMENT_SIGNATURE
+
+    # FO-292: moved sod validation to specific serializer to provide error messages on field level
+    def validate_base(self, value):
+        if not Roles.objects.filter(role=value).exists():
+            raise serializers.ValidationError('Role does not exist.')
+        return value
+
+    def validate_conflict(self, value):
+        if not Roles.objects.filter(role=value).exists():
+            raise serializers.ValidationError('Role does not exist.')
+        return value
+
+    def validate_post_specific(self, data):
+        if not any(e in self.my_errors.keys() for e in self.model.UNIQUE):
+            if data['base'] == data['conflict']:
+                self.my_errors.update({'base': ['Roles cannot be in self-conflict.']})
+                self.my_errors.update({'conflict': ['Roles cannot be in self-conflict.']})
 
 
 # new version / status
