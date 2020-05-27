@@ -281,8 +281,9 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 if item['sequence'] in error_dict:
                     continue
             else:
-                if item['sequence'] in error_dict[item[error_key]]:
-                    continue
+                if item[error_key] in error_dict:
+                    if item['sequence'] in error_dict[item[error_key]]:
+                        continue
 
             try:
                 validate_only_ascii(item[key])
