@@ -52,6 +52,8 @@ class WebHooksNewVersionStatusSerializer(GlobalReadWriteSerializer):
         extra_kwargs = {'version': {'required': False},
                         'webhook': {'required': False},
                         'url': {'required': False},
+                        'header_token': {'required': False},
+                        'token': {'required': False},
                         'form': {'required': False}}
         fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_ORDER_STATUS_MANAGED + \
             model.objects.GET_BASE_CALCULATED + model.objects.COMMENT_SIGNATURE

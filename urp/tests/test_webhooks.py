@@ -53,6 +53,8 @@ class PostNewWebHooks(PostNew):
         self.prerequisites = Prerequisites(base_path=self.base_path)
         self.valid_payload = {'webhook': 'test',
                               'url': 'http://www.google.com',
+                              'header_token': 'bearer',
+                              'token': 'hawid7hdia2dha2oidhjaid2dada2ds',
                               'form': 'test'}
         self.invalid_payloads = [dict(),
                                  {'webhook': ''},
@@ -111,6 +113,8 @@ class GetOneWebHook(GetOne):
         self.serializer = WebHooksReadWriteSerializer
         self.ok_object_data = {'webhook': 'test',
                                'url': 'http://www.google.com',
+                               'header_token': 'bearer',
+                               'token': 'hawid7hdia2dha2oidhjaid2dada2ds',
                                'form': 'test'}
         self.execute = True
         self.pre_data = [{'data': {'workflow': 'myworkflow',
@@ -157,12 +161,18 @@ class PostNewVersionWebhook(PostNewVersion):
         self.serializer = WebHooksReadWriteSerializer
         self.ok_object_data = {'webhook': 'test',
                                'url': 'http://www.google.com',
+                               'header_token': 'bearer',
+                               'token': 'hawid7hdia2dha2oidhjaid2dada2ds',
                                'form': 'test'}
         self.fail_object_draft_data = {'webhook': 'test_draft',
                                        'url': 'http://www.google.com',
+                                       'header_token': 'bearer',
+                                       'token': 'hawid7hdia2dha2oidhjaid2dada2ds',
                                        'form': 'test'}
         self.fail_object_circulation_data = {'webhook': 'test_circ',
                                              'url': 'http://www.google.com',
+                                             'header_token': 'bearer',
+                                             'token': 'hawid7hdia2dha2oidhjaid2dada2ds',
                                              'form': 'test'}
         self.execute = True
         self.pre_data = [{'data': {'workflow': 'myworkflow',
@@ -209,6 +219,8 @@ class DeleteOneWebHook(DeleteOne):
         self.serializer = WebHooksReadWriteSerializer
         self.ok_object_data = {'webhook': 'test',
                                'url': 'http://www.google.com',
+                               'header_token': 'bearer',
+                               'token': 'hawid7hdia2dha2oidhjaid2dada2ds',
                                'form': 'test'}
         self.execute = True
         self.pre_data = [{'data': {'workflow': 'myworkflow',
@@ -255,15 +267,23 @@ class PatchOneWebHook(PatchOne):
         self.serializer = WebHooksReadWriteSerializer
         self.ok_object_data = {'webhook': 'test',
                                'url': 'http://www.google.com',
+                               'header_token': 'bearer',
+                               'token': 'hawid7hdia2dha2oidhjaid2dada2ds',
                                'form': 'test'}
         self.valid_payload = {'webhook': 'test',
                               'url': 'http://www.google.de',
+                              'header_token': 'bearer',
+                              'token': 'hawid7hdia2dha2oidhjaid2dada2ds',
                               'form': 'test'}
         self.invalid_payload = {'webhook': 'test',
                                 'url': 'asdf',
+                                'header_token': 'bearer',
+                                'token': 'hawid7hdia2dha2oidhjaid2dada2ds',
                                 'form': 'test'}
         self.unique_invalid_payload = {'webhook': 'testneu',
                                        'url': 'http://www.google.com',
+                                       'header_token': 'bearer',
+                                       'token': 'hawid7hdia2dha2oidhjaid2dada2ds',
                                        'form': 'test'}
         self.execute = True
         self.pre_data = [{'data': {'workflow': 'myworkflow',
@@ -314,6 +334,8 @@ class PatchOneStatusWebHook(PatchOneStatus):
         self.serializer = WebHooksReadWriteSerializer
         self.ok_object_data = {'webhook': 'test',
                                'url': 'http://www.google.com',
+                               'header_token': 'bearer',
+                               'token': 'hawid7hdia2dha2oidhjaid2dada2ds',
                                'form': 'test'}
         self.execute = True
         self.pre_data = [{'data': {'workflow': 'myworkflow',
