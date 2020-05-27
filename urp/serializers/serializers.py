@@ -32,8 +32,7 @@ from basics.custom import generate_checksum, generate_to_hash
 from basics.models import Status, AVAILABLE_STATUS, StatusLog, CentralLog, CHAR_DEFAULT
 from urp.models.settings import Settings
 from urp.decorators import require_STATUS_CHANGE, require_POST, require_DELETE, require_PATCH, require_NONE, \
-    require_NEW_VERSION, require_status, require_USERS, require_NEW, require_SOD, \
-    require_EMAIL, require_ROLES
+    require_NEW_VERSION, require_status, require_USERS, require_NEW, require_EMAIL, require_ROLES
 from urp.custom import create_log_record, validate_comment, validate_signature
 from urp.backends.Email import MyEmailBackend
 from urp.models.profile import Profile
