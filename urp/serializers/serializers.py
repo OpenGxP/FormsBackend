@@ -276,8 +276,13 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                         error_dict[item['sequence']] = {key: ['This field is required.']}
 
             # continue if no value
-            if item['sequence'] in error_dict:
-                continue
+            # FO-292: do not validate further if errors exist must look on new level of sections in forms
+            if parent:
+                if item['sequence'] in error_dict:
+                    continue
+            else:
+                if item['sequence'] in error_dict[item[error_key]]:
+                    continue
 
             try:
                 validate_only_ascii(item[key])
