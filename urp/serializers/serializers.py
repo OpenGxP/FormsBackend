@@ -541,7 +541,8 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
             # log record
             if model.objects.LOG_TABLE:
                 create_log_record(model=model, context=self.context, obj=obj, validated_data=validated_data,
-                                  action=settings.DEFAULT_LOG_CREATE, signature=self.signature, now=self.now)
+                                  action=settings.DEFAULT_LOG_CREATE, signature=self.signature, now=self.now,
+                                  request=self.request)
 
                 if obj.sub_tables():
                     for table, key in obj.sub_tables().items():
@@ -549,7 +550,7 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                             for record in validated_data[key]:
                                 create_log_record(model=table, context=self.context, obj=obj, now=self.now,
                                                   validated_data=record, action=settings.DEFAULT_LOG_CREATE,
-                                                  signature=self.signature, central=False)
+                                                  signature=self.signature, central=False, request=self.request)
 
         except IntegrityError as e:
             if 'UNIQUE constraint' in e.args[0]:

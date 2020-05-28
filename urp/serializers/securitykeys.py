@@ -32,7 +32,7 @@ from urp.models.users import Users
 
 # read / add / edit
 class SecurityKeysReadWriteSerializer(GlobalReadWriteSerializer):
-    security_key = serializers.CharField(source='get_security_keys', read_only=True)
+    security_key = serializers.CharField(source='decrypt_key', read_only=True)
 
     class Meta:
         model = SecurityKeys
@@ -62,7 +62,7 @@ class SecurityKeysDeleteSerializer(GlobalReadWriteSerializer):
 
 # read logs
 class SecurityKeysLogReadSerializer(GlobalReadWriteSerializer):
-    security_key = serializers.CharField(source='get_security_keys', read_only=True)
+    security_key = serializers.CharField(source='decrypt_key', read_only=True)
 
     class Meta:
         model = SecurityKeysLog

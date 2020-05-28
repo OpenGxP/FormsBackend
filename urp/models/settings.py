@@ -27,6 +27,7 @@ from basics.custom import generate_checksum, generate_to_hash
 from basics.models import GlobalModel, GlobalModelLog, GlobalManager, CHAR_DEFAULT, LOG_HASH_SEQUENCE
 from urp.models.roles import Roles
 
+
 # log manager
 class SettingsLogManager(GlobalManager):
     # flags
@@ -218,6 +219,13 @@ class SettingsManager(GlobalManager):
             return int(self.filter(key='rtd.number_range').get().value)
         except self.model.DoesNotExist:
             return settings.DEFAULT_RT_NUMBER_RANGE
+
+    @property
+    def api_header_token(self):
+        try:
+            return self.filter(key='api.header.token').get().value
+        except self.model.DoesNotExist:
+            return settings.DEFAULT_API_HEADER_TOKEN
 
 
 # table

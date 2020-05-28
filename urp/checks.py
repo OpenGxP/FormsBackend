@@ -31,9 +31,12 @@ from basics.models import Status
 from urp.models.sod import SoD
 from urp.models.ldap import LDAP
 from urp.models.permissions import Permissions
+from urp.models.settings import Settings
+from urp.models.securitykeys import SecurityKeys
 
 # rest imports
 from rest_framework import status as http_status
+from rest_framework.authentication import get_authorization_header
 
 
 class Check(object):
@@ -64,7 +67,9 @@ class Check(object):
     def verify_overall(self, permission=None):
         # 0) verify not anonymous, but authenticated
         if not self.verify_authentication:
-            return False
+            if not self.verify_api_authentication:
+                self.http_status = http_status.HTTP_401_UNAUTHORIZED
+                return False
         # 1) verify that user is ok
         if self.ext:
             if not self.verify_ext_user:
@@ -100,6 +105,35 @@ class Check(object):
         if self.public:
             self.casl()
         return True
+
+    @property
+    def verify_api_authentication(self):
+        auth = get_authorization_header(self.request).split()
+
+        if not auth or auth[0].lower() != Settings.objects.api_header_token.lower().encode():
+            return False
+        if len(auth) == 1:
+            # msg = _('Invalid token header. No credentials provided.')
+            return False
+        elif len(auth) > 2:
+            # msg = _('Invalid token header. Token string should not contain spaces.')
+            return False
+        try:
+            token = auth[1].decode()
+        except UnicodeError:
+            # msg = _('Invalid token header. Token string should not contain invalid characters.')
+            return False
+
+        query = SecurityKeys.objects.all()
+        for i in query:
+            if token == i.decrypt_key:
+                self.username = i.username
+                break
+
+        if self.username:
+            setattr(self.request, settings.ATTR_API, True)
+            return True
+        return False
 
     @property
     def verify_authentication(self):

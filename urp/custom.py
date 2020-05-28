@@ -54,7 +54,8 @@ def create_central_log_record(log_id, now, action, context, user):
         obj.save()
 
 
-def create_log_record(model, context, action, validated_data, signature, obj=None, now=None, central=True):
+def create_log_record(model, context, action, validated_data, signature, obj=None, now=None, central=True,
+                      request=None):
     if not now:
         now = timezone.now()
     log_obj = model.objects.LOG_TABLE()
@@ -81,6 +82,9 @@ def create_log_record(model, context, action, validated_data, signature, obj=Non
         validated_data['way'] = 'signature'
     else:
         validated_data['way'] = 'logging'
+
+    if request and getattr(request, settings.ATTR_API, None):
+        validated_data['way'] = 'api'
 
     # comment checking
     if 'comment' not in validated_data.keys():

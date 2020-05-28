@@ -68,6 +68,9 @@ def auto_logout():
     def decorator(view_func):
         @wraps(view_func)
         def wrapper(request, *args, **kwargs):
+            # skip if api call via token authentication
+            if getattr(request, settings.ATTR_API, None):
+                return view_func(request, *args, **kwargs)
             # use method
             if refresh_time(request=request):
                 return view_func(request, *args, **kwargs)
@@ -272,6 +275,8 @@ class GET(object):
 
 
 def post(request, ser_rw, validate_only=False):
+    if getattr(request, settings.ATTR_API, None):
+        setattr(request.data, '_mutable', True)
     request.data['version'] = 1
     serializer = ser_rw(data=request.data, context={'method': 'POST',
                                                     'function': 'new',
@@ -343,6 +348,11 @@ class BaseView(object):
         def _post(_request):
             return post(request, ser_rw, validate_only=validate_only)
 
+        # no csrf check because api call
+        @perm_required(perm_add)
+        def _post_api(_request):
+            return post(request, ser_rw, validate_only=validate_only)
+
         @perm_required(perm_read)
         @ensure_csrf_cookie
         def get(_request):
@@ -354,6 +364,8 @@ class BaseView(object):
         if request.method == 'GET':
             return get(request)
         if request.method == 'POST':
+            if getattr(request, settings.ATTR_API, None):
+                return _post_api(request)
             return _post(request)
 
     def list_log(self, request, tags=None, ext_filter=None):

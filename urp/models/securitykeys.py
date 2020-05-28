@@ -57,7 +57,7 @@ class SecurityKeysLog(GlobalModelLog):
     lifecycle_id = None
 
     @property
-    def get_security_keys(self):
+    def decrypt_key(self):
         return decrypt(self.security_key)
 
     # hashing
@@ -99,7 +99,7 @@ class SecurityKeys(GlobalModel):
     lifecycle_id = None
 
     @property
-    def get_security_keys(self):
+    def decrypt_key(self):
         return decrypt(self.security_key)
 
     # hashing

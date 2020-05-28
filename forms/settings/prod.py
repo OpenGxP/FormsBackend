@@ -184,7 +184,8 @@ INITIALIZE_SETTINGS = {'auth.max_login_attempts': MAX_LOGIN_ATTEMPTS,
                        'email.sender': DEFAULT_EMAIL_SENDER,
                        'core.initial_role': DEFAULT_INITIAL_ROLE,
                        'profile.default.timezone': PROFILE_DEFAULT_TIMEZONE,
-                       'rtd.number_range': DEFAULT_RT_NUMBER_RANGE}
+                       'rtd.number_range': DEFAULT_RT_NUMBER_RANGE,
+                       'api.header.token': DEFAULT_API_HEADER_TOKEN}
 
 ###########
 # LOGGING #
