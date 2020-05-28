@@ -16,6 +16,10 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+# python imports
+import requests
+import json
+
 # rest imports
 from rest_framework import serializers
 
@@ -30,6 +34,8 @@ from urp.models.execution.fields import ExecutionFields, ExecutionFieldsLog
 from basics.custom import generate_checksum, generate_to_hash
 from urp.custom import validate_comment, validate_signature
 from urp.fields import ExecutionValuesField
+from urp.decorators import require_STATUS_CHANGE
+from urp.models.webhooks import WebHooks
 
 
 # read / add / edit
@@ -81,6 +87,12 @@ class ExecutionReadWriteSerializer(GlobalReadWriteSerializer):
 
                 for attr in hash_sequence:
                     if attr in data.keys():
+                        if attr == 'section':
+                            query = FormsSections.objects.filter(lifecycle_id=self.form.lifecycle_id,
+                                                                 version=self.form.version,
+                                                                 sequence=data['section']).get()
+                            setattr(value_obj, attr, query.section)
+                            continue
                         setattr(value_obj, attr, data[attr])
                 # generate hash
                 to_hash = generate_to_hash(fields=data, hash_sequence=hash_sequence, unique_id=value_obj.id)
@@ -103,6 +115,27 @@ class ExecutionStatusSerializer(GlobalReadWriteSerializer):
                         'version': {'required': False}}
         fields = model.objects.GET_MODEL_ORDER + ('status', ) + model.objects.GET_BASE_CALCULATED + \
             model.objects.COMMENT_SIGNATURE
+
+    # add decorator to only execute when status change
+    @require_STATUS_CHANGE
+    def update_specific(self, validated_data, instance, self_call=None):
+        if self.context['status'] == 'complete':
+            headers = {'Accept': 'application/json',
+                       'Content-Type': 'application/json',
+                       'Authorization': ''}
+
+            payload = {}
+
+            field_values = self.instance.linked_fields_values
+            for record in field_values:
+                payload[record.field] = record.value
+
+            hooks = WebHooks.objects.filter(form=self.instance.form).all()
+            for hook in hooks:
+                headers['Authorization'] = '{} {}'.format(hook.header_token, hook.token)
+                requests.post(url=hook.url, headers=headers, data=json.dumps(payload))
+
+        return validated_data, instance
 
     def validate_patch_specific(self, data):
         require_created = require_status(Status.objects.created)
@@ -181,10 +214,9 @@ class ExecutionFieldsWriteSerializer(GlobalReadWriteSerializer):
                                                  section=self.instance.section).role
         if allowed_role and not self.context['request'].user.has_role(allowed_role):
             raise serializers.ValidationError('You are not allowed to update that value.')
-
         # validate if record has value, then apply correction settings for sig and comment
         if getattr(self.instance, 'value'):
-            dialog = self.model.MODEL_CONTEXT.lower()
+            dialog = Execution.MODEL_CONTEXT.lower()
             validate_comment(dialog=dialog, data=data, perm='correct')
             self.signature = validate_signature(logged_in_user=self.user, dialog=dialog, data=data, perm='correct',
                                                 request=self.request)

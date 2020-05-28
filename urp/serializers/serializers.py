@@ -39,6 +39,8 @@ from urp.models.profile import Profile
 from urp.models.workflows.workflows import Workflows
 from urp.models.logs.signatures import SignaturesLog
 from urp.validators import validate_only_ascii, validate_no_specials_reduced, validate_no_space, validate_no_numbers
+from urp.models.execution.fields import ExecutionFields
+from urp.models.execution.execution import Execution
 
 # django imports
 from django.db.models import CharField, IntegerField, DateTimeField, BooleanField
@@ -623,7 +625,7 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 setattr(instance, attr, validated_data[attr])
             else:
                 # FO-246: delete field values if no data is received
-                if self.status_change:
+                if self.status_change or self.model == ExecutionFields:
                     fields[attr] = getattr(instance, attr)
                 else:
                     field = getattr(model, '_meta').get_field(attr)
@@ -1134,7 +1136,10 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
             @require_NONE
             def validate_comment_signature_edit(self):
                 if not self.validate_only:
-                    dialog = self.model.MODEL_CONTEXT.lower()
+                    if self.model == ExecutionFields:
+                        dialog = Execution.MODEL_CONTEXT.lower()
+                    else:
+                        dialog = self.model.MODEL_CONTEXT.lower()
                     validate_comment(dialog=dialog, data=data, perm='edit')
                     self.validate_method.signature = validate_signature(logged_in_user=self.user, dialog=dialog,
                                                                         data=data, perm='edit', request=self.request)

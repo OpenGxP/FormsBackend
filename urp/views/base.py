@@ -275,7 +275,7 @@ class GET(object):
 
 
 def post(request, ser_rw, validate_only=False):
-    if getattr(request, settings.ATTR_API, None):
+    if getattr(request, settings.ATTR_API, None) and hasattr(request.data, '_mutable'):
         setattr(request.data, '_mutable', True)
     request.data['version'] = 1
     serializer = ser_rw(data=request.data, context={'method': 'POST',
