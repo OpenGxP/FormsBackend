@@ -121,6 +121,13 @@ class ExecutionStatusSerializer(GlobalReadWriteSerializer):
                 if self.context['status'] not in ['canceled', 'complete']:
                     raise serializers.ValidationError('From started only canceled and complete are allowed.')
 
+            @require_started
+            def validate_complete_record(self):
+                values = ExecutionFields.objects.filter(number=self.instance.number).values('value').distinct()
+                for i in values:
+                    if not i['value']:
+                        raise serializers.ValidationError('Not all actual values are completed.')
+
             @require_canceled
             def validate_canceled(self):
                 raise serializers.ValidationError('Canceled is a final state.')
