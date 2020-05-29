@@ -21,7 +21,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 # app imports
-from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, GlobalModelLog, LOG_HASH_SEQUENCE
+from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, GlobalModelLog, LOG_HASH_SEQUENCE, CHAR_BIG
 
 
 # log manager
@@ -95,6 +95,10 @@ class ExecutionFields(GlobalModel):
     # static data
     section = models.CharField(_('Section'), max_length=CHAR_DEFAULT)
     field = models.CharField(_('Field'), max_length=CHAR_DEFAULT)
+    instruction = models.CharField(_('Instruction'), max_length=CHAR_BIG, blank=True)
+    mandatory = models.BooleanField(_('Mandatory'))
+    default = models.CharField(_('Default'), max_length=CHAR_DEFAULT, blank=True)
+    data_type = models.CharField(_('Data Type'), max_length=CHAR_DEFAULT)
     tag = models.CharField(_('Tag'), max_length=CHAR_DEFAULT, blank=True)
 
     # manager
@@ -102,8 +106,10 @@ class ExecutionFields(GlobalModel):
 
     # integrity check
     def verify_checksum(self):
-        to_hash_payload = 'number:{};section:{};field:{};value:{};tag:{};'. \
-            format(self.number, self.section, self.field, self.value, self.tag)
+        to_hash_payload = 'number:{};section:{};field:{};value:{};tag:{};instruction:{};default:{};mandatory:{};' \
+                          'data_type:{};'. \
+            format(self.number, self.section, self.field, self.value, self.tag, self.instruction, self.default,
+                   self.mandatory, self.data_type)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
 
     valid_to = None
@@ -111,7 +117,7 @@ class ExecutionFields(GlobalModel):
     lifecycle_id = None
 
     # hashing
-    HASH_SEQUENCE = ['number', 'section', 'field', 'value', 'tag']
+    HASH_SEQUENCE = ['number', 'section', 'field', 'value', 'tag', 'instruction', 'default', 'mandatory', 'data_type']
 
     # permissions
     # FO-215: corrected context to individual string to avoid false mixing for meta view

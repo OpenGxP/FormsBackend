@@ -159,9 +159,9 @@ class Forms(GlobalModel):
     def fields_execution(self):
         data = list()
         data.append(FormsTextFields.objects.filter(lifecycle_id=self.lifecycle_id,
-                                                   version=self.version).values('section', 'field'))
+                                                   version=self.version).all())
         data.append(FormsBoolFields.objects.filter(lifecycle_id=self.lifecycle_id,
-                                                   version=self.version).values('section', 'field'))
+                                                   version=self.version).all())
         return data
 
     # manager

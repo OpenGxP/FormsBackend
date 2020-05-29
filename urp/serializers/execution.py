@@ -78,22 +78,28 @@ class ExecutionReadWriteSerializer(GlobalReadWriteSerializer):
 
         # ad fields execution records for values
         for fields_set in self.form.fields_execution():
-            for data in fields_set:
-                data['number'] = number
-                data['tag'] = self.form.tag
+            for record in fields_set:
+                data = {}
                 value_obj = ExecutionFields()
+                setattr(value_obj, 'number', number)
+                data['number'] = number
+                setattr(value_obj, 'tag', self.form.tag)
+                data['tag'] = self.form.tag
 
                 hash_sequence = ExecutionFields.HASH_SEQUENCE
 
                 for attr in hash_sequence:
-                    if attr in data.keys():
-                        if attr == 'section':
-                            query = FormsSections.objects.filter(lifecycle_id=self.form.lifecycle_id,
-                                                                 version=self.form.version,
-                                                                 sequence=data['section']).get()
-                            setattr(value_obj, attr, query.section)
-                            continue
-                        setattr(value_obj, attr, data[attr])
+                    if attr in ['number', 'tag', 'value']:
+                        continue
+                    elif attr == 'section':
+                        query = FormsSections.objects.filter(lifecycle_id=self.form.lifecycle_id,
+                                                             version=self.form.version,
+                                                             sequence=getattr(record, 'section')).get()
+                        setattr(value_obj, attr, query.section)
+                        data['section'] = query.section
+                        continue
+                    setattr(value_obj, attr, getattr(record, attr))
+                    data[attr] = getattr(record, attr)
                 # generate hash
                 to_hash = generate_to_hash(fields=data, hash_sequence=hash_sequence, unique_id=value_obj.id)
                 value_obj.checksum = generate_checksum(to_hash)

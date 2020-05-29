@@ -74,10 +74,20 @@ class ExecutionValuesField(serializers.Field):
     def to_representation(self, value):
         values = []
         for record in value:
+            if record.default == 'False':
+                default = False
+            elif record.default == 'True':
+                default = True
+            else:
+                default = record.default
             user, correction = record.user_correction
             values.append({'section': record.section,
                            'field': record.field,
                            'value': record.value,
+                           'mandatory': record.mandatory,
+                           'instruction': record.instruction,
+                           'data_type': record.data_type,
+                           'default': default,
                            'user': user,
                            'correction': correction})
         return values

@@ -68,6 +68,10 @@ class FormsBoolFields(FormsFields):
         to_hash_payload = 'default:{};'.format(self.default)
         return self._verify_checksum(to_hash_payload=to_hash_payload)
 
+    @property
+    def data_type(self):
+        return 'BooleanField'
+
     # manager
     objects = FormsBoolFieldsManager()
 

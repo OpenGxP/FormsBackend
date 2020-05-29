@@ -129,6 +129,10 @@ class FormsFields(GlobalModel):
         except ValueError:
             return False
 
+    @property
+    def data_type(self):
+        return None
+
     # manager
     objects = FormsFieldsManager()
 
