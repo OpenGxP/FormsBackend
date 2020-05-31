@@ -39,6 +39,7 @@ class ExecutionFieldsLogManager(GlobalManager):
     HAS_VERSION = False
     HAS_STATUS = False
     IS_LOG = True
+    NO_PERMISSIONS = True
 
     GET_MODEL_NOT_RENDER = ('data_type',)
 

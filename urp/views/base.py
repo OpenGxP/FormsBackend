@@ -667,12 +667,13 @@ class StatusView(BaseView):
 
 
 class RTDView(StatusView):
-    def __init__(self, model_ser_pairs, model_ser_paris_log, *args, **kwargs):
+    def __init__(self, model_ser_pairs, log_model_view, log_model_view_ser, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         # serializers
         self.model_ser_pairs = model_ser_pairs
-        self.model_ser_paris_log = model_ser_paris_log
+        self.log_model_view = log_model_view
+        self.log_model_view_ser = log_model_view_ser
 
     def detail(self, request, number, lifecycle_id=None, version=None, tags=True):
         # permissions
@@ -822,17 +823,16 @@ class RTDView(StatusView):
                 return patch(request)
 
     def list_log_value(self, request, tags=True, ext_filter=None):
-        log_model = self.model_exec.objects.LOG_TABLE
         # permissions
         # FO-235: if model has permissions use them, otherwise pass None to avoid restriction
         if self.perms:
-            perm_read = '{}.01'.format(log_model.MODEL_ID)
+            perm_read = '{}.01'.format(self.log_model_view.MODEL_ID)
         else:
             perm_read = None
 
         @perm_required(perm_read)
         def main(_request):
-            get = GET(log_model, request=request, serializer=self.model_exec_log, _filter=ext_filter)
+            get = GET(self.log_model_view, request=request, serializer=self.log_model_view_ser, _filter=ext_filter)
             if tags:
                 get.tags = True
             return get.standard

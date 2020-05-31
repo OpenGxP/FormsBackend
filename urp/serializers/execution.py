@@ -30,8 +30,9 @@ from urp.models.forms.forms import Forms
 from urp.models.forms.sub.sections import FormsSections
 from urp.models.execution.execution import Execution, ExecutionLog
 from urp.decorators import require_status
-from urp.models.execution.sub.text_fields import ExecutionTextFields, ExecutionTextFieldsLog
-from urp.models.execution.sub.bool_fields import ExecutionBoolFields, ExecutionBoolFieldsLog
+from urp.models.execution.view import ExecutionActualValuesLog
+from urp.models.execution.sub.text_fields import ExecutionTextFields
+from urp.models.execution.sub.bool_fields import ExecutionBoolFields
 from basics.custom import generate_checksum, generate_to_hash
 from urp.custom import validate_comment, validate_signature
 from urp.fields import ExecutionValuesField
@@ -219,6 +220,9 @@ class ExecutionLogReadSerializer(GlobalReadWriteSerializer):
 
 # fields execution
 class ExecutionFieldsWriteSerializer(GlobalReadWriteSerializer):
+    def _validate_specific(self, data):
+        pass
+
     def validate_patch_specific(self, data):
         if Execution.objects.get(number=self.instance.number).status.id != Status.objects.started:
             raise serializers.ValidationError('Updates are only permitted in status started.')
@@ -228,8 +232,8 @@ class ExecutionFieldsWriteSerializer(GlobalReadWriteSerializer):
 
         if 'value' not in data:
             raise serializers.ValidationError('Field value is required.')
-        if not data['value']:
-            raise serializers.ValidationError('Actual value is required.')
+
+        self._validate_specific(data)
 
         # validate if allowed to update value
         exec_obj = Execution.objects.get(number=self.instance.number)
@@ -247,6 +251,10 @@ class ExecutionFieldsWriteSerializer(GlobalReadWriteSerializer):
 
 # fields text execution
 class ExecutionTextFieldsWriteSerializer(ExecutionFieldsWriteSerializer):
+    def _validate_specific(self, data):
+        if not data['value']:
+            raise serializers.ValidationError('Actual value is required.')
+
     class Meta:
         model = ExecutionTextFields
         fields = ('value',) + model.objects.GET_BASE_CALCULATED + model.objects.COMMENT_SIGNATURE
@@ -260,14 +268,10 @@ class ExecutionBoolFieldsWriteSerializer(ExecutionFieldsWriteSerializer):
 
 
 # read field logs
-class ExecutionTextFieldsLogReadSerializer(GlobalReadWriteSerializer):
-    class Meta:
-        model = ExecutionTextFieldsLog
-        fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_ORDER_LOG + model.objects.GET_BASE_CALCULATED
+class ExecutionFieldsLogReadSerializer(GlobalReadWriteSerializer):
+    value = serializers.CharField(source='get_value', read_only=True)
+    default = serializers.CharField(source='get_default', read_only=True)
 
-
-# read field logs
-class ExecutionBoolFieldsLogReadSerializer(GlobalReadWriteSerializer):
     class Meta:
-        model = ExecutionBoolFieldsLog
+        model = ExecutionActualValuesLog
         fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_ORDER_LOG + model.objects.GET_BASE_CALCULATED

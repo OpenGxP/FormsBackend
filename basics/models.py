@@ -111,7 +111,7 @@ class GlobalManager(models.Manager):
                           'way',)
     GET_BASE_CALCULATED = ('valid',
                            'unique',)
-    GET_MODEL_ORDER = dict()
+    GET_MODEL_ORDER = tuple()
     # post
     POST_BASE_EXCLUDE = ('id', 'lifecycle_id', 'checksum', 'status', 'version')
     POST_MODEL_EXCLUDE = tuple()

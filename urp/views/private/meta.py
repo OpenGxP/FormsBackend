@@ -131,6 +131,14 @@ def meta_list(request, dialog):
                                              'data_type': 'DateTimeField',
                                              'render': True}
 
+        if model.MODEL_ID == '61':
+            data['get']['value'] = {'verbose_name': 'Value',
+                                    'data_type': 'CharField',
+                                    'render': True}
+            data['get']['default'] = {'verbose_name': 'Default',
+                                      'data_type': 'CharField',
+                                      'render': True}
+
         for f in fields:
             if f.name in not_render:
                 render = False

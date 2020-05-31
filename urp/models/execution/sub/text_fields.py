@@ -50,10 +50,6 @@ class ExecutionTextFieldsLog(ExecutionFieldsLog):
     # hashing
     HASH_SEQUENCE = FIELDS_LOG_HASH_SEQUENCE + ['value', 'default']
 
-    # permissions
-    MODEL_ID = '61'
-    MODEL_CONTEXT = 'ExecutionTextFieldsLog'
-
     class Meta:
         unique_together = None
 

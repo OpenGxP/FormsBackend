@@ -312,11 +312,11 @@ def private_root_view(request):
                                                                                       request=request),
                                                                        'rel': 'logs/execution'}},
                                                  # FO-241: adapted model key correctly for meta
-                                                 'executionfields': {'title': 'Execution Values',
-                                                                     'url': {'abs': reverse(
-                                                                         'execution-values-log-list',
-                                                                         request=request),
-                                                                         'rel': 'logs/execution_values'}}
+                                                 'executionactualvalues': {'title': 'Execution Values',
+                                                                           'url': {'abs': reverse(
+                                                                               'execution-values-log-list',
+                                                                               request=request),
+                                                                               'rel': 'logs/execution_values'}}
                                                  }}}}
 
     return Response(root)
