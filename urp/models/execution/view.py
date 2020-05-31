@@ -35,7 +35,8 @@ class ExecutionActualValuesLogManager(GlobalManager):
     HAS_STATUS = False
     IS_LOG = True
 
-    GET_MODEL_ORDER = FIELDS_GET_MODEL_ORDER + ('default', 'value',)
+    GET_MODEL_ORDER = FIELDS_GET_MODEL_ORDER + ('value_str', 'default_str',
+                                                'value_bool', 'default_bool',)
     GET_MODEL_NOT_RENDER = ('data_type',)
 
 
@@ -52,22 +53,36 @@ class ExecutionActualValuesLog(GlobalModelLog):
     tag = models.CharField(_('Tag'), max_length=CHAR_DEFAULT, blank=True)
 
     @property
-    def get_value(self):
+    def get_value_str(self):
         if self.data_type == 'BooleanField':
-            return ExecutionBoolFields.objects.filter(number=self.number, section=self.section, field=self.field) \
-                .values('value')[0]['value']
-        elif self.data_type == 'CharField':
+            return None
+        else:
             return ExecutionTextFields.objects.filter(number=self.number, section=self.section, field=self.field) \
                 .values('value')[0]['value']
 
     @property
-    def get_default(self):
+    def get_default_str(self):
+        if self.data_type == 'BooleanField':
+            return None
+        else:
+            return ExecutionTextFields.objects.filter(number=self.number, section=self.section, field=self.field) \
+                .values('default')[0]['default']
+
+    @property
+    def get_value_bool(self):
+        if self.data_type == 'BooleanField':
+            return ExecutionBoolFields.objects.filter(number=self.number, section=self.section, field=self.field) \
+                .values('value')[0]['value']
+        else:
+            return None
+
+    @property
+    def get_default_bool(self):
         if self.data_type == 'BooleanField':
             return ExecutionBoolFields.objects.filter(number=self.number, section=self.section, field=self.field) \
                 .values('default')[0]['default']
-        elif self.data_type == 'CharField':
-            return ExecutionTextFields.objects.filter(number=self.number, section=self.section, field=self.field) \
-                .values('default')[0]['default']
+        else:
+            return None
 
         # manager
     objects = ExecutionActualValuesLogManager()

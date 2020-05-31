@@ -132,12 +132,18 @@ def meta_list(request, dialog):
                                              'render': True}
 
         if model.MODEL_ID == '61':
-            data['get']['value'] = {'verbose_name': 'Value',
-                                    'data_type': 'CharField',
-                                    'render': True}
-            data['get']['default'] = {'verbose_name': 'Default',
-                                      'data_type': 'CharField',
-                                      'render': True}
+            data['get']['value_str'] = {'verbose_name': 'Value',
+                                        'data_type': 'CharField',
+                                        'render': False}
+            data['get']['default_str'] = {'verbose_name': 'Default',
+                                          'data_type': 'CharField',
+                                          'render': False}
+            data['get']['value_bool'] = {'verbose_name': 'Value',
+                                         'data_type': 'BooleanField',
+                                         'render': False}
+            data['get']['default_bool'] = {'verbose_name': 'Default',
+                                           'data_type': 'BooleanField',
+                                           'render': False}
 
         for f in fields:
             if f.name in not_render:

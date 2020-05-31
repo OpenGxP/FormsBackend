@@ -269,8 +269,10 @@ class ExecutionBoolFieldsWriteSerializer(ExecutionFieldsWriteSerializer):
 
 # read field logs
 class ExecutionFieldsLogReadSerializer(GlobalReadWriteSerializer):
-    value = serializers.CharField(source='get_value', read_only=True)
-    default = serializers.CharField(source='get_default', read_only=True)
+    value_str = serializers.CharField(source='get_value_str', read_only=True)
+    default_str = serializers.CharField(source='get_default_str', read_only=True)
+    value_bool = serializers.BooleanField(source='get_value_bool', read_only=True)
+    default_bool = serializers.BooleanField(source='get_default_bool', read_only=True)
 
     class Meta:
         model = ExecutionActualValuesLog
