@@ -206,6 +206,9 @@ class FormsReadWriteSerializer(GlobalReadWriteSerializer):
                     # FO-282: for sub elements inf forms, consider section
                     self.create_update_record_section(error_dict=error_dict, item=item,
                                                       value={'default': ['This field requires data type boolean.']})
+            # FO-311: if no default field is received for bool field, save as False
+            else:
+                item['default'] = False
 
         if error_dict:
             raise serializers.ValidationError(error_dict)
