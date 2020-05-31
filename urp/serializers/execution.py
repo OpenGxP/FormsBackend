@@ -30,7 +30,8 @@ from urp.models.forms.forms import Forms
 from urp.models.forms.sub.sections import FormsSections
 from urp.models.execution.execution import Execution, ExecutionLog
 from urp.decorators import require_status
-from urp.models.execution.fields import ExecutionFields, ExecutionFieldsLog
+from urp.models.execution.sub.text_fields import ExecutionTextFields, ExecutionTextFieldsLog
+from urp.models.execution.sub.bool_fields import ExecutionBoolFields, ExecutionBoolFieldsLog
 from basics.custom import generate_checksum, generate_to_hash
 from urp.custom import validate_comment, validate_signature
 from urp.fields import ExecutionValuesField
@@ -43,6 +44,7 @@ class ExecutionReadWriteSerializer(GlobalReadWriteSerializer):
     def __init__(self, *args, **kwargs):
         GlobalReadWriteSerializer.__init__(self, *args, **kwargs)
         self.form = None
+        self.number = None
 
     # status field
     status = serializers.CharField(source='get_status', read_only=True)
@@ -65,10 +67,42 @@ class ExecutionReadWriteSerializer(GlobalReadWriteSerializer):
             self.form = form
         return value
 
+    def _build(self, hash_sequence, record, model):
+        data = {}
+        obj = model()
+        setattr(obj, 'number', self.number)
+        data['number'] = self.number
+        setattr(obj, 'tag', self.form.tag)
+        data['tag'] = self.form.tag
+
+        for attr in hash_sequence:
+            if attr in ['number', 'tag']:
+                continue
+            elif attr == 'value':
+                # value for bool is initially always false
+                if isinstance(obj, ExecutionBoolFields):
+                    setattr(obj, attr, False)
+                    data[attr] = False
+                continue
+            elif attr == 'section':
+                query = FormsSections.objects.filter(lifecycle_id=self.form.lifecycle_id,
+                                                     version=self.form.version,
+                                                     sequence=getattr(record, 'section')).get()
+                setattr(obj, attr, query.section)
+                data['section'] = query.section
+                continue
+            setattr(obj, attr, getattr(record, attr))
+            data[attr] = getattr(record, attr)
+
+        # generate hash
+        to_hash = generate_to_hash(fields=data, hash_sequence=hash_sequence, unique_id=obj.id)
+        obj.checksum = generate_checksum(to_hash)
+        obj.save()
+
     def create_specific(self, validated_data, obj):
-        number = Execution.objects.next_number
+        self.number = Execution.objects.next_number
         validated_data['status_id'] = Status.objects.created
-        validated_data['number'] = number
+        validated_data['number'] = self.number
 
         if self.form:
             validated_data['tag'] = self.form.tag
@@ -77,33 +111,17 @@ class ExecutionReadWriteSerializer(GlobalReadWriteSerializer):
             validated_data['version'] = self.form.version
 
         # ad fields execution records for values
-        for fields_set in self.form.fields_execution():
-            for record in fields_set:
-                data = {}
-                value_obj = ExecutionFields()
-                setattr(value_obj, 'number', number)
-                data['number'] = number
-                setattr(value_obj, 'tag', self.form.tag)
-                data['tag'] = self.form.tag
 
-                hash_sequence = ExecutionFields.HASH_SEQUENCE
+        # add text fields
+        for record in self.form.linked_fields_text:
+            model = ExecutionTextFields
+            hash_sequence = model.HASH_SEQUENCE
+            self._build(hash_sequence=hash_sequence, record=record, model=model)
 
-                for attr in hash_sequence:
-                    if attr in ['number', 'tag', 'value']:
-                        continue
-                    elif attr == 'section':
-                        query = FormsSections.objects.filter(lifecycle_id=self.form.lifecycle_id,
-                                                             version=self.form.version,
-                                                             sequence=getattr(record, 'section')).get()
-                        setattr(value_obj, attr, query.section)
-                        data['section'] = query.section
-                        continue
-                    setattr(value_obj, attr, getattr(record, attr))
-                    data[attr] = getattr(record, attr)
-                # generate hash
-                to_hash = generate_to_hash(fields=data, hash_sequence=hash_sequence, unique_id=value_obj.id)
-                value_obj.checksum = generate_checksum(to_hash)
-                value_obj.save()
+        for record in self.form.linked_fields_bool:
+            model = ExecutionBoolFields
+            hash_sequence = model.HASH_SEQUENCE
+            self._build(hash_sequence=hash_sequence, record=record, model=model)
 
         return validated_data, obj
 
@@ -162,7 +180,7 @@ class ExecutionStatusSerializer(GlobalReadWriteSerializer):
 
             @require_started
             def validate_complete_record(self):
-                values = ExecutionFields.objects.filter(number=self.instance.number).values('value').distinct()
+                values = Execution.actual_values(number=self.instance.number)
                 for i in values:
                     if not i['value']:
                         raise serializers.ValidationError('Not all actual values are completed.')
@@ -201,18 +219,17 @@ class ExecutionLogReadSerializer(GlobalReadWriteSerializer):
 
 # fields execution
 class ExecutionFieldsWriteSerializer(GlobalReadWriteSerializer):
-    class Meta:
-        model = ExecutionFields
-        fields = ('value',) + model.objects.GET_BASE_CALCULATED + model.objects.COMMENT_SIGNATURE
-
     def validate_patch_specific(self, data):
         if Execution.objects.get(number=self.instance.number).status.id != Status.objects.started:
             raise serializers.ValidationError('Updates are only permitted in status started.')
 
+        if self.my_errors:
+            raise serializers.ValidationError(self.my_errors['value'])
+
         if 'value' not in data:
             raise serializers.ValidationError('Field value is required.')
-        if not isinstance(data['value'], str):
-            raise serializers.ValidationError('Value field must be string.')
+        if not data['value']:
+            raise serializers.ValidationError('Actual value is required.')
 
         # validate if allowed to update value
         exec_obj = Execution.objects.get(number=self.instance.number)
@@ -228,8 +245,29 @@ class ExecutionFieldsWriteSerializer(GlobalReadWriteSerializer):
                                                 request=self.request)
 
 
-# read field logs
-class ExecutionFieldsLogReadSerializer(GlobalReadWriteSerializer):
+# fields text execution
+class ExecutionTextFieldsWriteSerializer(ExecutionFieldsWriteSerializer):
     class Meta:
-        model = ExecutionFieldsLog
+        model = ExecutionTextFields
+        fields = ('value',) + model.objects.GET_BASE_CALCULATED + model.objects.COMMENT_SIGNATURE
+
+
+# fields bool execution
+class ExecutionBoolFieldsWriteSerializer(ExecutionFieldsWriteSerializer):
+    class Meta:
+        model = ExecutionBoolFields
+        fields = ('value',) + model.objects.GET_BASE_CALCULATED + model.objects.COMMENT_SIGNATURE
+
+
+# read field logs
+class ExecutionTextFieldsLogReadSerializer(GlobalReadWriteSerializer):
+    class Meta:
+        model = ExecutionTextFieldsLog
+        fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_ORDER_LOG + model.objects.GET_BASE_CALCULATED
+
+
+# read field logs
+class ExecutionBoolFieldsLogReadSerializer(GlobalReadWriteSerializer):
+    class Meta:
+        model = ExecutionBoolFieldsLog
         fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_ORDER_LOG + model.objects.GET_BASE_CALCULATED

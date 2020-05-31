@@ -667,13 +667,12 @@ class StatusView(BaseView):
 
 
 class RTDView(StatusView):
-    def __init__(self, ser_value, model_exec, model_exec_log, *args, **kwargs):
+    def __init__(self, model_ser_pairs, model_ser_paris_log, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         # serializers
-        self.ser_value = ser_value
-        self.model_exec = model_exec
-        self.model_exec_log = model_exec_log
+        self.model_ser_pairs = model_ser_pairs
+        self.model_ser_paris_log = model_ser_paris_log
 
     def detail(self, request, number, lifecycle_id=None, version=None, tags=True):
         # permissions
@@ -787,9 +786,6 @@ class RTDView(StatusView):
             perm_patch = None
             perm_correct = None
 
-        # serializer
-        ser_value = self.ser_value
-
         @perm_required(perm_patch)
         @csrf_protect
         def patch(_request):
@@ -801,12 +797,23 @@ class RTDView(StatusView):
         def patch_correct(_request):
             return update(request, ser_value, query)
 
-        try:
-            query = self.model_exec.objects.get(number__exact=number, section__exact=section, field__exact=field)
-        except self.model_exec.DoesNotExist:
+        no_exist = 0
+        query = None
+        ser_value = None
+        for model in self.model_ser_pairs.keys():
+            try:
+                query = model.objects.get(number__exact=number, section__exact=section, field__exact=field)
+            except ValidationError:
+                return Response(status=http_status.HTTP_400_BAD_REQUEST)
+            except model.DoesNotExist:
+                no_exist += 1
+                continue
+            else:
+                ser_value = self.model_ser_pairs[model]
+                break
+
+        if no_exist == len(self.model_ser_pairs.keys()):
             return Response(status=http_status.HTTP_404_NOT_FOUND)
-        except ValidationError:
-            return Response(status=http_status.HTTP_400_BAD_REQUEST)
 
         if request.method == 'PATCH':
             if getattr(query, 'value'):

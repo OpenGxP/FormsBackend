@@ -23,17 +23,24 @@ from rest_framework.decorators import api_view
 from urp.views.views import auto_logout
 from urp.models.execution.execution import Execution
 from urp.serializers.execution import ExecutionReadWriteSerializer, ExecutionStatusSerializer, \
-    ExecutionLogReadSerializer, ExecutionDeleteSerializer, ExecutionFieldsWriteSerializer, \
-    ExecutionFieldsLogReadSerializer
+    ExecutionLogReadSerializer, ExecutionDeleteSerializer, ExecutionTextFieldsWriteSerializer, \
+    ExecutionBoolFieldsWriteSerializer, ExecutionTextFieldsLogReadSerializer, ExecutionBoolFieldsLogReadSerializer
 from urp.decorators import auth_required
 from urp.views.base import RTDView
-from urp.models.execution.fields import ExecutionFields
+from urp.models.execution.sub.bool_fields import ExecutionBoolFields, ExecutionBoolFieldsLog
+from urp.models.execution.sub.text_fields import ExecutionTextFields, ExecutionTextFieldsLog
+
+
+model_ser_pairs = {ExecutionTextFields: ExecutionTextFieldsWriteSerializer,
+                   ExecutionBoolFields: ExecutionBoolFieldsWriteSerializer}
+
+model_ser_paris_log = {ExecutionTextFieldsLog: ExecutionTextFieldsLogReadSerializer,
+                       ExecutionBoolFieldsLog: ExecutionBoolFieldsLogReadSerializer}
 
 
 view = RTDView(model=Execution, ser_rw=ExecutionReadWriteSerializer, ser_del=ExecutionDeleteSerializer,
-               ser_log=ExecutionLogReadSerializer, ser_st=ExecutionStatusSerializer,
-               ser_value=ExecutionFieldsWriteSerializer, model_exec=ExecutionFields,
-               model_exec_log=ExecutionFieldsLogReadSerializer)
+               ser_log=ExecutionLogReadSerializer, ser_st=ExecutionStatusSerializer, model_ser_pairs=model_ser_pairs,
+               model_ser_paris_log=model_ser_paris_log)
 
 
 @api_view(['GET', 'POST'])

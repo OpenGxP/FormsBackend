@@ -19,9 +19,18 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # django imports
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+from django.conf import settings
 
 # app imports
+from basics.custom import HASH_ALGORITHM
 from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, GlobalModelLog, LOG_HASH_SEQUENCE, CHAR_BIG
+
+
+# variables
+FIELDS_HASH_SEQUENCE = ['number', 'section', 'field', 'tag', 'instruction', 'mandatory', 'data_type']
+FIELDS_LOG_HASH_SEQUENCE = LOG_HASH_SEQUENCE + ['number', 'section', 'field', 'tag', 'instruction', 'mandatory',
+                                                'data_type']
+FIELDS_GET_MODEL_ORDER = ('number', 'section', 'field', 'tag', 'mandatory', 'data_type',)
 
 
 # log manager
@@ -31,73 +40,60 @@ class ExecutionFieldsLogManager(GlobalManager):
     HAS_STATUS = False
     IS_LOG = True
 
-    # meta
-    GET_MODEL_ORDER = ('number',
-                       'value',
-                       'section',
-                       'field',)
+    GET_MODEL_NOT_RENDER = ('data_type',)
 
 
 # log table
 class ExecutionFieldsLog(GlobalModelLog):
     # rtd data
     number = models.IntegerField(_('Number'))
-    value = models.CharField(_('Value'), max_length=CHAR_DEFAULT, blank=True)
     # static data
     section = models.CharField(_('Section'), max_length=CHAR_DEFAULT)
     field = models.CharField(_('Field'), max_length=CHAR_DEFAULT)
+    instruction = models.CharField(_('Instruction'), max_length=CHAR_BIG, blank=True)
+    mandatory = models.BooleanField(_('Mandatory'))
+    data_type = models.CharField(_('Data Type'), max_length=CHAR_DEFAULT)
     tag = models.CharField(_('Tag'), max_length=CHAR_DEFAULT, blank=True)
 
     # manager
     objects = ExecutionFieldsLogManager()
 
+    @property
+    def sub_verify_checksum(self):
+        return ''
+
     # integrity check
     def verify_checksum(self):
-        to_hash_payload = 'number:{};section:{};field:{};value:{};tag:{};'. \
-            format(self.number, self.section, self.field, self.value, self.tag)
+        to_hash_payload = 'number:{};section:{};field:{};tag:{};instruction:{};mandatory:{};data_type:{};' \
+            .format(self.number, self.section, self.field, self.tag, self.instruction, self.mandatory, self.data_type)
+        to_hash_payload += self.sub_verify_checksum
         return self._verify_checksum(to_hash_payload=to_hash_payload)
-
-    # hashing
-    HASH_SEQUENCE = LOG_HASH_SEQUENCE + ['number', 'section', 'field', 'value', 'tag']
 
     lifecycle_id = None
     valid_to = None
     valid_from = None
 
-    # permissions
-    MODEL_ID = '61'
-    MODEL_CONTEXT = 'ExecutionFieldsLog'
-
     class Meta:
+        abstract = True
         unique_together = None
 
 
 # log manager
 class ExecutionFieldsManager(GlobalManager):
-    # flags
-    LOG_TABLE = ExecutionFieldsLog
     COM_SIG_SETTINGS = False
     NO_PERMISSIONS = True
     IS_RT = True
-
-    # meta
-    GET_MODEL_ORDER = ('number',
-                       'section',
-                       'field',
-                       'value',)
 
 
 # log table
 class ExecutionFields(GlobalModel):
     # rtd data
     number = models.IntegerField(_('Number'))
-    value = models.CharField(_('Value'), max_length=CHAR_DEFAULT, blank=True)
     # static data
     section = models.CharField(_('Section'), max_length=CHAR_DEFAULT)
     field = models.CharField(_('Field'), max_length=CHAR_DEFAULT)
     instruction = models.CharField(_('Instruction'), max_length=CHAR_BIG, blank=True)
     mandatory = models.BooleanField(_('Mandatory'))
-    default = models.CharField(_('Default'), max_length=CHAR_DEFAULT, blank=True)
     data_type = models.CharField(_('Data Type'), max_length=CHAR_DEFAULT)
     tag = models.CharField(_('Tag'), max_length=CHAR_DEFAULT, blank=True)
 
@@ -105,32 +101,30 @@ class ExecutionFields(GlobalModel):
     objects = ExecutionFieldsManager()
 
     # integrity check
-    def verify_checksum(self):
-        to_hash_payload = 'number:{};section:{};field:{};value:{};tag:{};instruction:{};default:{};mandatory:{};' \
-                          'data_type:{};'. \
-            format(self.number, self.section, self.field, self.value, self.tag, self.instruction, self.default,
-                   self.mandatory, self.data_type)
-        return self._verify_checksum(to_hash_payload=to_hash_payload)
+    def _verify_checksum(self, to_hash_payload):
+        to_hash = 'id:{};number:{};section:{};field:{};tag:{};instruction:{};mandatory:{};data_type:{};' \
+            .format(self.id, self.number, self.section, self.field, self.tag, self.instruction,
+                    self.mandatory, self.data_type)
+        to_hash += '{}{}'.format(to_hash_payload, settings.SECRET_KEY)
+        try:
+            return HASH_ALGORITHM.verify(to_hash, self.checksum)
+        except ValueError:
+            return False
 
     valid_to = None
     valid_from = None
     lifecycle_id = None
 
-    # hashing
-    HASH_SEQUENCE = ['number', 'section', 'field', 'value', 'tag', 'instruction', 'default', 'mandatory', 'data_type']
-
     # permissions
     # FO-215: corrected context to individual string to avoid false mixing for meta view
-    MODEL_CONTEXT = 'ExecutionFields'
     perms = None
 
     class Meta:
-        unique_together = ('number', 'section', 'field')
+        abstract = True
 
-    @property
-    def user_correction(self):
-        query = ExecutionFieldsLog.objects.filter(number__exact=self.number, field__exact=self.field,
-                                                  section__exact=self.section).order_by('-timestamp').all()
+    def _user_correction(self, model):
+        query = model.objects.LOG_TABLE.objects.filter(number__exact=self.number, field__exact=self.field,
+                                                       section__exact=self.section).order_by('-timestamp').all()
         if not query:
             return '', False
         if len(query) > 1:

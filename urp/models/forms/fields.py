@@ -123,7 +123,7 @@ class FormsFields(GlobalModel):
         to_hash = 'id:{};lifecycle_id:{};section:{};field:{};instruction:{};mandatory:{};sequence:{};version:{};' \
             .format(self.id, self.lifecycle_id, self.section, self.field, self.instruction, self.mandatory,
                     self.sequence, self.version)
-        to_hash += '{}{}'.format(to_hash_payload, settings.SECRET_HASH_KEY)
+        to_hash += '{}{}'.format(to_hash_payload, settings.SECRET_KEY)
         try:
             return HASH_ALGORITHM.verify(to_hash, self.checksum)
         except ValueError:

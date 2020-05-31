@@ -16,6 +16,9 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+# python imports
+from itertools import chain
+
 # django imports
 from django.db import models
 from django.utils.translation import gettext_lazy as _
@@ -23,7 +26,8 @@ from django.utils.translation import gettext_lazy as _
 # app imports
 from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, Status, GlobalModelLog, LOG_HASH_SEQUENCE
 from urp.models.forms.forms import Forms
-from urp.models.execution.fields import ExecutionFields
+from urp.models.execution.sub.text_fields import ExecutionTextFields
+from urp.models.execution.sub.bool_fields import ExecutionBoolFields
 
 
 # log manager
@@ -164,7 +168,13 @@ class Execution(GlobalModel):
 
     @property
     def linked_fields_values(self):
-        return ExecutionFields.objects.filter(number__exact=self.number).all()
+        return list(chain(ExecutionTextFields.objects.filter(number__exact=self.number).all(),
+                          ExecutionBoolFields.objects.filter(number__exact=self.number).all()))
+
+    @staticmethod
+    def actual_values(number):
+        return list(chain(ExecutionTextFields.objects.filter(number=number).values('value').distinct(),
+                          ExecutionBoolFields.objects.filter(number=number).values('value').distinct()))
 
     def delete_me(self):
         self.delete()

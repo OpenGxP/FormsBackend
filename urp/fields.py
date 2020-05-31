@@ -80,16 +80,13 @@ class ExecutionValuesField(serializers.Field):
                 default = True
             else:
                 default = record.default
-            user, correction = record.user_correction
             values.append({'section': record.section,
                            'field': record.field,
                            'value': record.value,
                            'mandatory': record.mandatory,
                            'instruction': record.instruction,
                            'data_type': record.data_type,
-                           'default': default,
-                           'user': user,
-                           'correction': correction})
+                           'default': default})
         return values
 
     def to_internal_value(self, data):
