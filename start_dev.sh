@@ -8,6 +8,7 @@ python manage.py makemigrations
 python manage.py makemigrations basics
 python manage.py makemigrations urp
 python manage.py migrate
+python manage.py create-views
 python manage.py initialize-settings
 python manage.py initialize-status
 python manage.py collect-permissions
