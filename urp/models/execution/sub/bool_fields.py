@@ -35,7 +35,7 @@ class ExecutionBoolFieldsLogManager(ExecutionFieldsLogManager):
 # log table
 class ExecutionBoolFieldsLog(ExecutionFieldsLog):
     # rtd data
-    value = models.BooleanField(_('Value'), max_length=CHAR_DEFAULT)
+    value = models.BooleanField(_('Value'), max_length=CHAR_DEFAULT, null=True, blank=True)
     # static data
     default = models.BooleanField(_('Default'), max_length=CHAR_DEFAULT)
 
@@ -63,7 +63,7 @@ class ExecutionBoolFieldsManager(ExecutionFieldsManager):
 # log table
 class ExecutionBoolFields(ExecutionFields):
     # rtd data
-    value = models.BooleanField(_('Value'), max_length=CHAR_DEFAULT)
+    value = models.BooleanField(_('Value'), max_length=CHAR_DEFAULT, null=True, blank=True)
     # static data
     default = models.BooleanField(_('Default'), max_length=CHAR_DEFAULT)
 

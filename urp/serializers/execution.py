@@ -80,10 +80,10 @@ class ExecutionReadWriteSerializer(GlobalReadWriteSerializer):
             if attr in ['number', 'tag']:
                 continue
             elif attr == 'value':
-                # value for bool is initially always false
+                # value for bool is initially always None / Null
                 if isinstance(obj, ExecutionBoolFields):
-                    setattr(obj, attr, False)
-                    data[attr] = False
+                    setattr(obj, attr, None)
+                    data[attr] = None
                 continue
             elif attr == 'section':
                 query = FormsSections.objects.filter(lifecycle_id=self.form.lifecycle_id,
