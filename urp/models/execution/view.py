@@ -22,8 +22,8 @@ from django.utils.translation import gettext_lazy as _
 
 # app imports
 from basics.models import GlobalManager, CHAR_DEFAULT, GlobalModelLog, CHAR_BIG
-from urp.models.execution.sub.bool_fields import ExecutionBoolFields
-from urp.models.execution.sub.text_fields import ExecutionTextFields
+from urp.models.execution.sub.bool_fields import ExecutionBoolFieldsLog
+from urp.models.execution.sub.text_fields import ExecutionTextFieldsLog
 
 # variables
 FIELDS_GET_MODEL_ORDER = ('number', 'section', 'field', 'tag', 'mandatory', 'data_type',)
@@ -63,21 +63,19 @@ class ExecutionActualValuesLog(GlobalModelLog):
     def get_value(self):
         model = None
         if self.data_type == 'BooleanField':
-            model = ExecutionBoolFields
+            model = ExecutionBoolFieldsLog
         elif self.data_type == 'CharField':
-            model = ExecutionTextFields
-        return model.objects.filter(number=self.number, section=self.section, field=self.field) \
-            .values('value')[0]['value']
+            model = ExecutionTextFieldsLog
+        return model.objects.filter(id=self.id).values('value')[0]['value']
 
     @property
     def get_default(self):
         model = None
         if self.data_type == 'BooleanField':
-            model = ExecutionBoolFields
+            model = ExecutionBoolFieldsLog
         elif self.data_type == 'CharField':
-            model = ExecutionTextFields
-        return model.objects.filter(number=self.number, section=self.section, field=self.field) \
-            .values('default')[0]['default']
+            model = ExecutionTextFieldsLog
+        return model.objects.filter(id=self.id).values('default')[0]['default']
 
         # manager
     objects = ExecutionActualValuesLogManager()
