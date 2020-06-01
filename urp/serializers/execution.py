@@ -23,6 +23,9 @@ import json
 # rest imports
 from rest_framework import serializers
 
+# django imports
+from django.conf import settings
+
 # app imports
 from basics.models import Status
 from urp.serializers import GlobalReadWriteSerializer
@@ -222,6 +225,12 @@ class ExecutionLogReadSerializer(GlobalReadWriteSerializer):
 class ExecutionFieldsWriteSerializer(GlobalReadWriteSerializer):
     def _validate_specific(self, data):
         pass
+
+    def update_specific(self, validated_data, instance, self_call=None):
+        if not getattr(instance, 'value'):
+            self.action = settings.DEFAULT_LOG_CREATE
+
+        return validated_data, instance
 
     def validate_patch_specific(self, data):
         if Execution.objects.get(number=self.instance.number).status.id != Status.objects.started:

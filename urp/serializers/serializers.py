@@ -60,6 +60,9 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
     def __init__(self, *args, **kwargs):
         serializers.ModelSerializer.__init__(self, *args, **kwargs)
 
+        # action
+        self.action = None
+
         # request
         if 'request' in self.context:
             self.request = self.context['request']
@@ -613,6 +616,10 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         # specific
         # FO-251: route self_call
         validated_data, instance = self.update_specific(validated_data, instance, self_call)
+
+        # new entry point to manipulate action in update_specific method
+        if self.action:
+            action = self.action
 
         hash_sequence = instance.HASH_SEQUENCE
         fields = dict()
