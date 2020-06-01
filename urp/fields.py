@@ -87,6 +87,14 @@ class ExecutionValuesField(serializers.Field):
         return data
 
 
+class ExecutionGenericField(serializers.Field):
+    def to_representation(self, value):
+        return value
+
+    def to_internal_value(self, data):
+        return data
+
+
 class SectionsField(serializers.Field):
     def to_representation(self, value):
         sections = []

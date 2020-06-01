@@ -123,6 +123,9 @@ class GlobalManager(models.Manager):
     def meta(self, data):
         pass
 
+    def meta_get(self, data):
+        pass
+
     def meta_sub(self, data):
         sub_models = self.model.sub_tables()
         for model in sub_models:

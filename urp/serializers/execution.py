@@ -35,7 +35,7 @@ from urp.models.execution.sub.text_fields import ExecutionTextFields
 from urp.models.execution.sub.bool_fields import ExecutionBoolFields
 from basics.custom import generate_checksum, generate_to_hash
 from urp.custom import validate_comment, validate_signature
-from urp.fields import ExecutionValuesField
+from urp.fields import ExecutionValuesField, ExecutionGenericField
 from urp.decorators import require_STATUS_CHANGE
 from urp.models.webhooks import WebHooks
 
@@ -269,10 +269,8 @@ class ExecutionBoolFieldsWriteSerializer(ExecutionFieldsWriteSerializer):
 
 # read field logs
 class ExecutionFieldsLogReadSerializer(GlobalReadWriteSerializer):
-    value_str = serializers.CharField(source='get_value_str', read_only=True)
-    default_str = serializers.CharField(source='get_default_str', read_only=True)
-    value_bool = serializers.BooleanField(source='get_value_bool', read_only=True)
-    default_bool = serializers.BooleanField(source='get_default_bool', read_only=True)
+    value = ExecutionGenericField(source='get_value', read_only=True)
+    default = ExecutionGenericField(source='get_default', read_only=True)
 
     class Meta:
         model = ExecutionActualValuesLog
