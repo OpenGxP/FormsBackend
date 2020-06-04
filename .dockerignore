@@ -1,0 +1,27 @@
+# exclude all
+*
+
+# include root files
+!docker-entrypoint.sh
+!gunicorn_config.py
+!LICENSE
+!manage.py
+!requirements_dev.txt
+
+# include directories
+!logs/__init__.py
+!security/__init__.py
+!data/__init__.py
+!templates
+!forms
+!basics
+!urp
+
+# ignore sub files
+forms/keys/*_key.py
+
+# ignore django migrations
+**/migrations
+
+# ignore python cache
+**/__pycache__

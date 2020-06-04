@@ -124,6 +124,7 @@ test_master.py
 
 # test openldap server
 /openldap
+/credentials
 path.py
 start_dev_priv.sh
 /postfix
