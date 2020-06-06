@@ -16,6 +16,9 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+# python imports
+from threading import Thread
+
 # rest imports
 from rest_framework import serializers
 
@@ -289,7 +292,11 @@ class FormsNewVersionStatusSerializer(GlobalReadWriteSerializer):
 
                 html_message = render_email_from_template(template_file_name='email_workflow.html',
                                                           data=email_data)
-                send_email(subject='OpenGxP Workflow Action', html_message=html_message, email=emails)
+                data = {'subject': 'OpenGxP Workflow Action',
+                        'html_message': html_message,
+                        'email': emails}
+                t = Thread(target=send_email, kwargs=data)
+                t.start()
                 # create inbox record
                 email_data['lifecycle_id'] = self.instance.lifecycle_id
                 email_data['users'] = users
@@ -353,7 +360,11 @@ class FormsNewVersionStatusSerializer(GlobalReadWriteSerializer):
                                                                               self.instance.version)}
                     html_message = render_email_from_template(template_file_name='email_workflow.html',
                                                               data=email_data)
-                    send_email(subject='OpenGxP Workflow Action', html_message=html_message, email=emails)
+                    data = {'subject': 'OpenGxP Workflow Action',
+                            'html_message': html_message,
+                            'email': emails}
+                    t = Thread(target=send_email, kwargs=data)
+                    t.start()
                     # create inbox record
                     email_data['lifecycle_id'] = self.instance.lifecycle_id
                     email_data['users'] = users

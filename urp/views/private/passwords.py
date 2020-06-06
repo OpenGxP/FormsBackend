@@ -16,6 +16,9 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+# python imports
+from threading import Thread
+
 # rest imports
 from rest_framework import serializers
 from rest_framework.response import Response
@@ -86,7 +89,11 @@ def change_password_view(request, username):
     user = Users.objects.get_valid_by_key(vault.username)
     email_data = {'fullname': user.get_full_name()}
     html_message = render_email_from_template(template_file_name='email_password_changed.html', data=email_data)
-    send_email(subject='OpenGxP Password Changed', html_message=html_message, email=user.email)
+    data = {'subject': 'OpenGxP Password Changed',
+            'html_message': html_message,
+            'email': user.email}
+    t = Thread(target=send_email, kwargs=data)
+    t.start()
 
     return Response(status=http_status.HTTP_200_OK)
 
@@ -141,6 +148,10 @@ def user_change_password_view(request):
     user = Users.objects.get_valid_by_key(vault.username)
     email_data = {'fullname': user.get_full_name()}
     html_message = render_email_from_template(template_file_name='email_password_changed.html', data=email_data)
-    send_email(subject='OpenGxP Password Changed', html_message=html_message, email=user.email)
+    data = {'subject': 'OpenGxP Password Changed',
+            'html_message': html_message,
+            'email': user.email}
+    t = Thread(target=send_email, kwargs=data)
+    t.start()
 
     return Response(status=http_status.HTTP_200_OK)

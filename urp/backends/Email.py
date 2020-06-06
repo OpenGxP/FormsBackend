@@ -159,3 +159,4 @@ def send_email(email, html_message, subject):
         logger.error('Email could not be send. Details: {}'.format(e))
     except ImproperlyConfigured:
         pass
+    return

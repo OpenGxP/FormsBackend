@@ -18,6 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # python imports
 from uuid import UUID
+from threading import Thread
 
 # rest imports
 from rest_framework.response import Response
@@ -70,7 +71,11 @@ def request_password_reset_email_view(request):
     else:
         html_message = render_email_from_template(template_file_name='email_password_reset_nok.html')
 
-    send_email(subject='OpenGxP Password Reset', html_message=html_message, email=email)
+    data = {'subject': 'OpenGxP Password Reset',
+            'html_message': html_message,
+            'email': email}
+    t = Thread(target=send_email, kwargs=data)
+    t.start()
 
     # 100% positive inform requester that email was send
     return Response(data=['Email has been sent.'], status=http_status.HTTP_200_OK)
@@ -139,7 +144,11 @@ def password_reset_email_view(request, token):
         # inform user about successful password change
         email_data = {'fullname': user.get_full_name()}
         html_message = render_email_from_template(template_file_name='email_password_changed.html', data=email_data)
-        send_email(subject='OpenGxP Password Changed', html_message=html_message, email=token.email)
+        data = {'subject': 'OpenGxP Password Changed',
+                'html_message': html_message,
+                'email': token.email}
+        t = Thread(target=send_email, kwargs=data)
+        t.start()
 
         # delete token
         token.delete()
