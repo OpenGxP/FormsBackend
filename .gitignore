@@ -133,3 +133,7 @@ start_dev_priv.sh
 crypto_key.py
 secret_key.py
 *.pem
+
+# docker
+docker-compose.yml
+web.env
