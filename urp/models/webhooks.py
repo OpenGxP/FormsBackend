@@ -28,6 +28,7 @@ from urp.models.forms.forms import Forms
 from basics.models import Status
 from urp.validators import validate_no_space, validate_no_specials_reduced, validate_no_numbers, validate_only_ascii, \
     SPECIALS_REDUCED
+from urp.crypto import decrypt
 
 
 # log manager
@@ -38,11 +39,16 @@ class WebHooksLogManager(GlobalManager):
     IS_LOG = True
 
     # meta
+    GET_MODEL_EXCLUDE = ('token',)
     GET_MODEL_ORDER = ('webhook',
                        'url',
                        'form',
                        'header_token',
                        'token')
+    GET_MODEL_ORDER_NO_TOKEN = ('webhook',
+                                'url',
+                                'form',
+                                'header_token')
 
 
 # log table
@@ -52,7 +58,7 @@ class WebHooksLog(GlobalModelLog):
     url = models.CharField(_('Url'), max_length=CHAR_MAX)
     form = models.CharField(_('Form'), max_length=CHAR_DEFAULT)
     header_token = models.CharField(_('Header token'), max_length=CHAR_DEFAULT)
-    token = models.CharField(_('Token'), max_length=CHAR_DEFAULT)
+    token = models.CharField(_('Token'), max_length=CHAR_MAX)
     # defaults
     status = models.ForeignKey(Status, on_delete=models.PROTECT, verbose_name=_('Status'))
     version = FIELD_VERSION
@@ -90,7 +96,9 @@ class WebHooksManager(GlobalManager):
     LOG_TABLE = WebHooksLog
 
     # meta
+    GET_MODEL_EXCLUDE = WebHooksLogManager.GET_MODEL_EXCLUDE
     GET_MODEL_ORDER = WebHooksLogManager.GET_MODEL_ORDER
+    GET_MODEL_ORDER_NO_TOKEN = WebHooksLogManager.GET_MODEL_ORDER_NO_TOKEN
 
 
 # table
@@ -108,7 +116,7 @@ class WebHooks(GlobalModel):
                                     validators=[validate_no_specials_reduced, validate_no_space, validate_no_numbers,
                                                 validate_only_ascii],
                                     help_text=_('Define authentication header token name.'))
-    token = models.CharField(_('Token'), max_length=CHAR_DEFAULT, help_text=_('Define authentication token.'))
+    token = models.CharField(_('Token'), max_length=CHAR_MAX, help_text=_('Define authentication token.'))
     # defaults
     status = models.ForeignKey(Status, on_delete=models.PROTECT, verbose_name=_('Status'))
     version = FIELD_VERSION
@@ -127,6 +135,10 @@ class WebHooks(GlobalModel):
     @property
     def get_status(self):
         return self.status.status
+
+    @property
+    def decrypt_token(self):
+        return decrypt(self.token)
 
     # hashing
     HASH_SEQUENCE = ['webhook', 'url', 'form', 'header_token', 'token',

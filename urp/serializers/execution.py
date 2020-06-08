@@ -158,9 +158,9 @@ class ExecutionStatusSerializer(GlobalReadWriteSerializer):
             for record in field_values:
                 payload[record.field] = record.value
 
-            hooks = WebHooks.objects.filter(form=self.instance.form).all()
+            hooks = WebHooks.objects.get_prod_valid_list({'form': self.instance.form})
             for hook in hooks:
-                headers['Authorization'] = '{} {}'.format(hook.header_token, hook.token)
+                headers['Authorization'] = '{} {}'.format(hook.header_token, hook.decrypt_token)
                 requests.post(url=hook.url, headers=headers, data=json.dumps(payload))
 
         return validated_data, instance

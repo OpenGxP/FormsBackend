@@ -20,9 +20,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from urp.models.webhooks import WebHooks, WebHooksLog
 from urp.models.forms.forms import Forms
 from urp.serializers import GlobalReadWriteSerializer
+from urp.crypto import encrypt
 
 # rest imports
 from rest_framework import serializers
+from rest_framework.fields import get_error_detail
+
+# django imports
+from django.core.exceptions import ValidationError as DjangoValidationError
 
 
 # read / add / edit
@@ -31,7 +36,9 @@ class WebHooksReadWriteSerializer(GlobalReadWriteSerializer):
 
     class Meta:
         model = WebHooks
-        extra_kwargs = {'version': {'required': False}}
+        extra_kwargs = {'version': {'required': False},
+                        'token': {'write_only': True,
+                                  'required': False}}
         fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_ORDER_STATUS_MANAGED + \
             model.objects.GET_BASE_CALCULATED + model.objects.COMMENT_SIGNATURE
 
@@ -41,6 +48,37 @@ class WebHooksReadWriteSerializer(GlobalReadWriteSerializer):
             if not form:
                 raise serializers.ValidationError('Referenced form "{}" is not valid.'.format(value))
         return value
+
+    def validate_post_specific(self, data):
+        if 'token' not in data.keys():
+            self.my_errors.update({'token': ['This field is required.']})
+        else:
+            token_field = self.get_fields()['token']
+            try:
+                token_field.run_validation(data['token'])
+            except DjangoValidationError as exc:
+                self.my_errors['token'] = get_error_detail(exc)
+
+    def validate_patch_specific(self, data):
+        if 'token' in data.keys():
+            token_field = self.get_fields()['token']
+            try:
+                token_field.run_validation(data['token'])
+            except DjangoValidationError as exc:
+                self.my_errors['token'] = get_error_detail(exc)
+
+    def create_specific(self, validated_data, obj):
+        token = validated_data['token']
+        validated_data['token'] = encrypt(token)
+        return validated_data, obj
+
+    def update_specific(self, validated_data, instance, self_call=None):
+        if 'token' in validated_data.keys():
+            token = validated_data['token']
+            validated_data['token'] = encrypt(token)
+        else:
+            validated_data['token'] = getattr(instance, 'token')
+        return validated_data, instance
 
 
 # new version / status
@@ -53,9 +91,8 @@ class WebHooksNewVersionStatusSerializer(GlobalReadWriteSerializer):
                         'webhook': {'required': False},
                         'url': {'required': False},
                         'header_token': {'required': False},
-                        'token': {'required': False},
                         'form': {'required': False}}
-        fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_ORDER_STATUS_MANAGED + \
+        fields = model.objects.GET_MODEL_ORDER_NO_TOKEN + model.objects.GET_BASE_ORDER_STATUS_MANAGED + \
             model.objects.GET_BASE_CALCULATED + model.objects.COMMENT_SIGNATURE
 
 
@@ -72,5 +109,5 @@ class WebHooksLogReadSerializer(GlobalReadWriteSerializer):
 
     class Meta:
         model = WebHooksLog
-        fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_ORDER_STATUS_MANAGED + \
+        fields = model.objects.GET_MODEL_ORDER_NO_TOKEN + model.objects.GET_BASE_ORDER_STATUS_MANAGED + \
             model.objects.GET_BASE_ORDER_LOG + model.objects.GET_BASE_CALCULATED
