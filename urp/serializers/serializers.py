@@ -91,6 +91,9 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         self.sub_parent_sequences = []
         # sequence check
         self.global_sequence_check = {}
+        # FO-310: new attribute for global unique check in forms
+        self.global_unique_check = {'fields_text': [],
+                                    'fields_bool': []}
 
         self._signature = None
         if 'signature' in self.context.keys():
@@ -198,6 +201,23 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
             else:
                 base[section] = merge[section]
 
+    # FO-310: new method to re-use unique check
+    def validate_unique(self, unique_check, value, key, parent, error_dict, error_key):
+        if len(unique_check) != len(set(unique_check)):
+            duplicates = set([x for x in unique_check if unique_check.count(x) > 1])
+            for item in duplicates:
+                for record in value:
+                    if record[key] == item:
+                        # FO-282: for sub elements inf forms, consider section
+                        if not parent:
+                            # FO-318: get sequence from record, not item, item is from duplicate list of strings
+                            error = {record['sequence']: {key: ['This field must be unique.']}}
+                            # FO-239: pass error_key to field based error collection method
+                            # FO-318: get sequence from record, not item, item is from duplicate list of strings
+                            self.create_update_record(error_dict=error_dict, item=record, value=error, key=error_key)
+                        else:
+                            error_dict[record['sequence']] = {key: ['This field must be unique.']}
+
     def validate_predecessors(self, value, key):
         error_dict = {}
         predecessors_check = []
@@ -258,7 +278,8 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
             self.sub_parent_sequences = sequence_check
 
     # FO-239: to control workflow keys, new variable error_key
-    def validate_sub(self, value, key, error_key, parent=None):
+    # FO-310: added "field" attribute to control source
+    def validate_sub(self, value, key, error_key, parent=None, field=None):
         error_dict = {}
         unique_check = []
 
@@ -305,25 +326,17 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                 else:
                     error_dict[item['sequence']] = {key: e.detail}
             unique_check.append(item[key])
+            # Fo-310: collect field data for further global unique check
+            if not parent and field:
+                self.global_unique_check[field].append(item)
 
         if error_dict:
             raise serializers.ValidationError(error_dict)
 
         # validate key unique characteristic
-        if len(unique_check) != len(set(unique_check)):
-            duplicates = set([x for x in unique_check if unique_check.count(x) > 1])
-            for item in duplicates:
-                for record in value:
-                    if record[key] == item:
-                        # FO-282: for sub elements inf forms, consider section
-                        if not parent:
-                            # FO-318: get sequence from record, not item, item is from duplicate list of strings
-                            error = {record['sequence']: {key: ['This field must be unique.']}}
-                            # FO-239: pass error_key to field based error collection method
-                            # FO-318: get sequence from record, not item, item is from duplicate list of strings
-                            self.create_update_record(error_dict=error_dict, item=record, value=error, key=error_key)
-                        else:
-                            error_dict[record['sequence']] = {key: ['This field must be unique.']}
+        # FO-310: moved unique check into new method, to re-use
+        self.validate_unique(unique_check=unique_check, key=key, error_key=error_key, error_dict=error_dict,
+                             parent=parent, value=value)
 
         if parent:
             self.sub_parents = unique_check

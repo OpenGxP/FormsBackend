@@ -76,7 +76,9 @@ class FormsReadWriteSerializer(GlobalReadWriteSerializer):
                 raise serializers.ValidationError('Not allowed to use "{}".'.format(value))
         return value
 
-    def validate_post_specific(self, data):
+    # FO-310: moved check to verify sequence and fields into new method
+    # added validation of field unique characteristic over multiple field types
+    def validate_post_patch(self, data):
         # validate that any field type is present
         check = ['linked_fields_text', 'linked_fields_bool']
         if set(check).issubset(data):
@@ -99,6 +101,45 @@ class FormsReadWriteSerializer(GlobalReadWriteSerializer):
                         raise serializers.ValidationError('Sequence within one section must be unique.')
                 except KeyError:
                     raise serializers.ValidationError('Sequence must match over sections and fields.')
+
+        # get all fields
+        all_fields = []
+        for i in self.global_unique_check.keys():
+            all_fields += self.global_unique_check[i]
+        # create list of all possible duplicates
+        unique_check = [d['field'] for d in all_fields]
+        error_dict = {}
+        # validate key unique characteristic
+        self.validate_unique(unique_check=unique_check, key='field', error_key='section', error_dict=error_dict,
+                             parent=False, value=all_fields)
+        final_error_dict = {}
+        # if unique errors, locate the source field to build proper error message
+        if error_dict:
+            for section in error_dict.keys():
+                for sequence in error_dict[section]:
+                    # parse source field
+                    for field in self.global_unique_check.keys():
+                        for item in self.global_unique_check[field]:
+                            if item['section'] == section and item['sequence'] == sequence:
+                                if field in final_error_dict.keys():
+                                    if section in final_error_dict[field].keys():
+                                        final_error_dict[field][section].update(
+                                            {sequence: {'field': error_dict[section][sequence]['field']}})
+                                    else:
+                                        final_error_dict[field][section] = \
+                                            {sequence: {'field': error_dict[section][sequence]['field']}}
+                                else:
+                                    final_error_dict[field] = \
+                                        {section: {sequence: {'field': error_dict[section][sequence]['field']}}}
+            self.my_errors.update(final_error_dict)
+
+    def validate_post_specific(self, data):
+        # FO-310: use new validate method
+        self.validate_post_patch(data)
+
+    # FO-310: use new validate method also for update
+    def validate_patch_specific(self, data):
+        self.validate_post_patch(data)
 
     def validate_sections(self, value):
         error_dict = {}
@@ -157,7 +198,8 @@ class FormsReadWriteSerializer(GlobalReadWriteSerializer):
         self.validate_sequence_plain(value, form=True)
         try:
             # FO-239: validate_sub must control error_key, use "section" for forms
-            value = self.validate_sub(value, key='field', error_key='section')
+            # FO-310: added "field" attribute to control source
+            value = self.validate_sub(value, key='field', error_key='section', field='fields_text')
         except serializers.ValidationError as e:
             error_dict.update(e.detail)
 
@@ -192,7 +234,8 @@ class FormsReadWriteSerializer(GlobalReadWriteSerializer):
 
         try:
             # FO-239: validate_sub must control error_key, use "section" for forms
-            value = self.validate_sub(value, key='field', error_key='section')
+            # FO-310: added "field" attribute to control source
+            value = self.validate_sub(value, key='field', error_key='section', field='fields_bool')
         except serializers.ValidationError as e:
             error_dict.update(e.detail)
 
