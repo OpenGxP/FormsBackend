@@ -48,6 +48,7 @@ from urp.views.private.webhooks import webhooks_list, webhooks_detail, webhooks_
     webhooks_list_validate, webhooks_detail_validate
 from urp.views.private.securitykeys import securitykeys_list, securitykeys_detail, securitykeys_log_list, \
     securitykeys_list_validate
+from urp.views.private.webhooksmonitor import webhooksmonitor_list, webhooksmonitor_log_list
 
 # app imports
 from urp.views import permissions_list, status_list, access_log_list, central_log_list, \
@@ -109,6 +110,7 @@ urls_private = [
     path('{}logs/profile'.format(settings.BASE_URL), profile_log_list, name='profile-log-list'),
     path('{}logs/execution'.format(settings.BASE_URL), execution_log_list, name='execution-log-list'),
     path('{}logs/execution_values'.format(settings.BASE_URL), list_log_value, name='execution-values-log-list'),
+    path('{}logs/webhooksmonitor'.format(settings.BASE_URL), webhooksmonitor_log_list, name='webhooksmonitor-log-list'),
     # ldap
     path('{}admin/ldap'.format(settings.BASE_URL), ldap_list, name='ldap-list'),
     path('{}admin/ldap_validate'.format(settings.BASE_URL), ldap_list_validate, name='ldap-list-validate'),
@@ -144,6 +146,8 @@ urls_private = [
          name='securitykeys-list-validate'),
     path('{}admin/securitykeys/<str:security_key>'.format(settings.BASE_URL), securitykeys_detail,
          name='securitykeys-detail'),
+    # webhooksmonitor
+    path('{}admin/webhooksmonitor'.format(settings.BASE_URL), webhooksmonitor_list, name='webhooksmonitor-list'),
     # roles
     path('{}admin/roles'.format(settings.BASE_URL), roles_list, name='roles-list'),
     path('{}admin/roles_validate'.format(settings.BASE_URL), roles_list_validate, name='roles-list-validate'),

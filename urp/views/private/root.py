@@ -129,7 +129,22 @@ def private_root_view(request):
                                                                   'patch': True,
                                                                   'delete': True,
                                                                   'version': False,
-                                                                  'status': None}}},
+                                                                  'status': None},
+                                                       'webhooksmonitor': {'title': 'WebHooks Monitor',
+                                                                           'url':
+                                                                               {'abs': reverse('webhooksmonitor-list',
+                                                                                               request=request),
+                                                                                'rel': 'admin/webhooksmonitor'},
+                                                                           'log':
+                                                                               {'abs':
+                                                                                reverse('webhooksmonitor-log-list',
+                                                                                        request=request),
+                                                                                'rel': 'logs/webhooksmonitor'},
+                                                                           'post': False,
+                                                                           'patch': False,
+                                                                           'delete': False,
+                                                                           'version': False,
+                                                                           'status': None}}},
                            'admin_gxp': {'title': 'GxP Administration',
                                          'subjects': {'roles': {'title': 'Roles',
                                                                 'url': {'abs': reverse('roles-list', request=request),
@@ -316,7 +331,11 @@ def private_root_view(request):
                                                                            'url': {'abs': reverse(
                                                                                'execution-values-log-list',
                                                                                request=request),
-                                                                               'rel': 'logs/execution_values'}}
+                                                                               'rel': 'logs/execution_values'}},
+                                                 'webhooksmonitor': {'title': 'WebHooks Monitor',
+                                                                     'url': {'abs': reverse('execution-values-log-list',
+                                                                                            request=request),
+                                                                             'rel': 'logs/webhooksmonitor'}}
                                                  }}}}
 
     return Response(root)

@@ -16,10 +16,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-# python imports
-import requests
-import json
-
 # rest imports
 from rest_framework import serializers
 
@@ -40,7 +36,7 @@ from basics.custom import generate_checksum, generate_to_hash
 from urp.custom import validate_comment, validate_signature
 from urp.fields import ExecutionValuesField, ExecutionGenericField
 from urp.decorators import require_STATUS_CHANGE
-from urp.models.webhooks import WebHooks
+from urp.backends.webhooks import WebHooksRouter
 
 
 # read / add / edit
@@ -148,20 +144,8 @@ class ExecutionStatusSerializer(GlobalReadWriteSerializer):
     @require_STATUS_CHANGE
     def update_specific(self, validated_data, instance, self_call=None):
         if self.context['status'] == 'complete':
-            headers = {'Accept': 'application/json',
-                       'Content-Type': 'application/json',
-                       'Authorization': ''}
-
-            payload = {}
-
-            field_values = self.instance.linked_fields_values
-            for record in field_values:
-                payload[record.field] = record.value
-
-            hooks = WebHooks.objects.get_prod_valid_list({'form': self.instance.form})
-            for hook in hooks:
-                headers['Authorization'] = '{} {}'.format(hook.header_token, hook.decrypt_token)
-                requests.post(url=hook.url, headers=headers, data=json.dumps(payload))
+            hooks = WebHooksRouter(request=self.request, instance=instance)
+            hooks.start()
 
         return validated_data, instance
 
