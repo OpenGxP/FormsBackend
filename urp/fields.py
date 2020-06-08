@@ -24,6 +24,9 @@ from django.core.exceptions import ValidationError
 # rest imports
 from rest_framework import serializers
 
+# app imports
+from urp.crypto import decrypt
+
 
 class LookupField(models.Field):
     description = 'CharField that accepts arrays and transform them to comma separated string.'
@@ -160,3 +163,11 @@ class BoolField(FormsFieldBase):
     @property
     def fields(self):
         return ['default']
+
+
+class EncryptionField(serializers.Field):
+    def to_representation(self, value):
+        return decrypt(value)
+
+    def to_internal_value(self, data):
+        return data

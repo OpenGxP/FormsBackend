@@ -352,6 +352,8 @@ def log_records(model, action, data, access_log=None, _status=True, sub_tables=T
             del data['lookup']
         elif model.MODEL_ID == '55':
             del data['security_key']
+        elif model.MODEL_ID == '50':
+            del data['token']
         query = log_model.objects.filter(**data).all()[0]
     except model.DoesNotExist or IndexError:
         assert 'No log record found for "{}".'.format(data)

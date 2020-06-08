@@ -39,16 +39,11 @@ class WebHooksLogManager(GlobalManager):
     IS_LOG = True
 
     # meta
-    GET_MODEL_EXCLUDE = ('token',)
     GET_MODEL_ORDER = ('webhook',
                        'url',
                        'form',
                        'header_token',
                        'token')
-    GET_MODEL_ORDER_NO_TOKEN = ('webhook',
-                                'url',
-                                'form',
-                                'header_token')
 
 
 # log table
@@ -98,7 +93,6 @@ class WebHooksManager(GlobalManager):
     # meta
     GET_MODEL_EXCLUDE = WebHooksLogManager.GET_MODEL_EXCLUDE
     GET_MODEL_ORDER = WebHooksLogManager.GET_MODEL_ORDER
-    GET_MODEL_ORDER_NO_TOKEN = WebHooksLogManager.GET_MODEL_ORDER_NO_TOKEN
 
 
 # table
