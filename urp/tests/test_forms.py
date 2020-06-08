@@ -79,7 +79,36 @@ class PostNewForm(PostNew):
                                                'instruction': 'text',
                                                'sequence': 1}]}
         self.invalid_payloads = [dict(),
-                                 {'form': ''}]
+                                 {'form': ''},
+                                 # FO-318: added test to verify that two text fields in different sections
+                                 # return proper error
+                                 {'form': 'test',
+                                  'workflow': 'myworkflow',
+                                  'tag': 'mytag',
+                                  'sections': [{'section': 'sectionOne',
+                                                'role': 'all',
+                                                'sequence': 0,
+                                                'confirmation': 'logging'},
+                                               {'section': 'sectionTwo',
+                                                'role': 'all',
+                                                'sequence': 1,
+                                                'predecessors': ['sectionOne'],
+                                                'confirmation': 'logging'}],
+                                  'fields_text': [{'section': 0,
+                                                   'field': 'textfieldOne',
+                                                   'mandatory': True,
+                                                   'instruction': 'text123',
+                                                   'sequence': 0},
+                                                  {'section': 1,
+                                                   'field': 'textfieldOne',
+                                                   'mandatory': True,
+                                                   'instruction': 'text2',
+                                                   'sequence': 1}],
+                                  'fields_bool': [{'section': 0,
+                                                   'field': 'boolfieldOne',
+                                                   'mandatory': False,
+                                                   'instruction': 'text',
+                                                   'sequence': 1}]}]
         self.execute = True
         self.pre_data = [{'data': {'tag': 'mytag'},
                           'path': reverse('tags-list'),

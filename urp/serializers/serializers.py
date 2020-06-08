@@ -317,9 +317,11 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                     if record[key] == item:
                         # FO-282: for sub elements inf forms, consider section
                         if not parent:
-                            error = {item['sequence']: {key: ['This field must be unique.']}}
+                            # FO-318: get sequence from record, not item, item is from duplicate list of strings
+                            error = {record['sequence']: {key: ['This field must be unique.']}}
                             # FO-239: pass error_key to field based error collection method
-                            self.create_update_record(error_dict=error_dict, item=item, value=error, key=error_key)
+                            # FO-318: get sequence from record, not item, item is from duplicate list of strings
+                            self.create_update_record(error_dict=error_dict, item=record, value=error, key=error_key)
                         else:
                             error_dict[record['sequence']] = {key: ['This field must be unique.']}
 
