@@ -90,6 +90,19 @@ class ExecutionValuesField(serializers.Field):
         return data
 
 
+class ExecutionSectionsField(serializers.Field):
+    def to_representation(self, value):
+        values = []
+        for record in value:
+            values.append({'section': record.section,
+                           'role': record.role,
+                           'confirmation': record.confirmation})
+        return values
+
+    def to_internal_value(self, data):
+        return data
+
+
 class ExecutionGenericField(serializers.Field):
     def to_representation(self, value):
         return value

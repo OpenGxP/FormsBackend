@@ -32,7 +32,7 @@ from basics.custom import require_json_file
 
 
 BASE_PATH = reverse('email-list')
-EMAIL_CON_DATA = require_json_file(path=settings.SECURITY_DIR + '/credentials/', file_name='EMAIL_CON_DATA.json')
+EMAIL_CON_DATA = require_json_file(path=settings.BASE_DIR + '/credentials/', file_name='EMAIL_CON_DATA.json')
 
 
 # get
