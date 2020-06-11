@@ -42,6 +42,8 @@ from urp.validators import validate_only_ascii, validate_no_specials_reduced, va
 from urp.models.execution.sub.text_fields import ExecutionTextFields
 from urp.models.execution.sub.bool_fields import ExecutionBoolFields
 from urp.models.execution.execution import Execution
+from urp.models.logs.sections import ExecutionSectionsLog
+from urp.models.execution.view import ExecutionActualValuesLog
 
 # django imports
 from django.db.models import CharField, IntegerField, DateTimeField, BooleanField
@@ -168,6 +170,20 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         if 'lifecycle_id' in data and 'version' in data:
             return True
         return
+
+    # -- BEGIN for execution only -- #
+
+    @staticmethod
+    def last_section_sign(number, section):
+        return ExecutionSectionsLog.objects.filter(
+            number=number, section=section).values('timestamp').latest('timestamp')['timestamp']
+
+    @staticmethod
+    def last_section_value(number, section):
+        return ExecutionActualValuesLog.objects.filter(
+            number=number, section=section).values('timestamp').latest('timestamp')['timestamp']
+
+    # -- END for execution only -- #
 
     @staticmethod
     # FO-282: adapted this method to control the item key, default is sequence to not alter workflow behavior

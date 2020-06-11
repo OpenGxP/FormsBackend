@@ -38,7 +38,6 @@ from urp.custom import validate_comment, validate_signature, create_central_log_
 from urp.fields import ExecutionValuesField, ExecutionGenericField, ExecutionSectionsField
 from urp.decorators import require_STATUS_CHANGE
 from urp.backends.webhooks import WebHooksRouter
-from urp.models.settings import Settings
 from urp.validators import validate_last_execution_value
 
 
@@ -164,6 +163,19 @@ class ExecutionSectionsSignSerializer(GlobalReadWriteSerializer):
             # validate if all fields of section are complete / have actual values
             validate_last_execution_value(query.actual_values)
 
+            # 1) validate if signature already exists
+            try:
+                last_section_sign = self.last_section_sign(number=query.number, section=data['section'])
+            # if no value is returned, DoesNotExist is raise and no validation required
+            except ExecutionSectionsLog.DoesNotExist:
+                pass
+            # if value is returned, validation must be performed
+            else:
+                # 2) verify if there are new records in this sections after the last signature
+                last_value_timestamp = self.last_section_value(number=query.number, section=data['section'])
+                if last_value_timestamp < last_section_sign:
+                    raise serializers.ValidationError('This section is already signed.')
+
             # always do signature validation if external call
             self.signature = raw_signature(logged_in_user=self.user, data=data, request=self.request)
             # comment validation according to settings
@@ -239,6 +251,18 @@ class ExecutionStatusSerializer(GlobalReadWriteSerializer):
                         if not ExecutionSectionsLog.objects.filter(number=self.instance.number,
                                                                    section=x.section).count() > 0:
                             raise serializers.ValidationError('Not all sections are completed.')
+
+                        # for sections that need to be signed, validate if no value was recorded after section sign
+                        if x.confirmation == settings.DEFAULT_LOG_SIGNATURE:
+                            # timestamp of last recorded value for this section
+                            last_value_timestamp = self.validate_method.last_section_value(number=self.instance.number,
+                                                                                           section=x.section)
+                            # timestamp of last recorded sign for this section
+                            last_section_sign = self.validate_method.last_section_sign(number=self.instance.number,
+                                                                                       section=x.section)
+                            if last_value_timestamp > last_section_sign:
+                                raise serializers.ValidationError('Corrections in section "{}" '
+                                                                  'must be signed again.'.format(x.section))
 
             @require_canceled
             def validate_canceled(self):
