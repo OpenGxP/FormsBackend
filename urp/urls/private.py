@@ -30,7 +30,7 @@ from urp.views.private.workflows import workflows_list, workflows_detail, workfl
     workflows_log_list, workflows_steps_log_list, workflows_list_validate, workflows_detail_validate
 from urp.views.private.logs.signatures import signatures_log_list
 from urp.views.private.execution import execution_list, execution_detail, execution_log_list, execution_status, \
-    execution_value, list_log_value
+    execution_value, list_log_value, execution_section
 from urp.views.private.roles import roles_list, roles_detail, roles_ldap, roles_log_list, roles_status, \
     roles_detail_validate, roles_list_validate
 from urp.views.private.tags import tags_list, tags_list_validate, tags_detail, tags_detail_validate, tags_log_list
@@ -49,6 +49,7 @@ from urp.views.private.webhooks import webhooks_list, webhooks_detail, webhooks_
 from urp.views.private.securitykeys import securitykeys_list, securitykeys_detail, securitykeys_log_list, \
     securitykeys_list_validate
 from urp.views.private.webhooksmonitor import webhooksmonitor_list, webhooksmonitor_log_list
+from urp.views.private.logs.sections import execution_sections_log_list
 
 # app imports
 from urp.views import permissions_list, status_list, access_log_list, central_log_list, \
@@ -110,6 +111,8 @@ urls_private = [
     path('{}logs/profile'.format(settings.BASE_URL), profile_log_list, name='profile-log-list'),
     path('{}logs/execution'.format(settings.BASE_URL), execution_log_list, name='execution-log-list'),
     path('{}logs/execution_values'.format(settings.BASE_URL), list_log_value, name='execution-values-log-list'),
+    path('{}logs/execution_sections'.format(settings.BASE_URL), execution_sections_log_list,
+         name='execution-sections-log-list'),
     path('{}logs/webhooksmonitor'.format(settings.BASE_URL), webhooksmonitor_log_list, name='webhooksmonitor-log-list'),
     # ldap
     path('{}admin/ldap'.format(settings.BASE_URL), ldap_list, name='ldap-list'),
@@ -214,8 +217,10 @@ urls_private = [
     path('{}rtd/execution/<int:number>'.format(settings.BASE_URL), execution_detail),
     path('{}rtd/execution/<int:number>/<str:status>'.format(settings.BASE_URL), execution_status,
          name='forms-status'),
-    path('{}rtd/execution/<int:number>/<str:section>/<str:field>'.format(settings.BASE_URL),
+    path('{}rtd/execution/<int:number>/<str:section>/value/<str:field>'.format(settings.BASE_URL),
          execution_value, name='execution-value'),
+    path('{}rtd/execution/<int:number>/<str:section>/complete'.format(settings.BASE_URL), execution_section,
+         name='execution-section'),
     # meta views
     path('{}meta/<str:dialog>'.format(settings.BASE_URL), meta_list, name='meta-list'),
 ]

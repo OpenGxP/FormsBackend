@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # app imports
 from urp.serializers.settings import SettingsInitialWriteSerializer
 from urp.models.settings import Settings
+from urp.models.execution.execution import Execution
 
 # django imports
 from django.apps import apps
@@ -62,6 +63,12 @@ class Command(BaseCommand):
         for model in models:
             if not models[model].objects.COM_SIG_SETTINGS or models[model].objects.IS_LOG:
                 continue
+            # ... manually add setting for form section comment
+            if model == Execution.MODEL_CONTEXT.lower():
+                data = {'key': 'dialog.{}.comment.{}'.format(model, settings.SECTION_PERM),
+                        'default': settings.DEFAULT_DIALOG_COMMENT_SECTION,
+                        'value': settings.DEFAULT_DIALOG_COMMENT_SECTION}
+                add_setting(self, data)
             for key, value in models[model].perms.items():
                 if key == '01':
                     continue

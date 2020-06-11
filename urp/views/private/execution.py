@@ -24,7 +24,7 @@ from urp.views.views import auto_logout
 from urp.models.execution.execution import Execution
 from urp.serializers.execution import ExecutionReadWriteSerializer, ExecutionStatusSerializer, \
     ExecutionLogReadSerializer, ExecutionDeleteSerializer, ExecutionTextFieldsWriteSerializer, \
-    ExecutionBoolFieldsWriteSerializer, ExecutionFieldsLogReadSerializer
+    ExecutionBoolFieldsWriteSerializer, ExecutionFieldsLogReadSerializer, ExecutionSectionsSignSerializer
 from urp.decorators import auth_required
 from urp.views.base import RTDView
 from urp.models.execution.view import ExecutionActualValuesLog
@@ -38,7 +38,8 @@ model_ser_pairs = {ExecutionTextFields: ExecutionTextFieldsWriteSerializer,
 
 view = RTDView(model=Execution, ser_rw=ExecutionReadWriteSerializer, ser_del=ExecutionDeleteSerializer,
                ser_log=ExecutionLogReadSerializer, ser_st=ExecutionStatusSerializer, model_ser_pairs=model_ser_pairs,
-               log_model_view=ExecutionActualValuesLog, log_model_view_ser=ExecutionFieldsLogReadSerializer)
+               log_model_view=ExecutionActualValuesLog, log_model_view_ser=ExecutionFieldsLogReadSerializer,
+               ser_sections=ExecutionSectionsSignSerializer)
 
 
 @api_view(['GET', 'POST'])
@@ -67,6 +68,13 @@ def execution_status(request, number, status):
 @auto_logout()
 def execution_value(request, number, section, field):
     return view.value(request, number, section, field)
+
+
+@api_view(['POST'])
+@auth_required()
+@auto_logout()
+def execution_section(request, number, section):
+    return view.section(request, number, section)
 
 
 @api_view(['GET'])

@@ -28,15 +28,18 @@ from urp.serializers import GlobalReadWriteSerializer
 from urp.models.forms.forms import Forms
 from urp.models.forms.sub.sections import FormsSections
 from urp.models.execution.execution import Execution, ExecutionLog
+from urp.models.logs.sections import ExecutionSectionsLog
 from urp.decorators import require_status
 from urp.models.execution.view import ExecutionActualValuesLog
 from urp.models.execution.sub.text_fields import ExecutionTextFields
 from urp.models.execution.sub.bool_fields import ExecutionBoolFields
 from basics.custom import generate_checksum, generate_to_hash
-from urp.custom import validate_comment, validate_signature
-from urp.fields import ExecutionValuesField, ExecutionGenericField
+from urp.custom import validate_comment, validate_signature, create_central_log_record, raw_signature
+from urp.fields import ExecutionValuesField, ExecutionGenericField, ExecutionSectionsField
 from urp.decorators import require_STATUS_CHANGE
 from urp.backends.webhooks import WebHooksRouter
+from urp.models.settings import Settings
+from urp.validators import validate_last_execution_value
 
 
 # read / add / edit
@@ -49,6 +52,7 @@ class ExecutionReadWriteSerializer(GlobalReadWriteSerializer):
     # status field
     status = serializers.CharField(source='get_status', read_only=True)
     fields_values = ExecutionValuesField(source='linked_fields_values', read_only=True)
+    sections = ExecutionSectionsField(source='linked_sections', read_only=True)
 
     class Meta:
         model = Execution
@@ -56,8 +60,8 @@ class ExecutionReadWriteSerializer(GlobalReadWriteSerializer):
                         'tag': {'read_only': True},
                         'lifecycle_id': {'required': False},
                         'version': {'required': False}}
-        fields = model.objects.GET_MODEL_ORDER + ('status', 'fields_values', ) + model.objects.GET_BASE_CALCULATED + \
-            model.objects.COMMENT_SIGNATURE
+        fields = model.objects.GET_MODEL_ORDER + ('status', 'fields_values', 'sections', ) \
+            + model.objects.GET_BASE_CALCULATED + model.objects.COMMENT_SIGNATURE
 
     def validate_form(self, value):
         if value:
@@ -126,6 +130,62 @@ class ExecutionReadWriteSerializer(GlobalReadWriteSerializer):
         return validated_data, obj
 
 
+# sign / complete a section
+class ExecutionSectionsSignSerializer(GlobalReadWriteSerializer):
+    def __init__(self, *args, **kwargs):
+        GlobalReadWriteSerializer.__init__(self, *args, **kwargs)
+
+    class Meta:
+        model = ExecutionSectionsLog
+        extra_kwargs = {'number': {'required': False},
+                        'section': {'required': False},
+                        'tag': {'required': False},
+                        'user': {'required': False},
+                        'timestamp': {'required': False},
+                        'action': {'required': False},
+                        'comment': {'required': False},
+                        'way': {'required': False}}
+        fields = model.objects.GET_MODEL_ORDER + model.objects.GET_BASE_ORDER_LOG + model.objects.GET_BASE_CALCULATED \
+            + model.objects.COMMENT_SIGNATURE
+
+    def validate_post_specific(self, data):
+        query = self.context['query']
+        # basic checks if object in correct status
+        if query.status.id != Status.objects.started:
+            raise serializers.ValidationError('You can only complete sections in status "started".')
+
+        # validate if the section is designed to accept signatures
+        if self.function == settings.DEFAULT_LOG_SIGNATURE:
+            confirmation = getattr(FormsSections.objects.get(lifecycle_id=query.lifecycle_id, section=data['section'],
+                                                             version=query.version), 'confirmation')
+            if confirmation != settings.DEFAULT_LOG_SIGNATURE:
+                raise serializers.ValidationError('This section can not be completed.')
+
+            # validate if all fields of section are complete / have actual values
+            validate_last_execution_value(query.actual_values)
+
+            # always do signature validation if external call
+            self.signature = raw_signature(logged_in_user=self.user, data=data, request=self.request)
+            # comment validation according to settings
+            validate_comment(dialog=Execution.MODEL_CONTEXT.lower(), data=data, perm=settings.SECTION_PERM)
+
+        self.action = settings.DEFAULT_LOG_CREATE
+
+    def create_specific(self, validated_data, obj):
+        # define actions to give
+        validated_data['user'] = self.user
+        validated_data['timestamp'] = self.now
+        validated_data['action'] = self.action
+        # get way via function, to differ from external calls and internal calls by system user (automatic complete)
+        validated_data['way'] = self.function
+        return validated_data, obj
+
+    def create_log_specific(self, validated_data, obj):
+        create_central_log_record(log_id=obj.id, now=self.now, action=self.action, context=self.model.MODEL_CONTEXT,
+                                  user=self.user)
+        return validated_data, obj
+
+
 # new status
 class ExecutionStatusSerializer(GlobalReadWriteSerializer):
     status = serializers.CharField(source='get_status', read_only=True)
@@ -168,10 +228,17 @@ class ExecutionStatusSerializer(GlobalReadWriteSerializer):
 
             @require_started
             def validate_complete_record(self):
-                values = Execution.actual_values(number=self.instance.number)
-                for i in values:
-                    if not i['value']:
-                        raise serializers.ValidationError('Not all actual values are completed.')
+                if self.context['status'] == 'complete':
+                    # validate if all actual values are recorded
+                    validate_last_execution_value(self.instance.actual_values)
+
+                    # validate if all sections are completed
+                    target = FormsSections.objects.filter(lifecycle_id=self.instance.lifecycle_id,
+                                                          version=self.instance.version).all()
+                    for x in target:
+                        if not ExecutionSectionsLog.objects.filter(number=self.instance.number,
+                                                                   section=x.section).count() > 0:
+                            raise serializers.ValidationError('Not all sections are completed.')
 
             @require_canceled
             def validate_canceled(self):
@@ -211,8 +278,33 @@ class ExecutionFieldsWriteSerializer(GlobalReadWriteSerializer):
         pass
 
     def update_specific(self, validated_data, instance, self_call=None):
-        if not getattr(instance, 'value'):
+        if instance.value == '' or instance.value is None:
             self.action = settings.DEFAULT_LOG_CREATE
+
+        return validated_data, instance
+
+    def update_log_specific(self, validated_data, instance):
+        # don't do anything if log record for this section exists
+        if ExecutionSectionsLog.objects.filter(number=instance.number, section=instance.section).count() > 0:
+            return validated_data, instance
+        # complete section, if last actual value and section is defined as logging
+        query = Execution.objects.get(number=instance.number)
+        confirmation = getattr(FormsSections.objects.get(lifecycle_id=query.lifecycle_id, section=instance.section,
+                                                         version=query.version), 'confirmation')
+        if confirmation == settings.DEFAULT_LOG_LOGGING:
+            if Execution.last_value(number=self.instance.number, section=self.instance.section):
+                data = {'number': query.number,
+                        'section': instance.section,
+                        'tag': query.tag}
+                ser = ExecutionSectionsSignSerializer(data=data, context={'method': 'POST',
+                                                                          # pass way for external signing call
+                                                                          'function': settings.DEFAULT_LOG_LOGGING,
+                                                                          'user': self.user,
+                                                                          'request': self.request,
+                                                                          'query': query,
+                                                                          'now': self.now})
+                if ser.is_valid():
+                    ser.save()
 
         return validated_data, instance
 

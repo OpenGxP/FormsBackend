@@ -32,6 +32,7 @@ from urp.models.profile import Profile
 from urp.models.spaces import Spaces
 from urp.decorators import perm_required
 from urp.models.roles import Roles
+from urp.models.forms.sub.sections import FormsSections
 
 # django imports
 from django.utils import timezone
@@ -667,13 +668,14 @@ class StatusView(BaseView):
 
 
 class RTDView(StatusView):
-    def __init__(self, model_ser_pairs, log_model_view, log_model_view_ser, *args, **kwargs):
+    def __init__(self, model_ser_pairs, log_model_view, log_model_view_ser, ser_sections, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         # serializers
         self.model_ser_pairs = model_ser_pairs
         self.log_model_view = log_model_view
         self.log_model_view_ser = log_model_view_ser
+        self.ser_sections = ser_sections
 
     def detail(self, request, number, lifecycle_id=None, version=None, tags=True):
         # permissions
@@ -821,6 +823,49 @@ class RTDView(StatusView):
                 return patch_correct(request)
             else:
                 return patch(request)
+
+    def section(self, request, number, section):
+        # permissions
+        # FO-235: if model has permissions use them, otherwise pass None to avoid restriction
+        if self.perms:
+            perm_patch = '{}.03'.format(self.model.MODEL_ID)
+        else:
+            perm_patch = None
+
+        ser_sections = self.ser_sections
+
+        @perm_required(perm_patch)
+        @csrf_protect
+        def patch(_request):
+            # hard code data for serializer
+            request.data['number'] = number
+            request.data['section'] = section
+            request.data['tag'] = query.tag
+            serializer = ser_sections(data=request.data, context={'method': 'POST',
+                                                                  # pass way for external signing call
+                                                                  'function': settings.DEFAULT_LOG_SIGNATURE,
+                                                                  'user': request.user.username,
+                                                                  'request': request,
+                                                                  'query': query})
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            return Response(serializer.errors, status=http_status.HTTP_400_BAD_REQUEST)
+
+        try:
+            query = self.model.objects.get(number=number)
+        except self.model.DoesNotExist:
+            return Response(status=http_status.HTTP_404_NOT_FOUND)
+        except ValidationError:
+            return Response(status=http_status.HTTP_400_BAD_REQUEST)
+        else:
+            try:
+                FormsSections.objects.get(lifecycle_id=query.lifecycle_id, section=section, version=query.version)
+            except FormsSections.DoesNotExist:
+                return Response(status=http_status.HTTP_404_NOT_FOUND)
+
+        if request.method == 'POST':
+            return patch(request)
 
     def list_log_value(self, request, tags=True, ext_filter=None):
         # permissions

@@ -502,8 +502,12 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
     def create_specific(self, validated_data, obj):
         return validated_data, obj
 
+    def create_log_specific(self, validated_data, obj):
+        return validated_data, obj
+
     # function for create (POST)
     def create(self, validated_data):
+        action = settings.DEFAULT_LOG_CREATE
         # get meta model assigned in custom serializer
         model = self.model
         obj = model()
@@ -546,6 +550,10 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         # specific
         validated_data, obj = self.create_specific(validated_data, obj)
 
+        # new entry point to manipulate action in update_specific method
+        if self.action:
+            action = self.action
+
         # passed keys
         keys = validated_data.keys()
         # set attributes of validated data
@@ -559,10 +567,13 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         # save obj
         try:
             obj.save()
+            # generic entry-point for logs
+            validated_data, obj = self.create_log_specific(validated_data, obj)
+
             # log record
             if model.objects.LOG_TABLE:
                 create_log_record(model=model, context=self.context, obj=obj, validated_data=validated_data,
-                                  action=settings.DEFAULT_LOG_CREATE, signature=self.signature, now=self.now,
+                                  action=action, signature=self.signature, now=self.now,
                                   request=self.request)
 
                 if obj.sub_tables():
@@ -570,7 +581,7 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                         if key in validated_data:
                             for record in validated_data[key]:
                                 create_log_record(model=table, context=self.context, obj=obj, now=self.now,
-                                                  validated_data=record, action=settings.DEFAULT_LOG_CREATE,
+                                                  validated_data=record, action=action,
                                                   signature=self.signature, central=False, request=self.request)
 
         except IntegrityError as e:
@@ -583,6 +594,9 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
 
     # FO-251: route self_call
     def update_specific(self, validated_data, instance, self_call=None):
+        return validated_data, instance
+
+    def update_log_specific(self, validated_data, instance):
         return validated_data, instance
 
     # update
@@ -670,6 +684,10 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
                                    lifecycle_id=instance.lifecycle_id)
         instance.checksum = generate_checksum(to_hash)
         instance.save()
+
+        # generic entry-point for logs
+        validated_data, instance = self.update_log_specific(validated_data, instance)
+
         # log record
         if model.objects.LOG_TABLE:
             # for workflows

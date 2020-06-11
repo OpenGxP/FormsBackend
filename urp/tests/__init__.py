@@ -348,6 +348,7 @@ def log_records(model, action, data, access_log=None, _status=True, sub_tables=T
     try:
         if model.MODEL_ID == '40':
             del data['fields_values']
+            del data['sections']
         elif model.MODEL_ID == '13':
             del data['lookup']
         elif model.MODEL_ID == '55':
@@ -2204,7 +2205,7 @@ class PatchOneStatus(APITestCase):
     
     # FO-121: new test to verify user cannot proceed when blocked
     def test_401_blocked(self):
-        if self.execute:
+        if self.execute and not self.rtd:
             # authenticate
             self.prerequisites.auth(self.client)
             # get csrf
@@ -2218,7 +2219,7 @@ class PatchOneStatus(APITestCase):
 
     # FO-121: new test to verify user cannot proceed when not valid anymore
     def test_401_invalid(self):
-        if self.execute:
+        if self.execute and not self.rtd:
             # authenticate
             self.prerequisites.auth(self.client)
             # block authenticated user
@@ -2227,70 +2228,3 @@ class PatchOneStatus(APITestCase):
             response = self.client.patch('{}/{}'.format(self.ok_path, 'circulation'), content_type='application/json', 
                                          HTTP_X_CSRFTOKEN=csrf_token)
             self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-
-    def test_400_created(self):
-        if self.execute and self.rtd:
-            # authenticate
-            self.prerequisites.auth(self.client)
-            # get csrf
-            csrf_token = self.prerequisites.get_csrf(self.client)
-            # get API response
-            not_allowed_status = ['created', 'canceled', 'complete']
-            for _status in not_allowed_status:
-                response = self.client.patch('{}/{}'.format(self.ok_path, _status), content_type='application/json',
-                                             HTTP_X_CSRFTOKEN=csrf_token)
-                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-    def test_400_started(self):
-        if self.execute and self.rtd:
-            # authenticate
-            self.prerequisites.auth(self.client)
-            # get csrf
-            csrf_token = self.prerequisites.get_csrf(self.client)
-            # get API response
-            response = self.client.patch('{}/{}'.format(self.ok_path, 'started'), content_type='application/json',
-                                         HTTP_X_CSRFTOKEN=csrf_token)
-            self.assertEqual(response.data['status'], 'started')
-            not_allowed_status = ['created', 'started']
-            for _status in not_allowed_status:
-                response = self.client.patch('{}/{}'.format(self.ok_path, _status), content_type='application/json',
-                                             HTTP_X_CSRFTOKEN=csrf_token)
-                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-    def test_400_canceled(self):
-        if self.execute and self.rtd:
-            # authenticate
-            self.prerequisites.auth(self.client)
-            # get csrf
-            csrf_token = self.prerequisites.get_csrf(self.client)
-            # get API response
-            response = self.client.patch('{}/{}'.format(self.ok_path, 'started'), content_type='application/json',
-                                         HTTP_X_CSRFTOKEN=csrf_token)
-            self.assertEqual(response.data['status'], 'started')
-            response = self.client.patch('{}/{}'.format(self.ok_path, 'canceled'), content_type='application/json',
-                                         HTTP_X_CSRFTOKEN=csrf_token)
-            self.assertEqual(response.data['status'], 'canceled')
-            not_allowed_status = ['created', 'started', 'canceled', 'complete']
-            for _status in not_allowed_status:
-                response = self.client.patch('{}/{}'.format(self.ok_path, _status), content_type='application/json',
-                                             HTTP_X_CSRFTOKEN=csrf_token)
-                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-    def test_400_complete(self):
-        if self.execute and self.rtd:
-            # authenticate
-            self.prerequisites.auth(self.client)
-            # get csrf
-            csrf_token = self.prerequisites.get_csrf(self.client)
-            # get API response
-            response = self.client.patch('{}/{}'.format(self.ok_path, 'started'), content_type='application/json',
-                                         HTTP_X_CSRFTOKEN=csrf_token)
-            self.assertEqual(response.data['status'], 'started')
-            response = self.client.patch('{}/{}'.format(self.ok_path, 'complete'), content_type='application/json',
-                                         HTTP_X_CSRFTOKEN=csrf_token)
-            self.assertEqual(response.data['status'], 'complete')
-            not_allowed_status = ['created', 'started', 'canceled', 'complete']
-            for _status in not_allowed_status:
-                response = self.client.patch('{}/{}'.format(self.ok_path, _status), content_type='application/json',
-                                             HTTP_X_CSRFTOKEN=csrf_token)
-                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

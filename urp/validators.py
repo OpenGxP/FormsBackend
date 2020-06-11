@@ -16,14 +16,13 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+# rest imports
+from rest_framework.serializers import ValidationError
 
 # python import
 import string
 
-
 # django imports
-# from django.core.exceptions import ValidationError
-from rest_framework.serializers import ValidationError
 from django.utils.translation import gettext_lazy as _
 
 
@@ -87,9 +86,18 @@ def validate_only_ascii(value):
 
 
 def validate_only_positive_numbers(value):
-
     try:
         if value < 0:
             raise ValidationError(_('Only positive integers are allowed.'))
     except ValueError:
         raise ValidationError(_('Only positive integers are allowed.'))
+
+
+def validate_last_execution_value(values):
+    for x in values:
+        # first check if string, then check if empty
+        if isinstance(x['value'], str) and x['value'] == '':
+            raise ValidationError(_('Not all actual values are completed.'))
+        # instance of value is not a bool for None, but is for True / False
+        if not isinstance(x['value'], str) and not isinstance(x['value'], bool):
+            raise ValidationError(_('Not all actual values are completed.'))

@@ -26,6 +26,9 @@ from urp.serializers.execution import ExecutionReadWriteSerializer
 # test imports
 from . import Prerequisites, GetAll, PostNew, GetOne, DeleteOne, PatchOneStatus
 
+# rest framework imports
+from rest_framework import status
+
 
 BASE_PATH = reverse('execution-list')
 
@@ -249,3 +252,79 @@ class PatchOneStatusExecution(PatchOneStatus):
                                                     'sequence': 1}]},
                           'path': reverse('forms-list'),
                           'status': True}]
+
+    def test_400_created(self):
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get API response
+        not_allowed_status = ['created', 'canceled', 'complete']
+        for _status in not_allowed_status:
+            response = self.client.patch('{}/{}'.format(self.ok_path, _status), content_type='application/json',
+                                         HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_400_started(self):
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get API response
+        response = self.client.patch('{}/{}'.format(self.ok_path, 'started'), content_type='application/json',
+                                     HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.data['status'], 'started')
+        not_allowed_status = ['created', 'started']
+        for _status in not_allowed_status:
+            response = self.client.patch('{}/{}'.format(self.ok_path, _status), content_type='application/json',
+                                         HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_400_canceled(self):
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get API response
+        response = self.client.patch('{}/{}'.format(self.ok_path, 'started'), content_type='application/json',
+                                     HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.data['status'], 'started')
+        response = self.client.patch('{}/{}'.format(self.ok_path, 'canceled'), content_type='application/json',
+                                     HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.data['status'], 'canceled')
+        not_allowed_status = ['created', 'started', 'canceled', 'complete']
+        for _status in not_allowed_status:
+            response = self.client.patch('{}/{}'.format(self.ok_path, _status), content_type='application/json',
+                                         HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_400_complete(self):
+        # authenticate
+        self.prerequisites.auth(self.client)
+        # get csrf
+        csrf_token = self.prerequisites.get_csrf(self.client)
+        # get API response
+        response = self.client.patch('{}/{}'.format(self.ok_path, 'started'), content_type='application/json',
+                                     HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.data['status'], 'started')
+
+        # write all actual values
+        response = self.client.patch('{}/sectionOne/value/textfieldOne'.format(self.ok_path), data={'value': 'astring'},
+                                     content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        response = self.client.patch('{}/sectionOne/value/boolfieldOne'.format(self.ok_path), data={'value': True},
+                                     content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        response = self.client.patch('{}/sectionTwo/value/textfieldTwo'.format(self.ok_path), data={'value': 'astring'},
+                                     content_type='application/json', HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        response = self.client.patch('{}/{}'.format(self.ok_path, 'complete'), content_type='application/json',
+                                     HTTP_X_CSRFTOKEN=csrf_token)
+        print(response, response.status_code)
+        self.assertEqual(response.data['status'], 'complete')
+        not_allowed_status = ['created', 'started', 'canceled', 'complete']
+        for _status in not_allowed_status:
+            response = self.client.patch('{}/{}'.format(self.ok_path, _status), content_type='application/json',
+                                         HTTP_X_CSRFTOKEN=csrf_token)
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

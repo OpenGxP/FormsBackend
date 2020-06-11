@@ -16,6 +16,9 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+# rest imports
+from rest_framework import serializers
+
 # python imports
 from itertools import chain
 
@@ -28,6 +31,8 @@ from basics.models import GlobalModel, GlobalManager, CHAR_DEFAULT, Status, Glob
 from urp.models.forms.forms import Forms
 from urp.models.execution.sub.text_fields import ExecutionTextFields
 from urp.models.execution.sub.bool_fields import ExecutionBoolFields
+from urp.models.forms.sub.sections import FormsSections
+from urp.validators import validate_last_execution_value
 
 
 # log manager
@@ -171,10 +176,24 @@ class Execution(GlobalModel):
         return list(chain(ExecutionTextFields.objects.filter(number__exact=self.number).all(),
                           ExecutionBoolFields.objects.filter(number__exact=self.number).all()))
 
+    @property
+    def actual_values(self):
+        return list(chain(ExecutionTextFields.objects.filter(number=self.number).values('value'),
+                          ExecutionBoolFields.objects.filter(number=self.number).values('value')))
+
+    @property
+    def linked_sections(self):
+        return FormsSections.objects.filter(lifecycle_id=self.lifecycle_id, version=self.version).all()
+
     @staticmethod
-    def actual_values(number):
-        return list(chain(ExecutionTextFields.objects.filter(number=number).values('value').distinct(),
-                          ExecutionBoolFields.objects.filter(number=number).values('value').distinct()))
+    def last_value(number, section):
+        actual_values = list(chain(ExecutionTextFields.objects.filter(number=number, section=section).values('value'),
+                                   ExecutionBoolFields.objects.filter(number=number, section=section).values('value')))
+        try:
+            validate_last_execution_value(actual_values)
+        except serializers.ValidationError:
+            return False
+        return True
 
     def delete_me(self):
         self.delete()

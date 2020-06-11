@@ -250,6 +250,11 @@ def private_root_view(request):
                                                                 'url': {'abs': reverse('signatures-log-list',
                                                                                        request=request),
                                                                         'rel': 'logs/signatures'}},
+                                                 'executionsections': {'title': 'Execution Sections',
+                                                                       'url': {'abs': reverse('execution-sections'
+                                                                                              '-log-list',
+                                                                                              request=request),
+                                                                               'rel': 'logs/execution_sections'}},
                                                  'roles': {'title': 'Roles',
                                                            'url': {'abs': reverse('roles-log-list', request=request),
                                                                    'rel': 'logs/roles'}},
