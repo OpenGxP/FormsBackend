@@ -183,6 +183,19 @@ class GlobalReadWriteSerializer(serializers.ModelSerializer):
         return ExecutionActualValuesLog.objects.filter(
             number=number, section=section).values('timestamp').latest('timestamp')['timestamp']
 
+    def last_section_user_validation(self, number, section):
+        # validate if any value of this section was recorded yet, then check if user is identical
+        try:
+            last_user = ExecutionActualValuesLog.objects.filter(
+                number=number, section=section).values('user').latest('timestamp')['user']
+        except ExecutionActualValuesLog.DoesNotExist:
+            # if no value exist, no validation regarding user required
+            pass
+        else:
+            # if query hit, perform user validation
+            if last_user != self.user:
+                raise serializers.ValidationError('Only user "{}" can alter this section.'.format(last_user))
+
     # -- END for execution only -- #
 
     @staticmethod

@@ -163,6 +163,9 @@ class ExecutionSectionsSignSerializer(GlobalReadWriteSerializer):
             # validate if all fields of section are complete / have actual values
             validate_last_execution_value(query.actual_values)
 
+            # validate only one user can alter and therefore sign one section
+            self.last_section_user_validation(number=self.instance.number, section=self.instance.section)
+
             # 1) validate if signature already exists
             try:
                 last_section_sign = self.last_section_sign(number=query.number, section=data['section'])
@@ -350,6 +353,10 @@ class ExecutionFieldsWriteSerializer(GlobalReadWriteSerializer):
                                                  section=self.instance.section).role
         if allowed_role and not self.context['request'].user.has_role(allowed_role):
             raise serializers.ValidationError('You are not allowed to update that value.')
+
+        # validate only one user can alter one section
+        self.last_section_user_validation(number=self.instance.number, section=self.instance.section)
+
         # validate if record has value, then apply correction settings for sig and comment
         if getattr(self.instance, 'value'):
             dialog = Execution.MODEL_CONTEXT.lower()
